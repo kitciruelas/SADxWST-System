@@ -78,57 +78,9 @@ if (isset($_GET['id'])) {
     <div class="topbar">
         <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
 
-       <!-- Profile Button Icon -->
-       <button id="openEditUserModal" class="editUserModal">
-    <i class="fa fa-user"></i> Edit Profile</button>
+      
 
-<!-- Edit User Modal -->
-<div id="editUserModal" class="modal" style="display: none;">
-    <div class="addmodal-content" role="dialog" aria-labelledby="editUserModalTitle" aria-hidden="true">
-        <span class="close" id="closeEditModal" aria-label="Close Modal">&times;</span>
-        <h2 id="editUserModalTitle">Edit Profile</h2>
-        <form method="POST" action="" onsubmit="return validateForm();">
-            <input type="hidden" id="editUserId" name="user_id">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="editFname">First Name:</label>
-                    <input type="text" id="editFname" name="Fname" required>
-                </div>
-                <div class="form-group">
-                    <label for="editLname">Last Name:</label>
-                    <input type="text" id="editLname" name="Lname" required>
-                </div>
-                <div class="form-group">
-                    <label for="editMI">Middle Initial:</label>
-                    <input type="text" id="editMI" name="MI">
-                </div>
-                <div class="form-group">
-                    <label for="editAge">Age:</label>
-                    <input type="number" id="editAge" name="Age" required>
-                </div>
-                <div class="form-group">
-                    <label for="editAddress">Address:</label>
-                    <input type="text" id="editAddress" name="Address" required>
-                </div>
-                <div class="form-group">
-                    <label for="editContact">Contact Number:</label>
-                    <input type="text" id="editContact" name="contact" required pattern="[0-9]{10,11}" title="Please enter a valid contact number (10-11 digits)">
-                </div>
-                <div class="form-group">
-                    <label for="editSex">Sex:</label>
-                    <select id="editSex" name="Sex">
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </select>
-                </div>
-                <div class="form-group">
 
-                
-                </div>
-            </div>
-            <button type="submit" name="edit_user">Update</button>
-        </form>
-    </div>
 </div>
 
 
@@ -205,22 +157,6 @@ if (isset($_GET['id'])) {
     <!-- Script -->
 
     <script>
-        document.getElementById('openEditUserModal').onclick = function() {
-    document.getElementById('editUserModal').style.display = 'flex'; // Show modal
-};
-
-document.getElementById('closeEditModal').onclick = function() {
-    document.getElementById('editUserModal').style.display = 'none'; // Hide modal
-};
-
-// Close the modal when clicking outside of it
-window.onclick = function(event) {
-    const modal = document.getElementById('editUserModal');
-    if (event.target == modal) {
-        modal.style.display = 'none'; // Hide modal
-    }
-};
-
 
 // Form validation function
 function validateForm() {

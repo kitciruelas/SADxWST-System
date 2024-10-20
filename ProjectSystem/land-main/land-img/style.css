@@ -1,0 +1,299 @@
+.navbar, #footer {
+    animation: fadeIn 2s ease-in-out;
+}
+
+/* Hero Section Animation */
+.hero-section {
+    background: url('hero-background.jpg') no-repeat center center;
+    background-size: cover;
+    color: white;
+    min-height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    opacity: 0;
+    animation: slideIn 2s ease forwards;
+    padding: 140px 20px;
+    background: url('dormbg.jpg') no-repeat center center/cover;
+
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-100px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.navbar {
+    transition: background-color 0.3s;
+    background-color: #ffffff; /* Base navbar color */
+    width: 100%; /* Make navbar take the full width */
+    max-width: 1200px; /* Optional: Limit max width */
+    margin: 0 auto; /* Center the navbar if using max-width */
+}
+
+/* Set the color for navbar links */
+/* Navbar link default state */
+/* Navbar link default state */
+.navbar-nav .nav-link {
+color: #007bff; /* Default text color */
+transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+border-radius: 20px; /* Rounded corners */
+padding: 10px 10px; /* Add padding for better spacing */
+display: inline-block; /* Ensure the links don't stretch the width */
+width: auto; /* Prevents links from taking full width */
+}
+
+/* Navbar link hover state */
+.navbar-nav .nav-link:hover {
+background-color: rgb(8, 8, 120); /* Background color on hover */
+color: #ffffff; /* Text color on hover */
+border: none; /* No border */
+border-radius: 20px; /* Rounded corners */
+width: auto; /* Ensure the width stays as needed */
+}
+
+
+
+.btn-primary {
+    transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.social-icons a {
+    transition: transform 0.3s ease;
+}
+
+.social-icons a:hover {
+    transform: scale(1.2);
+}
+
+.card {
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Footer text alignment */
+#about-us {
+    text-align: justify;
+}
+
+/* Custom styles to align navbar-collapse to the left */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        left: 0; /* Aligns the navbar-collapse to the left */
+        right: auto; /* Resets the right position */
+    }
+}
+
+#footer {
+background-color: #343a40; /* Dark background for the footer */
+color: white; /* White text color */
+}
+
+.footer-section h5 {
+color: #ffc107; /* Gold color for section titles */
+margin-bottom: 10px; /* Space below section titles */
+}
+
+.footer-section ul {
+list-style-type: none; /* Remove default list styles */
+padding: 0; /* Remove padding */
+}
+
+.footer-links a {
+color: white; /* White color for links */
+text-decoration: none; /* Remove underline */
+margin: 0 5px; /* Space between links */
+}
+
+.footer-links a:hover {
+text-decoration: underline; /* Underline on hover for better visibility */
+}
+
+.social-icons a {
+color: white; /* White color for social media icons */
+text-decoration: none; /* Remove underline */
+margin-right: 10px; /* Space between icons */
+}
+
+.social-icons a:hover {
+color: #ffc107; /* Change color on hover */
+}
+.footer-section h5 {
+font-size: 1.25rem; /* Adjust heading size if necessary */
+margin-bottom: 0.5rem; /* Space below section headings */
+}
+
+.footer-section p {
+margin-bottom: 0.5rem; /* Adjust spacing for paragraphs */
+}
+.social-icons i {
+font-size: 24px; /* Adjust the size as needed */
+transition: color 0.3s; /* Smooth color transition */
+}
+
+.social-icons a:hover i {
+color: #ffc107; /* Change color on hover */
+}
+
+
+
+/* Login */
+
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f2f2f2;
+}
+
+header {
+    background-color: #ffffff;
+    padding: 10px;
+}
+
+header .logo {
+    width: 100px;
+    height: auto;
+}
+
+header .logo img {
+    width: 100%;
+    height: auto;
+}
+
+/*login*/
+body {
+    justify-content: center; /* Center the login option container */
+    align-items: center; /* Center vertically */
+    height: 100vh; /* Full height of the viewport */
+    margin: 0; /* Remove default margin */
+    background-color: #f0f0f0; /* Optional background color */
+}
+
+#login-options {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    width: 650px; /* Set a specific width */
+    height: 400px; /* Set a specific height */
+    border-radius: 10px; /* Optional: Rounded corners */
+    background-color: #ffffff; /* Change background to white for a clean look */
+    position: fixed;
+    top: 50%; /* Center vertically */
+    left: 50%; /* Center horizontally */
+    transform: translate(-50%, -50%); /* Adjust position to center */
+    padding: 20px; /* Add some padding inside the border */
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2); /* Enhanced shadow for a more modern look */
+}
+.left-align-container {
+    width: 100%; /* Make it take full width */
+    display: flex; /* Use flexbox for layout */
+    justify-content: flex-start; /* Align items to the left */
+    align-items: center; /* Vertically center items */
+}
+
+.btn-with-icon {
+    background: none; /* No background initially */
+    border: none; /* No border */
+    color: #000; /* Set text and icon color */
+    font-size: 16px; /* Adjust font size */
+    cursor: pointer; /* Change cursor to pointer */
+    display: inline-flex; /* Align icon and text horizontally */
+    align-items: center; /* Vertically center icon and text */
+    padding: 5px 10px; /* Add padding for a larger clickable area */
+    transition: background-color 0.3s ease, border-radius 0.3s ease; /* Smooth transition */
+}
+
+  
+  .btn-with-icon i {
+    margin-right: 8px; /* Add space between icon and text */
+    font-size: 20px; /* Adjust icon size */
+  }
+  
+  .btn-with-icon:hover {
+      background-color: #d3d3d3; /* Light gray background on hover */
+      border-radius: 20px; /* Rounded corners on hover */
+      color: #000; /* Keep the text and icon color the same */
+      transition: background-color 0.3s ease, border-radius 0.3s ease; /* Smooth hover effect */
+    }
+  
+  .btn-with-icon:focus {
+    outline: none; /* Remove focus outline */
+  }
+    
+
+/* Ensuring equal height for all cards */
+.card {
+    height: 100%; /* Make all cards fill the same height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f8f9fa; /* Optional: Light background color for cards */
+    border: none; /* No border */
+    border-radius: 10px; /* Optional: Rounded corners */
+    box-shadow: none; /* Optional: Remove any shadow */
+    padding: 20px; /* Optional: Padding inside cards */
+    margin: 10px; /* Optional: Margin between cards */
+}
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+  
+  .card-text {
+    font-size: 1.2rem; /* Adjust font size for consistency */
+  }
+  
+  .card i {
+    font-size: 5rem; /* Ensures all icons are the same size */
+    margin-bottom: 10px; /* Consistent margin below icons */
+  }
+  
+
+  
+  /* Apply the animation to all cards */
+  .card {
+    animation: slideInFromLeftFadeIn 0.8s ease-out; /* Animation duration and easing */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Hover transition */
+  }
+  
+  /* Hover effect: zoom and shadow */
+  .card:hover {
+    transform: scale(1.05); /* Slight zoom */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Shadow effect */
+  }
+  
+  /* Delay animations for staggered entrance */
+  .card:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  
+  .card:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .card:nth-child(3) {
+    animation-delay: 0.3s;
+  }

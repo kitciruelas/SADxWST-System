@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Options</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="land-img/style.css"> <!-- Custom CSS if needed -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> <!-- Font Awesome -->
+       
+</head>
+<body>
+
+    <header class="text-center py-4">
+        <div class="logo">
+            <img src="logo.png" alt="Logo" class="img-fluid"> <!-- Correct logo path -->
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="login-options" class="text-center">
+            <div class="left-align-container">
+                <button id="back-button" class="btn-with-icon">
+                    <i class="fas fa-arrow-left"></i> 
+                </button>
+            </div>            
+    
+            <h2 class="mb-4">Login as</h2>
+    
+            <div class="row justify-content-center">
+                <!-- Admin Login Option -->
+                <div class="col-12 col-sm-6 col-md-4 mb-4">
+                    <a href="../Admin/admin-login.php" class="text-decoration-none">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-user-shield fa-3x mb-2"></i> <!-- Admin icon -->
+                                <p class="card-text"><strong>Admin</strong></p> <!-- Bold Admin text -->
+                            </div>
+                        </div>
+                    </a>
+                </div>
+    
+                <!-- Staff Login Option -->
+                <div class="col-12 col-sm-6 col-md-4 mb-4">
+                    <a href="../User/user-login.php" class="text-decoration-none">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-user-tie fa-3x mb-2"></i> <!-- Staff icon -->
+                                <p class="card-text"><strong>Staff</strong></p> <!-- Bold Staff text -->
+                            </div>
+                        </div>
+                    </a>
+                </div>
+    
+                <!-- General User Login Option -->
+                <div class="col-12 col-sm-6 col-md-4 mb-4">
+                    <a href="../User/user-login.php" class="text-decoration-none">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-user fa-3x mb-2"></i> <!-- General user icon -->
+                                <p class="card-text"><strong>User</strong></p> <!-- Bold General User text -->
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('back-button').addEventListener('click', function() {
+            window.history.back();
+        });
+
+       
+  document.getElementById('back-button').onclick = function () {
+    window.location.href = 'landing.html'; // Replace with the correct path to landing page
+  };
+
+
+    </script>
+</body>
+</html>

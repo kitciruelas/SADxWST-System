@@ -1,0 +1,458 @@
+/* Basic reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+  
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f4;
+}
+  
+/* Sidebar styles */
+.sidebar {
+    height: 100vh;
+    width: 200px; /* Set width of sidebar */
+    position: fixed;
+    left: 0;
+    top: 0;
+    background-color: #2B228A; /* Dark blue */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Align items to use space evenly */
+    padding-top: 20px;
+    transition: all 0.3s ease;
+}
+  
+/* Sidebar navigation links */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+}
+  
+.sidebar a {
+    color: white;
+    padding: 15px; /* Uniform padding */
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+  
+.sidebar a:hover {
+    background-color: #5751d1; /* Lighter blue for hover effect */
+    border-radius: 30px; /* Add rounded corners */
+
+}
+.sidebar a.active {
+    background-color: white; /* Dark blue for active link */
+    color:#2B228A; /* Optional: change text color to highlight active link */
+    border: 2px solid rgb(255, 255, 255); /* Add a yellow border around the entire link */
+    border-radius: 30px; /* Add rounded corners */
+    padding: 12px; /* Adjust padding to account for border */
+}
+.sidebar a i {
+    margin-right: 10px;
+    font-size: 20px; /* Adjust icon size */
+}
+  
+/* Sidebar collapsed state */
+.sidebar.collapsed {
+    width: 60px; /* Shrinks the sidebar */
+    transition: width 0.3s ease;
+}
+  
+.sidebar.collapsed a {
+    justify-content: center; /* Center icon */
+    font-size: 0; /* Hides text */
+}
+  
+.sidebar.collapsed a i {
+    margin-right: 0; /* Remove margin when collapsed */
+    font-size: 24px; /* Keep icon size larger */
+}
+
+  
+/* Menu bar inside sidebar */
+.menu {
+    font-size: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center; /* Align menu icon to the top */
+    height: 50px;
+    color: white; /* Keep text color */
+    margin-left: auto; /* Push to the right */
+    padding-right: 15px; /* Add padding to the right */
+}
+  
+.menu span {
+    display: block;
+    width: 30px;
+    height: 3px;
+    margin: 5px 0;
+    background-color: white;
+    transition: 0.3s;
+}
+  
+/* Hamburger menu transformation */
+.menu.open span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+  
+.menu.open span:nth-child(2) {
+    opacity: 0;
+}
+  
+.menu.open span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+  
+/* Top bar styles */
+.topbar {
+    position: fixed;
+    left: 200px; /* Matches sidebar width */
+    top: 0;
+    width: calc(100% - 200px);
+    height: 70px;
+    background-color: #ffffff; /* Change to a solid color (e.g., white) */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+/* Adjust top bar for collapsed sidebar */
+.sidebar.collapsed ~ .topbar {
+    left: 60px;
+    width: calc(100% - 60px);
+}
+  
+
+  
+  
+/* Adjust content when sidebar is collapsed */
+.sidebar.collapsed ~ .main-content {
+    margin-left: 60px; /* Adjusts content area when sidebar is collapsed */
+}
+
+
+/* Welcome message */
+.topbar h2 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+  
+p a {
+    text-decoration: none;
+    color: #2B228A;
+    font-weight: bold;
+    background-color: #d3d3d3;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+  
+p a:hover {
+    background-color: #5751d1;
+    color: white;
+}
+  
+/* Logout button at the bottom */
+.logout {
+    margin-top: auto;
+    padding: 20px;
+    background-color: #2B228A;
+}
+  
+.logout a {
+    color: white;
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 16px;
+}
+  
+.logout a i {
+    margin-right: 10px;
+}
+.sidebar:hover .nav-link span {
+  display: inline; /* Show text on hover */
+}
+
+/* modal edit profile*/
+
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100vw; /* Full viewport width */
+    height: 100vh; /* Full viewport height */
+    background-color: rgba(0, 0, 0, 0.5); /* Black w/ opacity */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    overflow:auto; /* Prevent scrolling */
+
+}
+
+.addmodal-content{
+    background-color: #fefefe;
+    margin: 10% auto; /* Center modal lower on the screen */
+    padding: 15px; /* Padding inside the modal */
+    border: 1px solid #888;
+    width: 90%; /* Responsive width */
+    max-width: 400px; /* Smaller max width for compactness */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+
+}
+#editUserModalTitle {
+    font-size: 24px; /* You can adjust the font size */
+    font-weight: bold;
+    margin-bottom: 20px; /* Space below the heading */
+    padding-bottom: 10px; /* Padding between text and the border */
+    border-bottom: 2px solid #888; /* Bottom border with thickness and color */
+    text-align: left; /* Ensure text is aligned properly */
+}
+.form-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px; /* Space between fields */
+}
+
+.form-group {
+    flex: 1 1 45%; /* Full width for small screens */
+}
+#editMI, #editAge, #editSex {
+    flex: 1; /* Ensure full width of form group */
+    width: 50%; /* Full width for the input elements */
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+}
+label {
+    display: block; /* Make labels block elements */
+    margin-bottom: 5px; /* Space between label and input */
+}
+
+input, select {
+    width: 80%; /* Full width */
+    padding: 8px; /* Padding for inputs */
+    margin-bottom: 10px; /* Space below each input */
+    border: 1px solid #ccc; /* Border style */
+    border-radius: 4px; /* Rounded corners */
+    font-size: 14px; /* Font size */
+}
+
+button {
+    padding: 6px 12px; /* Button padding */
+    background-color: transparent; /* Transparent background */
+    color: 2B228A; /* White text */
+    border: none; /* No border */
+    border: 2px solid #2B228A; /* Green border */
+    border-radius: 20px; /* Rounded corners */    
+    cursor: pointer; /* Pointer cursor on hover */
+    font-size: 12px; /* Smaller font size for button */
+    width: auto; /* Adjusted button width */
+    display: inline-block; /* Align button */
+    margin-top: 10px; /* Space above the button */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+
+}
+
+button.left-align {
+    margin-right: auto; /* Align to the left */
+}
+
+button:hover {
+    background-color:  rgba(43, 34, 138, 0.1);
+    color:#2B228A; /* White text on hover */
+}
+
+.close {
+    color: #aaa; /* Close button color */
+    float: right; /* Align close button to the right */
+    font-size: 28px; /* Font size for close button */
+    font-weight: bold; /* Bold font for close button */
+}
+
+.close:hover,
+.close:focus {
+    color: black; /* Change color on hover */
+    text-decoration: none; /* Remove underline */
+    cursor: pointer; /* Pointer cursor */
+}
+
+
+/* Main content area */
+.main-content {
+    position: relative; /* Change to relative */
+    margin-left: 200px; /* Matches sidebar width */
+    padding: 20px;
+    padding-top: 80px; /* To push content below the topbar */
+    background-color: #f4f4f4;
+    min-height: calc(100vh - 70px); /* Adjust height to exclude top bar */
+    transition: all 0.3s ease;
+    display: flex; /* Use flexbox for alignment */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center align items */
+}
+
+/* Announcement box */
+.announcement-box {
+    background-color: #f9f9f9; /* Light background for visibility */
+    border: 1px solid #ccc; /* Border around the announcement box */
+    border-radius: 5px; /* Rounded corners */
+    padding: 30px; /* Padding inside the box */
+    margin-bottom: 20px; /* Space between announcement and boxes */
+    width: 100%; /* Make it full width */
+    max-width: 1000px; /* Limit max width for better appearance */
+  
+}
+.announcement-item {
+    text-align: center; /* Center text */
+    margin-bottom: 20px; /* Add some space between announcements */
+}
+
+.announcement-container p {
+    color: #2B228A;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center items within the container */
+}
+
+
+.announcement-header {
+    display: flex;
+    justify-content: space-between; /* Aligns items to left and right */
+    align-items: center; /* Vertically centers items */
+}
+
+.announcement-icon {
+    margin-right: 10px;
+    color: #2B228A;
+}
+.announcement-list {
+    display: flex; /* Use flexbox for layout */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    margin: 20px auto; /* Center the list on the page */
+    max-width: 800px; /* Limit maximum width */
+}
+
+.announcement-item {
+    border: 1px solid #ccc; /* Add border around each announcement */
+    padding: 15px; /* Add padding inside announcement items */
+    margin: 10px 0; /* Add vertical spacing between items */
+    width: 100%; /* Make items take full width of the container */
+    text-align: center; /* Center text inside each item */
+    background-color: #f9f9f9; /* Optional: Add a background color */
+    border-radius: 5px; /* Optional: Round the corners */
+}
+
+.announcement-item h3 {
+    margin: 0 0 10px; /* Add space below the title */
+    font-size: 18px; /* Set font size for the title */
+}
+
+.announcement-item p {
+    margin: 5px 0; /* Add vertical space between paragraphs */
+    font-size: 14px; /* Set font size for the content and date */
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .announcement-box {
+        padding: 15px; /* Less padding on smaller screens */
+    }
+
+    .announcement-item {
+        padding: 10px; /* Less padding for items */
+    }
+
+    h2 {
+        font-size: 1.5em; /* Smaller heading */
+    }
+
+    .nav-link {
+        display: block; /* Stack the link on mobile */
+        margin-top: 10px; /* Space above the link */
+        text-align: center; /* Center the link */
+    }
+}
+
+@media (max-width: 480px) {
+    .announcement-item h3 {
+        font-size: 1.2em; /* Smaller title on very small screens */
+    }
+
+    .announcement-item p {
+        font-size: 0.9em; /* Slightly smaller text */
+    }
+}
+
+
+/* Boxes area*/
+
+
+.boxes {
+    display: flex;
+    flex-wrap: wrap; /* Allows boxes to wrap onto the next line */
+    justify-content: center; /* Center boxes horizontally */
+    gap: 20px; /* Space between boxes */
+    width: 100%; /* Full width for the boxes container */
+}
+
+.user-box, .room-box, .checkin-box {
+    border: 1px solid #ccc; /* Border for each box */
+    border-radius: 5px; /* Rounded corners */
+    padding: 40px; /* Adjusted padding for balance */
+    width: 300px; /* Fixed width for consistent box sizes */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Shadow for depth */
+    background-color: #ffffff; /* Background color for boxes */
+    text-align: center; /* Center text inside each box */
+    margin: 10px; /* Margin for spacing between boxes */
+    transition: transform 0.3s ease; /* Smooth transition for hover effect */
+}
+
+/* Hover effect to slightly elevate the box */
+.user-box:hover, .room-box:hover, .checkin-box:hover {
+    transform: translateY(-5px); /* Lift effect on hover */
+}
+.user-count {
+    font-size: 24px; /* Larger font for the user count */
+    color: #f21616; /* Color that matches your theme */
+    font-weight: bold; /* Bold text for emphasis */
+    margin-top: 5px; /* Space above the count */
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .user-box, .room-box, .checkin-box {
+        width: 200; /* Full width on smaller screens */
+        padding: 20px; /* Adjust padding for smaller devices */
+    }
+}
+
+
+
+
+/* Adjust main content when sidebar is collapsed */
+.sidebar.collapsed ~ .main-content {
+    margin-left: 60px; /* Adjusts content area when sidebar is collapsed */
+    width: calc(100% - 60px); /* Ensure it takes up remaining space */
+}

@@ -7,93 +7,130 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     exit;
 }
 
-include '../config/config.php'; // or require 'config.php';
+include '../config/config.php'; // Ensure this is correct
 
-// Check database connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if (!$conn) {
+    die("Database connection failed: " . mysqli_connect_error());
 }
 
-// Handle create, edit, and delete user requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle create new user request
-    if (isset($_POST['create_user'])) {
-        $Fname = trim($_POST['Fname']);
-        $Lname = trim($_POST['Lname']);
-        $MI = trim($_POST['MI']);
-        $Age = intval($_POST['Age']);
-        $Address = trim($_POST['Address']);
-        $contact = trim($_POST['contact']);
-        $Sex = $_POST['Sex'];
-        $Role = trim($_POST['Role']); // Expect 'gen user' or 'staff'
-        $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
-        $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT);
+// Initialize variable for error message
+$errorMessage = '';
 
-        $stmt = $conn->prepare("INSERT INTO users (Fname, Lname, MI, Age, Address, contact, Sex, Role, email, password)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        if ($stmt) {
-            $stmt->bind_param("sssissssss", $Fname, $Lname, $MI, $Age, $Address, $contact, $Sex, $Role, $email, $password);
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
+    // Collect form data
+    $fname = $_POST['Fname'];
+    $lname = $_POST['Lname'];
+    $mi = $_POST['MI'];
+    $age = $_POST['Age'];
+    $address = $_POST['Address'];
+    $contact = $_POST['contact'];
+    $sex = $_POST['Sex'];
+    $role = $_POST['Role'];  // General User or Staff
+    $email = $_POST['email'];
+    $password = password_hash($_POST['password'], PASSWORD_BCRYPT); // Hash password
+
+    // Server-side validation
+    if (empty($fname) || empty($lname) || empty($age) || empty($address) || empty($contact) || empty($sex) || empty($email) || empty($_POST['password'])) {
+        $errorMessage = 'All fields are required.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errorMessage = 'Invalid email format.';
+    } elseif (strlen($_POST['password']) < 6) {
+        $errorMessage = 'Password must be at least 6 characters long.';
+    } else {
+        // Determine the SQL insert statement based on the role
+        if ($role === 'Staff') {
+            // Prepare SQL for inserting into staff table
+            $sql = "INSERT INTO staff (fname, lname, mi, age, address, contact, sex, email, password) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        } else {
+            // Prepare SQL for inserting into users table (General User)
+            $sql = "INSERT INTO users (fname, lname, mi, age, address, contact, sex, email, password) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        }
+
+        // Prepare the statement
+        if ($stmt = $conn->prepare($sql)) {
+            // Bind the parameters for both users or staff tables
+            $stmt->bind_param("sssisssss", $fname, $lname, $mi, $age, $address, $contact, $sex, $email, $password);
+
+            // Execute the statement
             if ($stmt->execute()) {
-                echo "<script>alert('User created successfully!'); hideModal();</script>";
+                // Directly display a success message using a JavaScript alert
+                if ($role === 'Staff') {
+                    echo "<script>alert('Staff member added successfully!');</script>";
+                } else {
+                    echo "<script>alert('General user added successfully!');</script>";
+                }
             } else {
-                echo "<script>alert('Error: " . $stmt->error . "');</script>";
+                $errorMessage = "Error inserting user: " . $stmt->error;
             }
+
+            // Close the statement
             $stmt->close();
         } else {
-            echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
+            $errorMessage = "Error preparing the statement: " . $conn->error;
         }
     }
 
-    // Handle edit user request
-    if (isset($_POST['edit_user'])) {
-        $userId = intval($_POST['user_id']);
-        $Fname = trim($_POST['Fname']);
-        $Lname = trim($_POST['Lname']);
-        $MI = trim($_POST['MI']);
-        $Age = intval($_POST['Age']);
-        $Address = trim($_POST['Address']);
-        $contact = trim($_POST['contact']);
-        $Sex = $_POST['Sex'];
-        $Role = trim($_POST['Role']); // Expect 'gen user' or 'staff'
-
-        $stmt = $conn->prepare("UPDATE users SET Fname = ?, Lname = ?, MI = ?, Age = ?, Address = ?, contact = ?, Sex = ?, Role = ? WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("sssissssi", $Fname, $Lname, $MI, $Age, $Address, $contact, $Sex, $Role, $userId);
-            if ($stmt->execute()) {
-                echo "<script>alert('User updated successfully!'); closeEditModal();</script>";
-            } else {
-                echo "<script>alert('Error: " . $stmt->error . "');</script>";
-            }
-            $stmt->close();
-        } else {
-            echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
-        }
-    }
-
-    // Handle delete user request
-    if (isset($_POST['delete_user'])) {
-        $userId = intval($_POST['user_id']);
-        
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-
-        if ($stmt) {
-            $stmt->bind_param("i", $userId);
-            if ($stmt->execute()) {
-                echo "<script>alert('User deleted successfully!');</script>";
-            } else {
-                echo "<script>alert('Error: " . $stmt->error . "');</script>";
-            }
-            $stmt->close();
-        } else {
-            echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
-        }
+    // Display error message if any
+    if (!empty($errorMessage)) {
+        echo "<script>alert('$errorMessage');</script>";
     }
 }
 
-// Users for display
-$sql = "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, Role FROM users";
-$result = $conn->query($sql);
+// Handle edit user request
+if (isset($_POST['edit_user'])) {
+    $userId = intval($_POST['user_id']);
+    $Fname = trim($_POST['Fname']);
+    $Lname = trim($_POST['Lname']);
+    $MI = trim($_POST['MI']);
+    $Age = intval($_POST['Age']);
+    $Address = trim($_POST['Address']);
+    $contact = trim($_POST['contact']);
+    $Sex = $_POST['Sex'];
+
+    $stmt = $conn->prepare("UPDATE users SET Fname = ?, Lname = ?, MI = ?, Age = ?, Address = ?, contact = ?, Sex = ? WHERE id = ?");
+    if ($stmt) {
+        $stmt->bind_param("sssisssi", $Fname, $Lname, $MI, $Age, $Address, $contact, $Sex, $userId);
+        if ($stmt->execute()) {
+            echo "<script>alert('User updated successfully!'); closeEditModal();</script>";
+        } else {
+            echo "<script>alert('Error: " . $stmt->error . "');</script>";
+        }
+        $stmt->close();
+    } else {
+        echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
+    }
+}
+ 
+// Handle delete user request
+if (isset($_POST['delete_user'])) {
+    $userId = intval($_POST['user_id']);
+    
+    $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+
+    if ($stmt) {
+        $stmt->bind_param("i", $userId);
+        if ($stmt->execute()) {
+            echo "<script>alert('User deleted successfully!');</script>";
+        } else {
+            echo "<script>alert('Error: " . $stmt->error . "');</script>";
+        }
+        $stmt->close();
+    } else {
+        echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
+    }
+}
+
+// gen users and staff for display
+$sql = "
+    SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users
+    UNION ALL
+    SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff
+";
+
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -101,7 +138,7 @@ $result = $conn->query($sql);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -117,6 +154,8 @@ $result = $conn->query($sql);
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="#" class="nav-link active"><i class="fas fa-users"></i> <span>Manage User</span></a>
+            <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+
         </div>
         <div class="logout">
             <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
@@ -158,41 +197,51 @@ $result = $conn->query($sql);
                     </tr>
                 </thead>
                 <tbody>
-                          <?php
-                            if ($result->num_rows > 0) {
-                                $no = 1;
-                                while ($row = $result->fetch_assoc()) {
-                                    $userId = $row['id'];
-                                    // Combine first name, middle initial, and last name
-                                    $fullName = htmlspecialchars($row['Fname']) . ' ';
-                                    if (!empty($row['MI'])) {
-                                        $fullName .= htmlspecialchars($row['MI']) . '. ';
-                                    }
-                                    $fullName .= htmlspecialchars($row['Lname']);
-                                    
-                                    echo "<tr>
-                                        <td data-label='No.'>" . $no . "</td>
-                                        <td data-label='Name'>" . $fullName . "</td>
-                                        <td data-label='Age'>" . intval($row['Age']) . "</td>
-                                        <td data-label='Address'>" . htmlspecialchars($row['Address']) . "</td>
-                                        <td data-label='Contact No.'>" . htmlspecialchars($row['contact']) . "</td>
-                                        <td data-label='Sex'>" . htmlspecialchars($row['Sex']) . "</td>
-                                        <td data-label='Role'>" . htmlspecialchars($row['Role']) . "</td>
-                                        <td >
-                                            <button class='btn-edit' onclick='openEditModal($userId, \"" . htmlspecialchars($row['Fname']) . "\", \"" . htmlspecialchars($row['Lname']) . "\", \"" . htmlspecialchars($row['MI']) . "\", " . intval($row['Age']) . ", \"" . htmlspecialchars($row['Address']) . "\", \"" . htmlspecialchars($row['contact']) . "\", \"" . htmlspecialchars($row['Sex']) . "\", \"" . htmlspecialchars($row['Role']) . "\")'>Edit</button>
-                                            <form method='POST' action='' style='display:inline'>
-                                                <input type='hidden' name='user_id' value='$userId'>
-                                                <input type='hidden' name='delete_user' value='1'>
-                                                <button type='submit' class='btn-delete' onclick='return confirm(\"Are you sure you want to delete this user?\");'>Delete</button>
-                                            </form>
-                                        </td>
-                                    </tr>";
-                                    $no++;
-                                }
-                            } else {
-                                echo "<tr><td colspan='8'>No users found.</td></tr>";
-                            }
-                        ?>
+                <?php
+
+                // Execute the query and check for errors
+$result = $conn->query($sql);
+
+if ($result === false) {
+    // Output the error if the query fails
+    echo "Error: " . $conn->error;
+} else {
+    // Proceed to check if there are rows
+    if ($result->num_rows > 0) {
+        $no = 1;
+        while ($row = $result->fetch_assoc()) {
+            // Process the rows and output the table rows
+            $userId = $row['id'];
+            $fullName = htmlspecialchars($row['Fname']) . ' ';
+            if (!empty($row['MI'])) {
+                $fullName .= htmlspecialchars($row['MI']) . '. ';
+            }
+            $fullName .= htmlspecialchars($row['Lname']);
+
+            echo "<tr>
+                <td data-label='No.'>" . $no . "</td>
+                <td data-label='Name'>" . $fullName . "</td>
+                <td data-label='Age'>" . intval($row['Age']) . "</td>
+                <td data-label='Address'>" . htmlspecialchars($row['Address']) . "</td>
+                <td data-label='Contact No.'>" . htmlspecialchars($row['contact']) . "</td>
+                <td data-label='Sex'>" . htmlspecialchars($row['Sex']) . "</td>
+                <td data-label='Role'>" . htmlspecialchars($row['Role']) . "</td>
+                <td>
+                    <button class='btn-edit' onclick='openEditModal($userId, \"" . htmlspecialchars($row['Fname']) . "\", \"" . htmlspecialchars($row['Lname']) . "\", \"" . htmlspecialchars($row['MI']) . "\", " . intval($row['Age']) . ", \"" . htmlspecialchars($row['Address']) . "\", \"" . htmlspecialchars($row['contact']) . "\", \"" . htmlspecialchars($row['Sex']) . "\", \"" . htmlspecialchars($row['Role']) . "\")'>Edit</button>
+                    <form method='POST' action='' style='display:inline'>
+                        <input type='hidden' name='user_id' value='$userId'>
+                        <input type='hidden' name='delete_user' value='1'>
+                        <button type='submit' class='btn-delete' onclick='return confirm(\"Are you sure you want to delete this user?\");'>Delete</button>
+                    </form>
+                </td>
+            </tr>";
+            $no++;
+        }
+    } else {
+        echo "<tr><td colspan='8'>No users or staff found.</td></tr>";
+    }
+}
+?>
 
                 </tbody>
             </table>
@@ -297,11 +346,7 @@ $result = $conn->query($sql);
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="editRole">Role:</label>
-                            <select id="editRole" name="Role" required>
-                                <option value="General User">General User</option>
-                                <option value="Staff">Staff</option>
-                            </select>
+                    
                         </div>
                     </div>
                     <button type="submit" name="edit_user">Update</button>
@@ -396,7 +441,6 @@ $result = $conn->query($sql);
                 document.getElementById('editContact').value = contact;
                 document.getElementById('editSex').value = Sex;
 
-                document.getElementById('editRole').value = Role;
                 document.getElementById('editUserModal').style.display = 'flex';
             }
 

@@ -1,0 +1,485 @@
+ /* General body styling */
+ body {
+    font-family: 'Arial', sans-serif;
+
+    margin: 0;
+    padding: 0;
+    display: flex;
+    min-height: 100vh;
+    background-color: #f4f4f4;
+    transition: all 0.3s ease;
+}
+
+.sidebar {
+height: 100vh;
+width: 200px; /* Set width of sidebar */
+position: fixed;
+left: 0;
+top: 0;
+background-color: #2B228A; /* Dark blue */
+display: flex;
+flex-direction: column;
+justify-content: space-between; /* Align items to use space evenly */
+padding-top: 20px;
+transition: all 0.3s ease;
+}
+
+/* Sidebar navigation links */
+.sidebar-nav {
+display: flex;
+flex-direction: column;
+}
+
+.sidebar a {
+color: white;
+padding: 15px; /* Uniform padding */
+text-decoration: none;
+font-size: 16px;
+font-weight: 600;
+display: flex;
+align-items: center;
+transition: background-color 0.3s;
+}
+
+.sidebar a:hover {
+background-color: #5751d1; /* Lighter blue for hover effect */
+border-radius: 30px; /* Add rounded corners */
+
+}
+.sidebar a.active {
+background-color: white; /* Dark blue for active link */
+color:#2B228A; /* Optional: change text color to highlight active link */
+border: 2px solid rgb(255, 255, 255); /* Add a yellow border around the entire link */
+border-radius: 30px; /* Add rounded corners */
+padding: 12px; /* Adjust padding to account for border */
+}
+.sidebar a i {
+margin-right: 10px;
+font-size: 20px; /* Adjust icon size */
+}
+
+/* Sidebar collapsed state */
+.sidebar.collapsed {
+width: 60px; /* Shrinks the sidebar */
+transition: width 0.3s ease;
+}
+
+.sidebar.collapsed a {
+justify-content: center; /* Center icon */
+font-size: 0; /* Hides text */
+}
+
+.sidebar.collapsed a i {
+margin-right: 0; /* Remove margin when collapsed */
+font-size: 24px; /* Keep icon size larger */
+}
+
+
+/* Menu bar inside sidebar */
+.menu {
+font-size: 28px;
+cursor: pointer;
+display: flex;
+align-items: center; /* Align menu icon to the top */
+height: 50px;
+color: white; /* Keep text color */
+margin-left: auto; /* Push to the right */
+padding-right: 15px; /* Add padding to the right */
+}
+
+.menu span {
+display: block;
+width: 30px;
+height: 3px;
+margin: 5px 0;
+background-color: white;
+transition: 0.3s;
+}
+
+/* Hamburger menu transformation */
+.menu.open span:nth-child(1) {
+transform: rotate(45deg) translate(5px, 5px);
+}
+
+.menu.open span:nth-child(2) {
+opacity: 0;
+}
+
+.menu.open span:nth-child(3) {
+transform: rotate(-45deg) translate(6px, -6px);
+}
+/* Body content */
+.container {
+    margin-left: 200px; /* Space for sidebar */
+    padding: 20px;
+    background-color: #f4f4f4;
+    min-height: calc(100vh - 70px); /* Height excluding the top bar */
+    transition: all 0.3s ease;
+}
+
+/* Adjust content when sidebar is collapsed */
+.sidebar.collapsed ~ .container {
+    margin-left: 100px; /* Adjust content margin */
+}
+p a {
+text-decoration: none;
+color: #2B228A;
+font-weight: bold;
+background-color: #d3d3d3;
+padding: 10px;
+border-radius: 5px;
+transition: background-color 0.3s;
+}
+
+p a:hover {
+background-color: #5751d1;
+color: white;
+}
+
+/* Logout button at the bottom */
+.logout {
+margin-top: auto;
+padding: 20px;
+background-color: #2B228A;
+}
+
+.logout a {
+color: white;
+display: flex;
+align-items: center;
+font-weight: bold;
+font-size: 16px;
+}
+
+.logout a i {
+margin-right: 10px;
+}
+.sidebar:hover .nav-link span {
+display: inline; /* Show text on hover */
+}
+/* Center the content */
+.centered-content h2{
+display: flex;
+justify-content: center; /* Center horizontally */
+align-items: center; /* Center vertically */
+gap: 10px; /* Adjust the space between the icon and the text */
+margin-bottom: 10px; /* Optional: space between header and the rest */
+font-size: 30px; /* Adjust heading size */
+display: flex;
+margin: 0;
+
+}
+
+.announcements {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center vertically */
+    align-items: center; /* Center horizontally */
+    
+
+}
+.announcements table {
+    border-collapse: collapse; /* Collapse borders into a single border */
+    width: 900px; /* Set a fixed width for the table */
+    max-width: 900px; /* Set a maximum width for the table */
+    margin: 0 auto; /* Center the table horizontally */
+    border: 1px solid #ccc; /* Add border to the table */
+    padding: 10px; /* Add padding to the table */
+    border-radius: 5px; /* Add border-radius to the table */
+    margin-bottom: 20px; /* Add margin at the bottom of the table */
+    overflow: hidden; /* Hide overflowing content */
+    word-wrap: break-word; /* Allow long words to wrap */
+}
+
+.back-button {
+    padding: 8px 16px;
+    background-color: transparent;
+    color: #2B228A;
+    border: 2px solid #2B228A;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.back-button:hover {
+    background-color: #0056b3;
+}
+
+button.display-button {
+    background-color: #007bff;
+}
+
+#selected-announcement {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+}
+
+.no-announcements {
+    text-align: center;
+    color: #777;
+}
+.add-announcement {
+    background-color: transparent;
+    color: #2B228A;
+    border: 2px solid #2B228A;
+    
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    padding: 10px 20px;
+    text-align: center;
+    border-radius: 20px;
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 10px;
+
+}
+.announcement-options {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    padding: 10px;
+}
+.announcement-option p:last-child {
+    font-weight: bold;
+    font-size: 1.2em; /* adjust the size as needed */
+  }
+
+.add-announcement {
+    margin-left: auto;
+}
+
+.add-announcement:hover {
+    background-color:#aaa;
+}
+
+/* Style for the search input field */
+#announcement-search {
+    width: 30%; /* Set the width to fill the container */
+    padding: 8px; /* Add padding for better appearance */
+    margin: 20px auto; /* Center the input field horizontally and vertically */
+    border: 1px solid #ccc; /* Add border */
+    border-radius: 5px; /* Add border radius for rounded corners */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+/* Style for the placeholder text */
+#announcement-search::placeholder {
+    color: #999; /* Set placeholder text color */
+}
+
+/* Style for the input field when focused */
+#announcement-search:focus {
+    outline: none; /* Remove default focus outline */
+    border-color: #007bff; /* Change border color when focused */
+}
+.popup-form {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px; /* Reduced padding for a more compact look */
+    border: 1px solid #ccc;
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+    z-index: 9999; /* Ensures it appears above other content */
+    max-width: 80%; /* Maximum width to keep it from stretching too much */
+    width: 60%; /* Adjusted to fit within most screen sizes */
+    max-height: 70vh; /* Limits the height to 70% of the viewport height */
+    overflow-y: auto; /* Enables scrolling if content exceeds max height */
+}
+
+
+.popup-form h3 {
+    margin-top: 0;
+    font-size: 24px; /* Increase font size for the title */
+}
+
+.popup-form label {
+    margin-bottom: 15px; /* Increase margin bottom for labels */
+    font-size: 18px; /* Increase font size for labels */
+}
+
+.popup-form input[type="text"],
+.popup-form textarea {
+    width: 100%;
+    padding: 15px; /* Increase padding for input fields */
+    font-size: 18px; /* Increase font size for input fields */
+    margin-bottom: 20px; /* Increase margin bottom for input fields */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.popup-form textarea {
+    resize: none; /* Disable resizing of the textarea */
+    height: 300px; /* Fixed height for the textarea */
+    width: 100%; /* Ensure it takes up the full width of the container */
+}
+
+.popup-form button {
+    padding: 12px 20px; /* Increase padding for buttons */
+    font-size: 16px; /* Increase font size for buttons */
+}
+
+.popup-form .input-container {
+    margin-bottom: 20px; /* Increase margin bottom for input containers */
+}
+.popup-form h3 {
+    font-size: 24px; /* Adjust the font size */
+    font-weight: bold; /* Makes the text bold */
+    margin-bottom: 20px; /* Space below the heading */
+    padding-bottom: 10px; /* Padding between text and the border */
+    border-bottom: 2px solid #888; /* Bottom border with specified thickness and color */
+    text-align: left; /* Aligns the text to the left */
+}
+
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+input[type="text"], textarea {
+    width: calc(100% - 110px);
+    padding: 5px;
+    box-sizing: border-box;
+    
+}
+
+button[type="submit"] {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: inline-block;
+}
+
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+.cancel-announcement {
+    background-color: #dc3545;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.cancel-announcement:hover {
+    background-color: #c82333;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.no-announcements {
+    text-align: center;
+    margin-top: 20px;
+    font-style: italic;
+    color: #ccc;
+}
+.input-container {
+    margin-bottom: 20px;
+}
+button[type="submit"], .cancel-announcement {
+    padding: 8px 16px;
+    background-color: transparent;
+    color: #2B228A;
+    border: 2px solid #2B228A;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+button[type="submit"]:hover, .cancel-announcement:hover {
+    background-color: #0056b3;
+}
+
+/* Base button styles */
+/* Container for the button */
+.button-container {
+    display: flex;
+    justify-content: flex-end; /* Align items to the right */
+    padding: 10px; /* Optional: Add padding for spacing */
+}
+
+/* Base button styles */
+.delete-button { 
+    padding: 8px 16px;
+    background-color: transparent;
+    color: #ff0000;
+    border: 2px solid #f70000;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Button hover effect */
+.delete-button:hover {
+    background-color: #f57d72; /* Darker coral color on hover */
+}
+
+/* Optional: Adjust styles for different states */
+.delete-button:active {
+    background-color: #cc412d; /* Darker coral color on click */
+}
+
+/* Base button styles */
+.update-button {
+    padding: 5px 10px;
+    background-color: transparent;
+    color: #2B228A;
+    border: 2px solid #2B228A;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Button hover effect */
+.update-button:hover {
+    background-color: #0056b3; /* Darker blue color on hover */
+}
+
+/* Optional: Adjust styles for different states */
+.update-button:active {
+    background-color: #004080; /* Darker blue color on click */
+}
+
+/* Icon styles */
+/* Icon styles */
+.update-icon {
+    margin-right: 5px; /* Add space between icon and text */
+    font-size: 15px; /* Change the size of the icon */
+}
+
+
+

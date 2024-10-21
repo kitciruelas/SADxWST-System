@@ -109,7 +109,7 @@ mysqli_close($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="Css_Admin/announcements.css">
+    <link rel="stylesheet" href="Css_user/announcements.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <title>Announcements</title>
    
@@ -123,13 +123,13 @@ mysqli_close($conn);
     </div>
 
     <div class="sidebar-nav">
-        <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i><span>Admin</span></a>
-        <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a>
-    </div>
-
-    <div class="logout">
-        <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-    </div>
+        <a href="#" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
+        <!--    <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>-->
+           
+        </div>
+        <div class="logout">
+            <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        </div>
 </div>
 <!-- Back button -->
 
@@ -139,7 +139,7 @@ mysqli_close($conn);
 
 <!-- Announcement -->
 <div class="centered-content">
-<button class="back-button" onclick="location.href='dashboard.php'"><i class="fas fa-arrow-left"></i></button>
+<button class="back-button" onclick="location.href='user-dashboard.php'"><i class="fas fa-arrow-left"></i></button>
     <h2><i class="fas fa-bullhorn announcement-icon"></i> Announcements</h2>
 </div>
 

@@ -100,8 +100,8 @@ if (isset($_GET['id'])) {
         </div>
 
         <div class="sidebar-nav">
-            <a href="#" class="nav-link active"><i class="fas fa-user-cog"></i> <span>Admin</span></a>
-            <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+        <a href="#" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
+          <!--    <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>-->
         </div>
         
         <div class="logout">

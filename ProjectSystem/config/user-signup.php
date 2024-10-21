@@ -5,7 +5,7 @@ include 'config.php'; // Ensure this file initializes `$conn`
 // Helper function to sanitize inputs
 function sanitizeInput($data) {
     return htmlspecialchars(strip_tags(trim($data)));
-}
+} 
 
 // Helper function to insert user into the correct table
 function insertUser($conn, $fname, $lname, $mi, $age, $address, $contact, $sex, $role, $email, $password, $table) {

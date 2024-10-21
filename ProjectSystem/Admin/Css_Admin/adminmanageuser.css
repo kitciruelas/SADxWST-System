@@ -47,6 +47,7 @@ body {
     border-radius: 30px; /* Add rounded corners */
 
 }
+
 .sidebar a.active {
     background-color: white; /* Dark blue for active link */
     color:#2B228A; /* Optional: change text color to highlight active link */
@@ -722,3 +723,203 @@ button:hover {
         font-size: 24px; /* Smaller close button on mobile */
     }
 }
+
+
+
+/* ROOM MANAGE CSS */
+
+/* Custom card styling */
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+/* Hover effects */
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+}
+
+.card:hover .card-title, .card:hover .card-text {
+    opacity: 0.85;
+    transition: opacity 0.3s ease;
+}
+
+.card-body i {
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* Icon hover effect */
+.card:hover i {
+    color: #2B228A;
+    transform: scale(1.2);
+}
+
+/* Badge for showing status or counts */
+.badge-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #2B228A;
+    color: white;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 10px;
+}
+
+/* Progress bar customization */
+.progress {
+    height: 8px;
+    border-radius: 5px;
+}
+
+.progress-bar {
+    background-color: #2B228A;
+}
+
+/* Button hover effect */
+.btn-primary:hover {
+    background-color: #2B228A;
+}
+   
+    
+
+
+        /* Dropdown items */
+        .dropdown-menu a {
+            padding: 10px 20px;
+            text-decoration: none;
+            display: block;
+        }
+
+      
+
+        /* Visible dropdown menu */
+        .show {
+            display: block;
+        }
+        /* Sidebar dropdown item styling */
+
+/* Hover effect for dropdown items in sidebar */
+.sidebar .dropdown-menu .dropdown-item:hover {
+    background-color: #ffffff; /* White background on hover */
+    color: #3F3BAE; /* Blue text on hover */
+}
+
+/* Change the icon color to blue on hover */
+.sidebar .dropdown-menu .dropdown-item:hover i {
+    color: #3F3BAE; /* Blue icon on hover */
+}
+
+.sidebar a:hover {
+    background-color: #ffffff; /* White background on hover */
+    color: #3F3BAE; /* Blue icon/text on hover */
+}
+
+/* Icon inside the link */
+.sidebar a i {
+    font-size: 24px; /* Icon size */
+    transition: color 0.3s ease; /* Smooth color transition for the icon */
+}
+
+/* Active sidebar dropdown item styling */
+.sidebar a.active.dropdown-item {
+    background-color: #1e1a6d; /* Darker background for active dropdown item */
+    color: #ffffff;
+    font-weight: bold; /* Optional bold text for active items */
+}
+
+
+
+/* Hover effect for dropdown items */
+.dropdown-item:hover {
+    background-color: #ffffff; /* White background on hover */
+    color: #3F3BAE; /* Blue text on hover */
+}
+
+/* Keep the icon blue on hover */
+.dropdown-item:hover i {
+    color: #3F3BAE; /* Icon stays blue on hover */
+}
+
+
+
+/* ROOM LIST */
+
+.room-image-placeholder {
+    width: 100px;
+    height: 100px;
+    background-color: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+
+
+.custom-btn {
+    padding: 5px 12px; /* Increase padding to make the button bigger */
+    background-color: transparent; /* Transparent background */
+    color: #2B228A; /* Text color */
+    border: 2px solid #2B228A; /* Border color */
+    border-radius: 20px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    font-size: 16px; /* Increase font size */
+    display: inline-block; /* Align button */
+    margin-top: 30px; /* Space above the button */
+    margin-right: 10px; /* Add spacing between buttons */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+}
+.custom-btns {
+    padding: 5px 12px; /* Increase padding to make the button bigger */
+    background-color: transparent; /* Transparent background */
+    color: #2B228A; /* Text color */
+    border: 2px solid #2B228A; /* Border color */
+    border-radius: 20px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    font-size: 16px; /* Increase font size */
+    display: inline-block; /* Align button */
+    margin-right: 10px; /* Add spacing between buttons */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+}
+.custom-btn:hover {
+    background-color: #2B228A; /* Background color on hover */
+    color: white; /* White text on hover */
+    border-color: #2B228A; /* Border color on hover */
+}
+
+
+/* Specific styles for the Delete button */
+.custom-btn.delete-btn {
+    background-color: #dc3545; /* Red background for delete */
+    color: white; /* White text for delete */
+    border: 2px solid #dc3545; /* Red border for delete */
+}
+
+.custom-btn.delete-btn:hover {
+    background-color: #c82333; /* Darker red on hover */
+    border-color: #c82333;
+    color: white;
+}
+
+.form-control.custom-input-small {
+    padding: 5px 10px; /* Reduce padding even more for a smaller size */
+    font-size: 16px; /* Smaller font size */
+    border-radius: 8px; /* Slightly smaller rounded corners */
+    border: 1px solid #2B228A; /* Border color */
+    color: #2B228A; /* Text color */
+    background-color: #f9f9f9; /* Light background */
+    transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transitions */
+    height: 40px; /* Fix a smaller height for the input */
+    width: 200px; /* Ensure it takes up the available width */
+}
+
+.form-control.custom-input-small:focus {
+    border-color: #2B228A; /* Border color on focus */
+    box-shadow: 0 0 2px rgba(43, 34, 138, 0.3); /* Smaller shadow on focus */
+    background-color: white; /* White background on focus */
+}
+
+

@@ -67,6 +67,8 @@ if (isset($_GET['id'])) {
         <div class="sidebar-nav">
             <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i> <span>Admin</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+            <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+
         </div>
         
         <div class="logout">
@@ -79,7 +81,6 @@ if (isset($_GET['id'])) {
         <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
 
       
-
 
 </div>
 

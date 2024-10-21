@@ -51,8 +51,8 @@ if (isset($_GET['id'])) {
             <i class="fas fa-bars"></i> <!-- Hamburger menu icon -->
         </div>
         <div class="sidebar-nav">
-            <a href="#" class="nav-link" ><i class="fas fa-user"></i> <span>Profile</span></a>
-            <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+        <a href="#" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
+        <!--    <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>-->
            
         </div>
         <div class="logout">
@@ -83,6 +83,7 @@ if (isset($_GET['id'])) {
     <?php else: ?>
         <p>No announcements to display.</p>
     <?php endif; ?>
+    <a href="announcement.php" class="nav-link"><i class="fas fa-bell"></i> <span>See Announcement</span></a>
 
     </div>
 

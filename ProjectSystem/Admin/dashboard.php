@@ -6,19 +6,21 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: admin-login.php");
     exit;
 }
-
-// SQL query to count users
-$sql = "SELECT COUNT(*) AS user_count FROM users";
-$result = $conn->query($sql);
-
-// Fetch the result
-if ($result->num_rows > 0) {
-    // Output data of each row
-    $row = $result->fetch_assoc();
-    $userCount = $row['user_count'];
-} else {
-    $userCount = 0; // No users found
+if (!isset($_SESSION['login_time'])) {
+    $_SESSION['login_time'] = date('Y-m-d H:i:s'); // Sets the current time on initial login
+    
 }
+
+// Simulate a username for demonstration purposes
+
+    $userCountQuery = "SELECT COUNT(*) AS totalUsers FROM users"; // Change room to user
+    $userCountResult = $conn->query($userCountQuery);
+    $userCount = $userCountResult->fetch_assoc()['totalUsers'];
+
+    $userCountQuery = "SELECT COUNT(*) AS totalStaff FROM staff"; // Count staff instead of users
+$userCountResult = $conn->query($userCountQuery);
+$staffCount = $userCountResult->fetch_assoc()['totalStaff']; // Fetching total staff count
+
 
 
 // SQL query to fetch only displayed announcements
@@ -53,8 +55,17 @@ if (isset($_GET['id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap CSS -->
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- FontAwesome for Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+
+<!-- Custom CSS -->
+<link rel="stylesheet" href="Css_Admin/dashboard.css">
+
 </head>
 <body>
 
@@ -79,6 +90,8 @@ if (isset($_GET['id'])) {
     <!-- Top bar -->
     <div class="topbar">
         <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
+
+        <p>Login time: <?php echo htmlspecialchars($_SESSION['login_time']); ?></p>
 
       
 
@@ -110,49 +123,61 @@ if (isset($_GET['id'])) {
     </div>
         </div>
 
-        <div class="boxes">
-            <div class="user-box">
-                <p>
-                    <a href="manageuser.php"><strong>Number of Users:</strong></a>
-                    <span class="user-count"><?php echo $userCount; ?></span>
-                </p>
+        
+     
+        <div class="dashboard container">
+    <!-- Row for Grid Alignment -->
+    <div class="row">
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <span class="badge-status"><?php echo $userCount; ?> Total Users</span>
+                <i class="fas fa-user fa-3x"></i>
+                <h5 class="card-title mt-3">Total Users</h5>
+                <p class="card-text">Manage and view the list of users.</p>
+                <div class="progress mt-2">
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo ($userCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $userCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <a href="manageuser.php" class="btn btn-primary mt-3">View Details</a>
             </div>
-
-
-            <div class="room-box">
-            <p>
-                <strong>Number of Rooms:</strong>
-                <!-- Add dynamic room count here -->
-            </p>
         </div>
-        <div class="checkin-box">
-            <p>
-                <strong>Number of Check-ins:</strong>
-                <!-- Add dynamic check-in count here -->
-            </p>
-        </div>
-        <div class="user-box">
-            <p>
-                <a href="manageuser.php"><strong>Number of Users:</strong></a>
-                <!-- Add dynamic user count here -->
-            </p>
-        </div>
-        <div class="room-box">
-            <p>
-                <strong>Number of Rooms:</strong>
-                <!-- Add dynamic room count here -->
-            </p>
-        </div>
-        <div class="checkin-box">
-            <p>
-                <strong>Number of Check-ins:</strong>
-                <!-- Add dynamic check-in count here -->
-            </p>
-        </div>
-        </div>
-
-       
     </div>
+
+    <div class="col-lg-4 col-md-6 mb-4">
+    <div class="card text-center">
+        <div class="card-body">
+            <span class="badge-status"><?php echo $staffCount; ?> Total Staff</span> <!-- Updated to reflect staff count -->
+            <i class="fas fa-user-tie fa-3x"></i>
+            <h5 class="card-title mt-3">Active Staff</h5> <!-- Updated title -->
+            <p class="card-text">Manage and view active staff.</p> <!-- Updated description -->
+            <div class="progress mt-2">
+                <div class="progress-bar" role="progressbar" style="width: <?php echo ($staffCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $staffCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <a href="manageuser.php" class="btn btn-primary mt-3">View Details</a> <!-- Updated link if needed -->
+        </div>
+    </div>
+</div>
+
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <span class="badge-status"><?php echo $userCount; ?> Total Visitor Log</span>
+                <i class="fas fa-user-friends fa-3x"></i>
+                <h5 class="card-title mt-3">Visitor Log</h5>
+                <p class="card-text">Manage and track visitor entries and activities.</p>
+                <div class="progress mt-2">
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo ($userCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $userCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <a href="manageuser.php" class="btn btn-primary mt-3">View Details</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+        
+       
 </div>
 
     <!-- Script -->
@@ -163,7 +188,7 @@ if (isset($_GET['id'])) {
 function validateForm() {
     let fname = document.getElementById('editFname').value;
     let lname = document.getElementById('editLname').value;
-    let age = document.getElementById('editAge').value;
+  age = document.getElementById('editAge').value;
     let contact = document.getElementById('editContact').value;
     
     if (!fname || !lname || !age || !contact) {

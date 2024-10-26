@@ -6,7 +6,7 @@
     <title>Login Options</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="land-img/style.css"> <!-- Custom CSS if needed -->
+    <link rel="stylesheet" href="land-img/style-land.css"> <!-- Custom CSS if needed -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> <!-- Font Awesome -->
        
 </head>
@@ -21,7 +21,7 @@
     <main class="container">
         <div id="login-options" class="text-center">
             <div class="left-align-container">
-                <button id="back-button" class="btn-with-icon">
+                <button href="landing.php" id="back-button" class="btn-with-icon">
                     <i class="fas fa-arrow-left"></i> 
                 </button>
             </div>            
@@ -79,7 +79,7 @@
 
        
   document.getElementById('back-button').onclick = function () {
-    window.location.href = 'landing.html'; // Replace with the correct path to landing page
+    window.location.href = 'landing.php'; // Replace with the correct path to landing page
   };
 
 

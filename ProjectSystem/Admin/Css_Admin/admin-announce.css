@@ -119,6 +119,7 @@ transform: rotate(-45deg) translate(6px, -6px);
 
 /* Adjust content when sidebar is collapsed */
 .sidebar.collapsed ~ .container {
+    
     margin-left: 100px; /* Adjust content margin */
 }
 p a {
@@ -180,7 +181,7 @@ margin: 0;
 }
 .announcements table {
     border-collapse: collapse; /* Collapse borders into a single border */
-    width: 900px; /* Set a fixed width for the table */
+    width: 1000%; /* Set a fixed width for the table */
     max-width: 900px; /* Set a maximum width for the table */
     margin: 0 auto; /* Center the table horizontally */
     border: 1px solid #ccc; /* Add border to the table */
@@ -389,7 +390,7 @@ table {
 }
 
 th, td {
-    padding: 10px;
+    padding: 5px;
     border: 1px solid #ccc;
 }
 
@@ -408,7 +409,7 @@ th {
     margin-bottom: 20px;
 }
 button[type="submit"], .cancel-announcement {
-    padding: 8px 16px;
+    padding: 8px 10px;
     background-color: transparent;
     color: #2B228A;
     border: 2px solid #2B228A;
@@ -416,6 +417,7 @@ button[type="submit"], .cancel-announcement {
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s ease, border-color 0.3s ease;
+    margin-bottom: 5px;
 }
 
 button[type="submit"]:hover, .cancel-announcement:hover {
@@ -432,7 +434,7 @@ button[type="submit"]:hover, .cancel-announcement:hover {
 
 /* Base button styles */
 .delete-button { 
-    padding: 8px 16px;
+    padding: 8px 10px;
     background-color: transparent;
     color: #ff0000;
     border: 2px solid #f70000;
@@ -454,7 +456,7 @@ button[type="submit"]:hover, .cancel-announcement:hover {
 
 /* Base button styles */
 .update-button {
-    padding: 5px 10px;
+    padding: 8px 10px;
     background-color: transparent;
     color: #2B228A;
     border: 2px solid #2B228A;
@@ -462,6 +464,7 @@ button[type="submit"]:hover, .cancel-announcement:hover {
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s ease, border-color 0.3s ease;
+    margin-bottom: 5px;
 }
 
 /* Button hover effect */
@@ -482,4 +485,94 @@ button[type="submit"]:hover, .cancel-announcement:hover {
 }
 
 
+/* General adjustments for mobile devices */
+@media (max-width: 768px) {
+    .centered-content h2 {
+        font-size: 24px; /* Smaller font size for mobile */
+        gap: 5px; /* Reduce gap between icon and text */
+        flex-direction: column; /* Stack icon and text vertically on small screens */
+    }
+
+    .announcements table {
+        width: 100%; /* Full width for mobile */
+        max-width: 100%; /* Remove fixed width on smaller screens */
+        font-size: 14px; /* Smaller font size for readability */
+    }
+
+    #announcement-search {
+        width: 90%; /* Expand search bar to almost full width */
+        margin: 10px auto; /* Center and reduce margin for mobile */
+    }
+
+    .announcement-options {
+        flex-direction: column; /* Stack options vertically */
+        padding: 5px; /* Reduce padding for compactness */
+    }
+
+    .popup-form {
+        width: 90%; /* Expand popup to nearly full screen width */
+        max-width: 90%; /* Maintain consistency with full width */
+        padding: 15px; /* Reduced padding */
+    }
+
+    .popup-form h3 {
+        font-size: 20px; /* Smaller font for titles */
+    }
+
+    .add-announcement,
+    .back-button {
+        width: 100%; /* Full width for buttons */
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    /* Adjust font sizes and spacing in forms */
+    .popup-form label,
+    .popup-form input[type="text"],
+    .popup-form textarea {
+        font-size: 16px; /* Smaller font size for inputs */
+        padding: 10px; /* Adjust padding for readability */
+    }
+
+    /* Responsive table adjustments */
+    .table-responsive table {
+        font-size: 14px; /* Smaller font size for better fit */
+    }
+
+    /* Responsive button adjustments */
+    .delete-button,
+    .update-button,
+    .cancel-announcement,
+    button[type="submit"] {
+        padding: 6px 12px; /* Reduced padding for buttons */
+        font-size: 14px; /* Adjust font size for mobile */
+    }
+}
+
+/* Further adjustments for very small screens (max-width 480px) */
+@media (max-width: 480px) {
+    .announcement-options,
+    .popup-form {
+        flex-direction: column; /* Stack elements vertically */
+    }
+
+    .centered-content h2 {
+        font-size: 20px; /* Smaller heading size */
+    }
+
+    #announcement-search {
+        width: 100%; /* Full width for smaller devices */
+    }
+
+    .popup-form input[type="text"],
+    .popup-form textarea {
+        padding: 8px; /* Smaller padding for compactness */
+        font-size: 14px;
+    }
+
+    .announcement-options p,
+    .announcement-options .add-announcement {
+        font-size: 16px; /* Smaller font for options */
+    }
+}
 

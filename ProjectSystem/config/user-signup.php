@@ -39,17 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Name validation: Allow alphabetic characters only for fname, lname
-    if (!preg_match("/^[a-zA-Z]+$/", $fname)) {
-        echo "<script>alert('First name should contain only alphabetic characters.'); window.history.back();</script>";
-        exit;
-    }
-    
-    if (!preg_match("/^[a-zA-Z]+$/", $lname)) {
-        echo "<script>alert('Last name should contain only alphabetic characters.'); window.history.back();</script>";
-        exit;
-    }
-
     // Middle initial validation: Ensure it's a single character or empty
     if (!empty($mi) && !preg_match("/^[a-zA-Z]$/", $mi)) {
         echo "<script>alert('Middle initial should be a single alphabetic character.'); window.history.back();</script>";

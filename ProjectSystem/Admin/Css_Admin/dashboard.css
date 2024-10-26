@@ -404,55 +404,67 @@ button:hover {
     }
 }
 
-
-/* Boxes area*/
-
-
-.boxes {
-    display: flex;
-    flex-wrap: wrap; /* Allows boxes to wrap onto the next line */
-    justify-content: center; /* Center boxes horizontally */
-    gap: 20px; /* Space between boxes */
-    width: 100%; /* Full width for the boxes container */
-}
-
-.user-box, .room-box, .checkin-box {
-    border: 1px solid #ccc; /* Border for each box */
-    border-radius: 5px; /* Rounded corners */
-    padding: 40px; /* Adjusted padding for balance */
-    width: 300px; /* Fixed width for consistent box sizes */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Shadow for depth */
-    background-color: #ffffff; /* Background color for boxes */
-    text-align: center; /* Center text inside each box */
-    margin: 10px; /* Margin for spacing between boxes */
-    transition: transform 0.3s ease; /* Smooth transition for hover effect */
-}
-
-/* Hover effect to slightly elevate the box */
-.user-box:hover, .room-box:hover, .checkin-box:hover {
-    transform: translateY(-5px); /* Lift effect on hover */
-}
-.user-count {
-    font-size: 24px; /* Larger font for the user count */
-    color: #f21616; /* Color that matches your theme */
-    font-weight: bold; /* Bold text for emphasis */
-    margin-top: 5px; /* Space above the count */
-}
-
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .user-box, .room-box, .checkin-box {
-        width: 200; /* Full width on smaller screens */
-        padding: 20px; /* Adjust padding for smaller devices */
-    }
-}
-
-
-
-
 /* Adjust main content when sidebar is collapsed */
 .sidebar.collapsed ~ .main-content {
     margin-left: 60px; /* Adjusts content area when sidebar is collapsed */
     width: calc(100% - 60px); /* Ensure it takes up remaining space */
+}
+
+
+
+/* for card*/
+/* Custom card styling */
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+/* Hover effects */
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+}
+
+.card:hover .card-title, .card:hover .card-text {
+    opacity: 0.85;
+    transition: opacity 0.3s ease;
+}
+
+.card-body i {
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* Icon hover effect */
+.card:hover i {
+    color: #2B228A;
+    transform: scale(1.2);
+}
+
+/* Badge for showing status or counts */
+.badge-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #2B228A;
+    color: white;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 10px;
+}
+
+/* Progress bar customization */
+.progress {
+    height: 8px;
+    border-radius: 5px;
+}
+
+.progress-bar {
+    background-color: #2B228A;
+}
+
+/* Button hover effect */
+.btn-primary:hover {
+    background-color: #2B228A;
 }

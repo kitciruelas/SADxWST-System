@@ -1,3 +1,42 @@
+<?php
+session_start();
+
+
+
+include '../config/config.php'; // Ensure this is correct
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Query for room data
+$roomCountQuery = "SELECT COUNT(*) AS totalRooms FROM rooms";
+$roomCountResult = $conn->query($roomCountQuery);
+$roomCount = $roomCountResult->fetch_assoc()['totalRooms'];
+
+// Set limit of records per page
+$limit = 6;
+
+// Get the current page number from the URL, default to page 1
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+
+// Calculate the starting point (offset)
+$offset = ($page - 1) * $limit;
+
+// Query to fetch rooms from the database with limit and offset for pagination
+$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms LIMIT $limit OFFSET $offset";
+$result = $conn->query($sql);
+
+// Query to get the total number of rooms (for pagination calculation)
+$totalRoomsQuery = "SELECT COUNT(*) AS total FROM rooms";
+$totalResult = $conn->query($totalRoomsQuery);
+$totalRooms = $totalResult->fetch_assoc()['total'];
+
+// Calculate total pages
+$totalPages = ceil($totalRooms / $limit);
+$conn->close();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +46,7 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="land-img/style.css">
+    <link rel="stylesheet" href="land-img/style-land.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
@@ -16,7 +55,7 @@
 </head>
 <body>
     <!-- Header and Navbar -->
-    <header class="position-fixed top-0 w-100 " style="z-index: 1050;">
+    <header class="position-fixed top-0 w-100" style="z-index: 1050;">
         <nav class="navbar navbar-expand-lg navbar-light">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
@@ -50,7 +89,7 @@
     
     
     <!-- Hero Section -->
-    <section class="hero-section text-white">
+    <section class="hero-section" style="color: #fdfdfd; text-shadow: 5px 5px 15px rgba(0, 0, 0, 0.7);">
         <div class="container">
             <h1 class="display-4">Welcome to Your Dormitory Space!</h1>
             <p class="lead">Manage your stay, track attendance, and stay connected—all in one place.</p>
@@ -59,35 +98,72 @@
 
     <!-- Room List Section -->
     <section id="room-list" class="room-list py-5">
-        <div class="container">
-            <h2 class="mb-4 text-center">Room List</h2>
-            <div class="row g-4">
-                <div class="col-lg-4 col-md-6">
-                    <div class="card animate__animated animate__fadeInLeft">
-                        <img src="dorm1.jpg" alt="Dorm Room 1" class="card-img-top img-fluid">
-                        <div class="card-body">
-                            <p class="card-text">Rent Price Php. 1,500.00</p>
-                        </div>
+
+    
+    <h1 class="text-center">Rooms</h1>
+
+<div class="container">
+    <div class="row">
+
+        <!-- Loop through the database records and display each room -->
+        <?php
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                ?>
+                <div class="col-md-4">
+                    <div class="room-card">
+                        <!-- Display room image -->
+                        <img src="<?php echo $row['room_pic']; ?>" alt="Room Image">
+                        
+
+                        <!-- Rent Price -->
+                        <p class="room-price">Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
+                        
+                         <!-- Room Number -->
+                         <h5>Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
+                         
+                        <!-- Room Capacity -->
+                        <p>Capacity: <?php echo htmlspecialchars($row['capacity']); ?> people</p>
+
+                        <!-- Room Description -->
+                        <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
+
+                        <!-- Room Status -->
+                        <p>Status: <?php echo htmlspecialchars($row['status']); ?></p>
+
+                        <!-- Apply Button -->
+                        <button class="apply-btn" id="applyNowBtn">Apply Now!</button>
                     </div>
                 </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="card animate__animated animate__fadeInUp">
-                        <img src="dorm2.jpg" alt="Dorm Room 2" class="card-img-top img-fluid">
-                        <div class="card-body">
-                            <p class="card-text">Rent Price Php. 1,500.00</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="card animate__animated animate__fadeInRight">
-                        <img src="dorm3.jpg" alt="Dorm Room 3" class="card-img-top img-fluid">
-                        <div class="card-body">
-                            <p class="card-text">Rent Price Php. 1,500.00</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <?php
+            }
+        } else {
+            echo "<p>No rooms available.</p>";
+        }
+        ?>
+
+    </div>
+
+    <!-- Pagination Links -->
+    <div class="pagination">
+         <!-- Pagination Links -->
+    <div id="pagination">
+        <!-- Previous Page Button -->
+        <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
+            Previous
+        </button>
+
+        <!-- Page Indicator -->
+        <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+
+        <!-- Next Page Button -->
+        <button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
+            Next
+        </button>
+    </div>
+</div>
+
+</div>
     </section>
 
     <!-- Features Section -->
@@ -228,6 +304,14 @@
     <script src="https://kit.fontawesome.com/a076d05399.js"></script>
 
     <script>
+        // Get the Apply Now button element
+const applyNowBtn = document.getElementById("applyNowBtn");
+
+// When the button is clicked, redirect to login.html
+applyNowBtn.onclick = function() {
+    window.location.href = "login.html";
+}
+
         // Change navbar background on scroll
         window.onscroll = function() {
             const navbar = document.querySelector('.navbar');

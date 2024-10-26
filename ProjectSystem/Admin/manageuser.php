@@ -122,13 +122,83 @@ if (isset($_POST['delete_user'])) {
     }
 }
 
-// gen users and staff for display
+
+// Handle the filter and search from the query string
+$filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
+$search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';  // Prevent SQL injection
+
+// Pagination setup
+$rowsPerPage = 10; // Show 10 records per page
+$currentPage = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1; // Default to page 1
+$startRow = ($currentPage - 1) * $rowsPerPage; // Calculate starting row
+
+// Base SQL query to count total rows
+$totalRowsQuery = "SELECT COUNT(*) AS total FROM (";  // Counting total rows
+
+// Adjust query based on the filter selection
+if ($filter === 'General User') {
+    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users";
+} elseif ($filter === 'Staff') {
+    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
+} else {
+    // 'all' or unspecified - show both General User and Staff
+    $totalRowsQuery .= "
+        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users
+        UNION ALL
+        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
+}
+
+// Apply the search condition only if the search is not empty
+if (!empty($search)) {
+    $totalRowsQuery .= ") as combined_data WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
+} else {
+    $totalRowsQuery .= ") as combined_data";  // No search, show all filtered results
+}
+
+$totalRowsResult = $conn->query($totalRowsQuery);
+
+// Handle query failure
+if ($totalRowsResult === false) {
+    die("Error: " . $conn->error);
+}
+
+$totalRows = $totalRowsResult->fetch_assoc()['total'];
+$totalPages = ceil($totalRows / $rowsPerPage);  // Calculate the total number of pages
+
+// SQL query to fetch data with pagination and search filter
 $sql = "
-    SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users
-    UNION ALL
-    SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff
+    SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, Role FROM (
 ";
 
+if ($filter === 'General User') {
+    $sql .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users";
+} elseif ($filter === 'Staff') {
+    $sql .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
+} else {
+    $sql .= "
+        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users
+        UNION ALL
+        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
+}
+
+// Apply the search condition only if the search is not empty
+if (!empty($search)) {
+    $sql .= ") as combined_data WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
+} else {
+    $sql .= ") as combined_data";  // No search, show all filtered results
+}
+
+$sql .= " ORDER BY Lname ASC LIMIT $startRow, $rowsPerPage";
+
+$result = $conn->query($sql);
+
+// Handle query failure
+if ($result === false) {
+    die("Error: " . $conn->error);
+}
+
+
+$result = $conn->query($sql);
 ?>
 
 
@@ -140,9 +210,9 @@ $sql = "
     <title>Dashboard</title>
     <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+
 
 </head>
 <body>
@@ -171,18 +241,34 @@ $sql = "
     <!-- Main content -->
     <div class="main-content">        
         <div class="button">
-            <div class="search-container">
-                <span class="search-icon"><i class="fas fa-search"></i></span>
-                <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search for names, roles, etc.">
-                <button id="createButton" onclick="showModal()">Add User</button>
-               <!-- <button onclick="printTable()">Print Table</button> -->
+         <div class="search-container">
+         <form method="GET" action="" class="search-form" style="position: relative;">
+    <input type="text" id="searchInput" name="search" placeholder="Search for names, roles, etc." value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" style="padding-left: 30px;">
+    <button type="submit" style="display: none;"></button>
+    <span style="position: absolute; top: 40%; left: 8px; transform: translateY(-50%); color: #ccc;">
+        <i class="fas fa-search"></i>
+    </span>
+</form>
+           <button id="createButton" class="btn" data-bs-toggle="modal" data-bs-target="#userModal">Add User</button>
 
-            </div>
-        </div>
-        
+                <!-- <button onclick="printTable()">Print Table</button> -->
+         </div>
+         
+        </div
+    
 
         <!-- User Table Structure -->
         <div class="table-container">
+            
+            <form method="GET" action="" class="filter-form" style="    margin-right: 5px; ">
+        <label for="filter" >Filter by Role:</label>
+        <select name="filter" id="filter" onchange="this.form.submit()">
+            <option value="all" <?php if ($filter === 'all') echo 'selected'; ?>>All</option>
+            <option value="General User" <?php if ($filter === 'General User') echo 'selected'; ?>>General User</option>
+            <option value="Staff" <?php if ($filter === 'Staff') echo 'selected'; ?>>Staff</option>
+        </select>
+    </form> 
+        
             <table id="userTable" class="table">
                 <thead>
                     <tr>
@@ -245,220 +331,276 @@ if ($result === false) {
 
                 </tbody>
             </table>
+ 
+</div>
+<div style="text-align: center;">
+    <!-- Previous Page Button -->
+    <button <?php if ($currentPage <= 1) { echo 'disabled style="background-color: #ddd; cursor: not-allowed;"'; } ?> 
+        onclick="window.location.href='?page=<?php echo $currentPage - 1; ?>'">
+        Previous
+    </button>
+
+    <!-- Page Indicator -->
+    <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+
+    <!-- Next Page Button -->
+    <button <?php if ($currentPage >= $totalPages) { echo 'disabled style="background-color: #ddd; cursor: not-allowed;"'; } ?> 
+        onclick="window.location.href='?page=<?php echo $currentPage + 1; ?>'">
+        Next
+    </button>
+</div>
+</div>
+
+
+</div>
+
+
         </div>
+    
 
         <!-- Add User Modal -->
-        <div id="userModal" class="modal">
-            <div class="addmodal-content">
-                <span class="close" onclick="hideModal()">&times;</span>
-                <h2 id="add-user">Add New User</h2>
-                <form method="POST" action="" onsubmit="return validateForm();">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="fname">First Name:</label>
-                            <input type="text" id="fname" name="Fname" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="lname">Last Name:</label>
-                            <input type="text" id="lname" name="Lname" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="mi">Middle Initial:</label>
-                            <input type="text" id="mi" name="MI">
-                        </div>
-                        <div class="form-group">
-                            <label for="age">Age:</label>
-                            <input type="number" id="age" name="Age" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="address">Address:</label>
-                            <input type="text" id="address" name="Address" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="contact">Contact Number:</label>
-                            <input type="text" id="contact" name="contact" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="sex">Sex:</label>
-                            <select id="sex" name="Sex">
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="role">Role:</label>
-                            <select id="role" name="Role" required>
-                                <option value="General User">General User</option>
-                                <option value="Staff">Staff</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email:</label>
-                            <input type="email" id="email" name="email" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Password:</label>
-                            <input type="password" id="password" name="password" required>
-                        </div>
-                    </div>
-                    <button type="submit" name="create_user">Add User</button>
-                </form>
+<div id="userModal" class="modal">
+    <div class="addmodal-content">
+        <span class="close" onclick="hideModal()" style="cursor:pointer;">&times;</span>
+        <h2 id="add-user">Add New User</h2>
+        <form method="POST" action="" onsubmit="return validateForm();">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="fname">First Name:</label>
+                    <input type="text" id="fname" name="Fname" required>
+                </div>
+                <div class="form-group">
+                    <label for="lname">Last Name:</label>
+                    <input type="text" id="lname" name="Lname" required>
+                </div>
+                <div class="form-group">
+                    <label for="mi">Middle Initial:</label>
+                    <input type="text" id="mi" name="MI">
+                </div>
+                <div class="form-group">
+                    <label for="age">Age:</label>
+                    <input type="number" id="age" name="Age" required>
+                </div>
+                <div class="form-group">
+                    <label for="address">Address:</label>
+                    <input type="text" id="address" name="Address" required>
+                </div>
+                <div class="form-group">
+                    <label for="contact">Contact Number:</label>
+                    <input type="text" id="contact" name="contact" required>
+                </div>
+                <div class="form-group">
+                    <label for="sex">Sex:</label>
+                    <select id="sex" name="Sex">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role" name="Role" required>
+                        <option value="General User">General User</option>
+                        <option value="Staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
             </div>
-        </div>
+            <button type="submit" name="create_user">Add User</button>
+        </form>
+    </div>
+</div>
 
-        <!-- Edit User Modal -->
-        <div id="editUserModal" class="modal">
-            <div class="addmodal-content">
-                <span class="close" onclick="closeEditModal()">&times;</span>
-                <h2 id="edituser">Edit User</h2>
-                <form method="POST" action="" onsubmit="return validateForm();">
-                    <input type="hidden" id="editUserId" name="user_id">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="editFname">First Name:</label>
-                            <input type="text" id="editFname" name="Fname" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editLname">Last Name:</label>
-                            <input type="text" id="editLname" name="Lname" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editMI">Middle Initial:</label>
-                            <input type="text" id="editMI" name="MI">
-                        </div>
-                        <div class="form-group">
-                            <label for="editAge">Age:</label>
-                            <input type="number" id="editAge" name="Age" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editAddress">Address:</label>
-                            <input type="text" id="editAddress" name="Address" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editContact">Contact Number:</label>
-                            <input type="text" id="editContact" name="contact" required pattern="[0-9]{10,11}" title="Please enter a valid contact number (10-11 digits)">
-                        </div>
-                        <div class="form-group">
-                            <label for="editSex">Sex:</label>
-                            <select id="editSex" name="Sex">
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal">
+    <div class="addmodal-content">
+        <span class="close" onclick="closeEditModal()" style="cursor:pointer;">&times;</span>
+        <h2 id="edituser">Edit User</h2>
+        <form method="POST" action="" onsubmit="return validateForm();">
+            <input type="hidden" id="editUserId" name="user_id">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="editFname">First Name:</label>
+                    <input type="text" id="editFname" name="Fname" required>
+                </div>
+                <div class="form-group">
+                    <label for="editLname">Last Name:</label>
+                    <input type="text" id="editLname" name="Lname" required>
+                </div>
+                <div class="form-group">
+                    <label for="editMI">Middle Initial:</label>
+                    <input type="text" id="editMI" name="MI">
+                </div>
+                <div class="form-group">
+                    <label for="editAge">Age:</label>
+                    <input type="number" id="editAge" name="Age" required>
+                </div>
+                <div class="form-group">
+                    <label for="editAddress">Address:</label>
+                    <input type="text" id="editAddress" name="Address" required>
+                </div>
+                <div class="form-group">
+                    <label for="editContact">Contact Number:</label>
+                    <input type="text" id="editContact" name="contact" required pattern="[0-9]{10,11}" title="Please enter a valid contact number (10-11 digits)">
+                </div>
+                <div class="form-group">
+                    <label for="editSex">Sex:</label>
+                    <select id="editSex" name="Sex">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     
-                        </div>
-                    </div>
-                    <button type="submit" name="edit_user">Update</button>
-                </form>
+                </div>
             </div>
-        </div>
+            <button type="submit" name="edit_user">Update</button>
+        </form>
+    </div>
+</div>
+
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
         <!-- JavaScript for modal functionality -->
         <script>
-        function printTable() {
-        // Select and remove the action column before printing
-        var actionHeaders = document.querySelectorAll('th:last-child');
-        var actionCells = document.querySelectorAll('td:last-child');
+   document.addEventListener('DOMContentLoaded', function() {
+    const rowsPerPage = 10; // Limit to 10 rows per page
+    let currentPage = 1;
+    const rows = document.querySelectorAll('#room-table-body tr');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
 
-        // Store original action column content
-        actionHeaders.forEach(function(header) {
-            header.setAttribute('data-original', header.outerHTML);
-            header.remove(); // Remove the action header
+    // Show the initial set of rows
+    showPage(currentPage);
+    generatePageLinks();
+
+    function showPage(page) {
+        const start = (page - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        
+        // Loop through all rows and display or hide them based on the current page
+        rows.forEach((row, index) => {
+            row.style.display = (index >= start && index < end) ? '' : 'none';
         });
 
-        actionCells.forEach(function(cell) {
-            cell.setAttribute('data-original', cell.outerHTML);
-            cell.remove(); // Remove the action cell
-        });
+        // Update the page indicator
+        document.getElementById('pageIndicator').innerText = `Page ${page}`;
 
-        // Proceed with printing
-        var divToPrint = document.getElementById('userTable');
-        var newWin = window.open("");
-        newWin.document.write('<html><head><title>Print Table</title>');
-        newWin.document.write('<style>table {width: 100%; border-collapse: collapse;} th, td {border: 1px solid black; padding: 8px; text-align: left;} </style>');
-        newWin.document.write('</head><body>');
-        newWin.document.write(divToPrint.outerHTML);
-        newWin.document.write('</body></html>');
-        newWin.document.close(); // Ensure document is fully loaded
-        newWin.focus(); // Focus on the new window
-        newWin.print(); // Trigger the print dialog
-        newWin.close(); // Close the window after printing
+        // Disable/enable buttons based on the current page
+        document.getElementById('prevPage').disabled = page === 1;
+        document.getElementById('nextPage').disabled = page === totalPages;
 
-        // Restore the action column after printing
-        actionHeaders.forEach(function(header) {
-            var tableHeader = document.querySelector('thead tr');
-            tableHeader.insertAdjacentHTML('beforeend', header.getAttribute('data-original'));
+        // Update active page link
+        document.querySelectorAll('#pageLinks a').forEach(link => {
+            link.classList.remove('active');
         });
-
-        actionCells.forEach(function(cell) {
-            var tableRow = cell.parentElement;
-            tableRow.insertAdjacentHTML('beforeend', cell.getAttribute('data-original'));
-        });
+        document.querySelector(`#pageLinks a[data-page="${page}"]`).classList.add('active');
     }
 
+    function generatePageLinks() {
+        const pageLinksContainer = document.getElementById('pageLinks');
+        pageLinksContainer.innerHTML = '';
 
-            function searchTable() {
-                var input = document.getElementById("searchInput");
-                var filter = input.value.toLowerCase();
-                var table = document.getElementById("userTable");
-                var tr = table.getElementsByTagName("tr");
+        for (let i = 1; i <= totalPages; i++) {
+            const pageLink = document.createElement('a');
+            pageLink.href = "#";
+            pageLink.textContent = i;
+            pageLink.dataset.page = i;
+            pageLink.onclick = function(event) {
+                event.preventDefault();
+                currentPage = parseInt(this.dataset.page);
+                showPage(currentPage);
+            };
 
-                for (var i = 1; i < tr.length; i++) {
-                    var td = tr[i].getElementsByTagName("td");
-                    var found = false;
-                    for (var j = 0; j < td.length; j++) {
-                        if (td[j]) {
-                            if (td[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (found) {
-                        tr[i].style.display = "";
-                    } else {
-                        tr[i].style.display = "none";
-                    }
-                }
-            }
+            pageLinksContainer.appendChild(pageLink);
+        }
+    }
 
-            function showModal() {
-                document.getElementById('userModal').style.display = 'flex';
-            }
+    // Function to go to the next page
+    function nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            showPage(currentPage);
+        }
+    }
 
-            function hideModal() {
-                document.getElementById('userModal').style.display = 'none';
-            }
+    // Function to go to the previous page
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            showPage(currentPage);
+        }
+    }
 
-            function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role) {
-                document.getElementById('editUserId').value = id;
-                document.getElementById('editFname').value = Fname;
-                document.getElementById('editLname').value = Lname;
-                document.getElementById('editMI').value = MI;
-                document.getElementById('editAge').value = Age;
-                document.getElementById('editAddress').value = Address;
-                document.getElementById('editContact').value = contact;
-                document.getElementById('editSex').value = Sex;
+    // Attach nextPage and prevPage functions to window (global scope) so they can be accessed by button clicks
+    window.nextPage = nextPage;
+    window.prevPage = prevPage;
+});
 
-                document.getElementById('editUserModal').style.display = 'flex';
-            }
+       
 
-            function closeEditModal() {
-                document.getElementById('editUserModal').style.display = 'none';
-            }
+function checkSearch() {
+    var input = document.getElementById('searchInput').value.trim();
 
-            window.onclick = function(event) {
-                var addUserModal = document.getElementById('userModal');
-                var editUserModal = document.getElementById('editUserModal');
-                
-                if (event.target === addUserModal) {
-                    hideModal();
-                }
-                if (event.target === editUserModal) {
-                    closeEditModal();
-                }
-            }
+    // Automatically submit the form if the input is cleared
+    if (input === '') {
+        document.getElementById('searchForm').submit();  // Submits the form to reset the search
+    }
+}
+
+          // Show the Add User Modal
+// Show the Add User Modal
+function showModal() {
+    document.getElementById('userModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';  // Prevent background scroll when modal is open
+}
+
+// Hide the Add User Modal
+function hideModal() {
+    document.getElementById('userModal').style.display = 'none';
+    document.body.style.overflow = 'auto';  // Restore background scrolling
+}
+
+// Show the Edit User Modal
+function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role) {
+    document.getElementById('editUserId').value = id;
+    document.getElementById('editFname').value = Fname;
+    document.getElementById('editLname').value = Lname;
+    document.getElementById('editMI').value = MI;
+    document.getElementById('editAge').value = Age;
+    document.getElementById('editAddress').value = Address;
+    document.getElementById('editContact').value = contact;
+    document.getElementById('editSex').value = Sex;
+
+    document.getElementById('editUserModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';  // Prevent background scroll when modal is open
+}
+
+// Hide the Edit User Modal
+function closeEditModal() {
+    document.getElementById('editUserModal').style.display = 'none';
+    document.body.style.overflow = 'auto';  // Restore background scrolling
+}
+
+// Close modal when clicking outside the content
+window.onclick = function(event) {
+    var userModal = document.getElementById('userModal');
+    var editUserModal = document.getElementById('editUserModal');
+    
+    // Check if the click was outside the modal content
+    if (event.target === userModal) {
+        hideModal();
+    }
+    if (event.target === editUserModal) {
+        closeEditModal();
+    }
+}
 
             //hamburgermenu
             const hamburgerMenu = document.getElementById('hamburgerMenu');
@@ -498,6 +640,7 @@ if ($result === false) {
 
                 return true;
             }
+            
         </script>
     </body>
 </html>

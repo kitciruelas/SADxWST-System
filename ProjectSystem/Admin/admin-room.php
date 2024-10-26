@@ -18,8 +18,37 @@ $roomCountQuery = "SELECT COUNT(*) AS totalRooms FROM rooms";
 $roomCountResult = $conn->query($roomCountQuery);
 $roomCount = $roomCountResult->fetch_assoc()['totalRooms'];
 
+// Query for assigned room data
+$assignedRoomQuery = "SELECT COUNT(*) AS assignedRooms FROM roomassignments";
+$assignedRoomResult = $conn->query($assignedRoomQuery);
+$assignedRooms = $assignedRoomResult->fetch_assoc()['assignedRooms'];
 
-// Close connection
+// Query for room applications
+$applicationsQuery = "SELECT COUNT(*) AS pendingApplications FROM  RoomApplications WHERE status = 'pending'";
+$applicationsResult = $conn->query($applicationsQuery);
+$pendingApplications = $applicationsResult->fetch_assoc()['pendingApplications'];
+
+// Set limit of records per page
+$limit = 6;
+
+// Get the current page number from the URL, default to page 1
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+
+// Calculate the starting point (offset)
+$offset = ($page - 1) * $limit;
+
+// Query to fetch rooms from the database with limit and offset for pagination
+$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms LIMIT $limit OFFSET $offset";
+$result = $conn->query($sql);
+
+// Query to get the total number of rooms (for pagination calculation)
+$totalRoomsQuery = "SELECT COUNT(*) AS total FROM rooms";
+$totalResult = $conn->query($totalRoomsQuery);
+$totalRooms = $totalResult->fetch_assoc()['total'];
+
+// Calculate total pages
+$totalPages = ceil($totalRooms / $limit);
+
 $conn->close();
 ?>
 
@@ -36,6 +65,7 @@ $conn->close();
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    
 </head>
 <body>
     <!-- Sidebar -->
@@ -54,14 +84,14 @@ $conn->close();
                     <span>Room Manager</span>
                 </a>
                 <div class="dropdown-menu" aria-labelledby="roomManagerDropdown" style="background-color: #2B228A; border-radius: 9px;">
-                <a class="dropdown-item" href="roomlist.php" style="color: #ffffff;">
-                    <i class="fas fa-list"></i> Room List
+                <a class="dropdown-item" href="roomlist.php">
+                    <i class="fas fa-list"></i> <span>Room List</span>
                 </a>
-                <a class="dropdown-item" href="room-assign.php" style="color: #ffffff;">
-                    <i class="fas fa-user-check"></i> Room Assign
+                <a class="dropdown-item" href="room-assign.php">
+                    <i class="fas fa-user-check"></i> <span>Room Assign</span>
                 </a>
-                <a class="dropdown-item" href="application-room.php" style="color: #ffffff;">
-                    <i class="fas fa-file-alt"></i> Room Application
+                <a class="dropdown-item" href="application-room.php">
+                    <i class="fas fa-file-alt"></i> <span>Room Application</span>
                 </a>
             </div>
             </div>
@@ -106,11 +136,11 @@ $conn->close();
                             <span class="badge-status"><?php echo $assignedRooms; ?> Assigned</span>
                             <i class="fas fa-user-check fa-3x"></i>
                             <h5 class="card-title mt-3">Room Assign</h5>
-                            <p class="card-text">Assign rooms to users or groups.</p>
+                            <p class="card-text">Assign rooms to users.</p>
                             <div class="progress mt-2">
                                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($assignedRooms / 100) * 100; ?>%;" aria-valuenow="<?php echo $assignedRooms; ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            <a href="room-assign.php" class="btn btn-primary mt-3" data-toggle="modal" data-target="#roomAssignModal">View Details</a>
+                            <a href="room-assign.php" class="btn btn-primary mt-3">View Details</a>
                         </div>
                     </div>
                 </div>
@@ -122,18 +152,86 @@ $conn->close();
                             <span class="badge-status"><?php echo $pendingApplications; ?> Pending Applications</span>
                             <i class="fas fa-file-alt fa-3x"></i>
                             <h5 class="card-title mt-3">Room Application</h5>
-                            <p class="card-text">Apply for room allocation or manage applications.</p>
+                            <p class="card-text">Apply for room allocation.</p>
                             <div class="progress mt-2">
                                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($pendingApplications / 100) * 100; ?>%;" aria-valuenow="<?php echo $pendingApplications; ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            <a href="application-room.php" class="btn btn-primary mt-3" data-toggle="modal" data-target="#roomApplicationModal">View Details</a>
+                            <a href="application-room.php" class="btn btn-primary mt-3">View Details</a>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+                <!-- Room Display-->
+
+                <h1 class="text-center">Rooms</h1>
+
+<div class="container">
+    <div class="row">
+
+        <!-- Loop through the database records and display each room -->
+        <?php
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                ?>
+                <div class="col-md-4">
+                    <div class="room-card">
+                        <!-- Display room image -->
+                        <img src="<?php echo $row['room_pic']; ?>" alt="Room Image">
+
+                        <!-- Rent Price -->
+                        <p class="room-price">Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
+                        
+                         <!-- Room Number -->
+                         <h5>Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
+
+                        <!-- Room Capacity -->
+                        <p>Capacity: <?php echo htmlspecialchars($row['capacity']); ?> people</p>
+
+                        <!-- Room Description -->
+                        <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
+
+                        <!-- Room Status -->
+                        <p>Status: <?php echo htmlspecialchars($row['status']); ?></p>
+
+                        <button class="apply-btn" id="applyNowBtn">Apply Now!</button>
+                                        </div>
+                </div>
+                <?php
+            }
+        } else {
+            echo "<p>No rooms available.</p>";
+        }
+        ?>
+
     </div>
+
+    <!-- Pagination Links -->
+    <div class="pagination">
+         <!-- Pagination Links -->
+    <div id="pagination">
+        <!-- Previous Page Button -->
+        <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
+            Previous
+        </button>
+
+        <!-- Page Indicator -->
+        <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+
+        <!-- Next Page Button -->
+        <button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
+            Next
+        </button>
+    </div>
+</div>
+
+</div>
+
+            
+    </div>
+
+
     
     <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -141,7 +239,7 @@ $conn->close();
 
     <!-- Hamburgermenu Script -->
     <script>
-        
+
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const sidebar = document.getElementById('sidebar');
         sidebar.classList.add('collapsed');

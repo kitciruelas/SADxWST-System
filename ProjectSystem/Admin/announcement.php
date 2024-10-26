@@ -89,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
 }
 
 
-// Display announcements from the database
-$sql = "SELECT * FROM announce";
+// Display announcements from the database in ascending order by date
+$sql = "SELECT * FROM announce ORDER BY date_published DESC";
 $result = mysqli_query($conn, $sql);
 
 $announcements = [];
@@ -109,8 +109,9 @@ mysqli_close($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="Css_Admin/announcements.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="Css_Admin/admin-announce.css">
+
     <title>Announcements</title>
    
 </head>
@@ -197,16 +198,17 @@ mysqli_close($conn);
 
 <!-- Announcemnet table -->
 
-    <div class="announcements">
-        <?php if (!empty($announcements)): ?>
-            <table border="1">
-                <thead>
+<div class="announcements">
+    <?php if (!empty($announcements)): ?>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="thead-dark">
                     <tr>
-                        <th>No.</th>
-                        <th>Title</th>
-                        <th>Content</th>
-                        <th>Date</th>
-                        <th>Actions</th>
+                        <th scope="col">No.</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Content</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -221,24 +223,26 @@ mysqli_close($conn);
                             <td>
                                 <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
                                     <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
-                                    <button type="submit" name="toggle-display">
+                                    <button type="submit" name="toggle-display" class="btn btn-sm <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
                                         <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
                                     </button>
                                 </form>
                                 
-                                <button class="update-button" data-id="<?= $announcement['announcementId'] ?>">
-                                    <i class="far fa-edit update-icon"></i>Edit
+                                <button class="btn btn-sm btn-primary update-button" data-id="<?= $announcement['announcementId'] ?>">
+                                    <i class="far fa-edit"></i> Edit
                                 </button>
-                                <button class="delete-button" data-id="<?= $announcement['announcementId'] ?>">Delete</button>
+                                <button class="btn btn-sm btn-danger delete-button" data-id="<?= $announcement['announcementId'] ?>">Delete</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        <?php else: ?>
-            <p class="no-announcements">No announcements yet.</p>
-        <?php endif; ?>
-    </div>
+        </div>
+    <?php else: ?>
+        <p class="alert alert-info text-center">No announcements yet.</p>
+    <?php endif; ?>
+</div>
+
 
 </div>
 

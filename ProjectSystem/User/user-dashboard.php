@@ -157,80 +157,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validate form data
     if ($roomId) {
-        // Check if the user has already applied for this room
-        $checkStmt = $conn->prepare("SELECT status FROM RoomApplications WHERE user_id = ? AND room_id = ?");
-        $checkStmt->bind_param('ii', $userId, $roomId);
-        $checkStmt->execute();
-        $checkResult = $checkStmt->get_result();
+        // Check if the user has an active assignment for any room
+        $assignedCheckStmt = $conn->prepare("SELECT room_id FROM RoomApplications WHERE user_id = ? AND status = 'approved'");
+        $assignedCheckStmt->bind_param('i', $userId);
+        $assignedCheckStmt->execute();
+        $assignedCheckResult = $assignedCheckStmt->get_result();
 
-        if ($checkResult->num_rows > 0) {
-            // Fetch the current status of the application
-            $application = $checkResult->fetch_assoc();
-            $status = $application['status'];
-
-            // Show different messages based on the status of the application
-            if ($status == 'pending') {
-                echo "<script>alert('You have already applied for this room, waiting for approval.');</script>";
-            } elseif ($status == 'approved') {
-                echo "<script>alert('Your application for this room has already been approved.');</script>";
-            } elseif ($status == 'rejected') {
-                echo "<script>alert('Your application for this room has been rejected.');</script>";
-            }
+        if ($assignedCheckResult->num_rows > 0) {
+            // User is already assigned a room
+            echo "<script>alert('You are already assigned to another room.');</script>";
         } else {
-            // Check room capacity
-            $capacityCheckStmt = $conn->prepare("SELECT capacity, (SELECT COUNT(*) FROM RoomApplications WHERE room_id = ? AND status = 'approved') AS current_occupancy FROM Rooms WHERE room_id = ?");
-            $capacityCheckStmt->bind_param('ii', $roomId, $roomId);
-            $capacityCheckStmt->execute();
-            $capacityResult = $capacityCheckStmt->get_result();
+            // Check if the user has already applied for this room
+            $checkStmt = $conn->prepare("SELECT status FROM RoomApplications WHERE user_id = ? AND room_id = ?");
+            $checkStmt->bind_param('ii', $userId, $roomId);
+            $checkStmt->execute();
+            $checkResult = $checkStmt->get_result();
 
-            if ($capacityResult->num_rows > 0) {
-                $room = $capacityResult->fetch_assoc();
-                $capacity = $room['capacity'];
-                $currentOccupancy = $room['current_occupancy'];
+            if ($checkResult->num_rows > 0) {
+                // Fetch the current status of the application
+                $application = $checkResult->fetch_assoc();
+                $status = $application['status'];
 
-                // Check if the room is occupied
-                if ($currentOccupancy >= $capacity) {
-                    echo "<script>alert('The room is currently occupied.');</script>";
-                } else {
-                    // Prepare the SQL query to insert the application
-                    $stmt = $conn->prepare("INSERT INTO RoomApplications (user_id, room_id, application_date, status, comments) 
-                                            VALUES (?, ?, CURDATE(), 'pending', ?)");
-                    $stmt->bind_param('iis', $userId, $roomId, $comments);
-
-                    // Execute the query
-                    if ($stmt->execute()) {
-                        echo "<script>alert('Your application has been submitted successfully.');</script>";
-                    } else {
-                        echo "<script>alert('Error submitting application: " . $stmt->error . "');</script>";
-                    }
-
-                    // Close the statement
-                    $stmt->close();
+                // Show different messages based on the status of the application
+                if ($status == 'pending') {
+                    echo "<script>alert('You have already applied for this room, waiting for approval.');</script>";
+                } elseif ($status == 'approved') {
+                    echo "<script>alert('Your application for this room has already been approved.');</script>";
+                } elseif ($status == 'rejected') {
+                    echo "<script>alert('Your application for this room has been rejected.');</script>";
                 }
             } else {
-                echo "<script>alert('Room not found.');</script>";
+                // Check the room's status and current occupancy
+                $roomCheckStmt = $conn->prepare("SELECT capacity, (SELECT COUNT(*) FROM RoomApplications WHERE room_id = ? AND status = 'approved') AS current_occupancy, status FROM Rooms WHERE room_id = ?");
+                $roomCheckStmt->bind_param('ii', $roomId, $roomId);
+                $roomCheckStmt->execute();
+                $roomResult = $roomCheckStmt->get_result();
+
+                if ($roomResult->num_rows > 0) {
+                    $room = $roomResult->fetch_assoc();
+                    $capacity = $room['capacity'];
+                    $currentOccupancy = $room['current_occupancy'];
+                    $roomStatus = $room['status']; // 'available', 'occupied', or 'maintenance'
+
+                    // Check the room status
+                    if ($roomStatus === 'maintenance') {
+                        echo "<script>alert('The room is currently under maintenance.');</script>";
+                    } elseif ($roomStatus === 'occupied') {
+                        echo "<script>alert('The room is currently occupied.');</script>";
+                    } elseif ($currentOccupancy >= $capacity) {
+                        echo "<script>alert('The room is currently full.');</script>";
+                    } else {
+                        // Prepare the SQL query to insert the application
+                        $stmt = $conn->prepare("INSERT INTO RoomApplications (user_id, room_id, application_date, status, comments) 
+                                                VALUES (?, ?, CURDATE(), 'pending', ?)");
+                        $stmt->bind_param('iis', $userId, $roomId, $comments);
+
+                        // Execute the query
+                        if ($stmt->execute()) {
+                            echo "<script>alert('Your application has been submitted successfully.');</script>";
+                        } else {
+                            echo "<script>alert('Error submitting application: " . $stmt->error . "');</script>";
+                        }
+
+                        // Close the statement
+                        $stmt->close();
+                    }
+                } else {
+                    echo "<script>alert('Room not found.');</script>";
+                }
+
+                // Close the room check statement
+                $roomCheckStmt->close();
             }
 
-            // Close the capacity check statement
-            $capacityCheckStmt->close();
+            // Close the check statement
+            $checkStmt->close();
         }
 
-        // Close the check statement
-        $checkStmt->close();
+        // Close the assigned check statement
+        $assignedCheckStmt->close();
     } else {
         echo "<script>alert('Invalid room ID.');</script>";
     }
 }
 
-// Get the selected filter from the URL, default to an empty string
-$filter = isset($_GET['status']) ? $_GET['status'] : '';
-
-$statuses = ['Available', 'Occupied', 'Maintenance'];
-
-// Add WHERE clause if filter is set
-if ($filter !== '') {
-    $sql .= " WHERE status = '" . mysqli_real_escape_string($conn, $filter) . "'";
-}
 
 
 // Query to fetch rooms from the database with limit and offset for pagination
@@ -247,11 +257,14 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_user/users-dash.css">
+    <link href="Css_user/users-dash.css" rel="stylesheet" >
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+
+  
 </head>
 <body>
 
@@ -264,6 +277,8 @@ $conn->close();
         <div class="sidebar-nav">
         <a href="#" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="user_room.php" class="nav-link"><i class="fas fa-key"></i> <span>Room Assign</span></a>
+        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
+
         </div>
         
         <div class="logout">
@@ -382,45 +397,49 @@ $conn->close();
         </div>
 <div class="container">
 <!-- Filter Dropdown -->
+
 <div class="filter-dropdown mb-3">
         <label for="statusFilter">Filter by Status:</label>
         <select id="statusFilter" class="form-select" onchange="filterRooms()">
             <option value="">All</option>
-            <?php foreach ($statuses as $status): ?>
-                <option value="<?php echo htmlspecialchars($status); ?>" <?php if ($filter == $status) echo 'selected'; ?>>
+            <?php 
+            // Assuming $statuses is defined earlier
+            $statuses = ['Available', 'Occupied', 'Maintenance']; 
+            foreach ($statuses as $status): ?>
+                <option value="<?php echo htmlspecialchars($status); ?>">
                     <?php echo htmlspecialchars($status); ?>
                 </option>
             <?php endforeach; ?>
         </select>
     </div>
 
-    <div class="row">
-        <!-- Check if any rooms are returned -->
-        <?php if ($result && $result->num_rows > 0): ?>
-            <?php while ($row = $result->fetch_assoc()): ?>
-                <div class="col-md-4">
-                    <div class="room-card">
-                        <img src="<?php echo htmlspecialchars($row['room_pic']); ?>" alt="Room Image">
-                        <p class="room-price">Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
-                        <h5>Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
-                        <p>Capacity: <?php echo htmlspecialchars($row['capacity']); ?> people</p>
-                        <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
-                        <p>Status: <?php echo htmlspecialchars($row['status']); ?></p>
-                        <button class="btn btn-primary apply-btn" 
-                                data-room-id="<?php echo $row['room_id']; ?>" 
-                                data-room-number="<?php echo htmlspecialchars($row['room_number']); ?>" 
-                                data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent']); ?>"
-                                data-room-capacity="<?php echo htmlspecialchars($row['capacity']); ?>" 
-                                data-room-status="<?php echo htmlspecialchars($row['status']); ?>" 
-                                data-toggle="modal" data-target="#applyModal">
-                            Apply Now!
-                        </button>
-                    </div>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <p>No rooms available for the selected status.</p>
-        <?php endif; ?>
+
+<div class="row">
+
+    <div class="row" id="roomList">
+    <?php if ($result && $result->num_rows > 0): ?>
+        <?php while ($row = $result->fetch_assoc()): ?>
+            <div class="col-md-5 room-card" style="margin: 40PX;" data-status="<?php echo htmlspecialchars($row['status']); ?>">
+            <img src="<?php echo htmlspecialchars(string: $row['room_pic']); ?>" alt="Room Image" class="img-fluid" style="height: 300px; ">
+                <p class="room-price">Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
+                <h5>Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
+                <p>Capacity: <?php echo htmlspecialchars($row['capacity']); ?> people</p>
+                <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                <p>Status: <?php echo htmlspecialchars($row['status']); ?></p>
+                <button class="btn btn-primary apply-btn" 
+                        data-room-id="<?php echo $row['room_id']; ?>" 
+                        data-room-number="<?php echo htmlspecialchars($row['room_number']); ?>" 
+                        data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent']); ?>"
+                        data-room-capacity="<?php echo htmlspecialchars($row['capacity']); ?>" 
+                        data-room-status="<?php echo htmlspecialchars($row['status']); ?>" 
+                        data-toggle="modal" data-target="#applyModal">
+                    Apply Now!
+                </button>
+            </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <p>No rooms available for the selected status.</p>
+    <?php endif; ?>
     </div>
     </div>
 
@@ -431,7 +450,7 @@ $conn->close();
         <!-- Previous Page Button -->
         <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
             Previous
-        </button>
+      /button>
 
         <!-- Page Indicator -->
         <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
@@ -503,12 +522,19 @@ $conn->close();
     <!-- JavaScript -->
     <script>
      
-     // JavaScript for the dropdown filter
-     document.getElementById('statusFilter').addEventListener('change', function() {
-        const status = this.value;
-        // Redirect to the current page with the selected filter
-        window.location.href = window.location.pathname + '?status=' + encodeURIComponent(status);
-    });
+     function filterRooms() {
+            const filterValue = document.getElementById('statusFilter').value.toLowerCase();
+            const rooms = document.querySelectorAll('.room-card');
+
+            rooms.forEach(room => {
+                const status = room.getAttribute('data-status').toLowerCase();
+                if (filterValue === '' || status === filterValue) {
+                    room.style.display = ''; // Show the room
+                } else {
+                    room.style.display = 'none'; // Hide the room
+                }
+            });
+        }
 
         // When the "Apply Now!" button is clicked
 document.querySelectorAll('.apply-btn').forEach(button => {

@@ -216,6 +216,7 @@ $conn->close();
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
 
+
             <!-- Room Manager Dropdown Menu -->
             <div class="nav-item dropdown">
                 <a href="admin-room.php" class="nav-link dropdown-toggle" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -235,7 +236,10 @@ $conn->close();
                 </a>
 
             </div>
+            <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+
             </div>
+
 
         </div>
         <div class="logout">

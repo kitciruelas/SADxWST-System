@@ -94,7 +94,10 @@ $conn->close();
                     <i class="fas fa-file-alt"></i> <span>Room Application</span>
                 </a>
             </div>
+
             </div>
+            <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+
 
         </div>
         <div class="logout">

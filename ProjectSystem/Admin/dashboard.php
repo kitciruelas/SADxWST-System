@@ -18,8 +18,13 @@ if (!isset($_SESSION['login_time'])) {
     $userCount = $userCountResult->fetch_assoc()['totalUsers'];
 
     $userCountQuery = "SELECT COUNT(*) AS totalStaff FROM staff"; // Count staff instead of users
-$userCountResult = $conn->query($userCountQuery);
-$staffCount = $userCountResult->fetch_assoc()['totalStaff']; // Fetching total staff count
+    $userCountResult = $conn->query($userCountQuery);
+    $staffCount = $userCountResult->fetch_assoc()['totalStaff']; // Fetching total staff count
+
+    $visitorCountQuery = "SELECT COUNT(*) AS totalVisitors FROM visitors"; // Count visitors instead of staff
+    $visitorCountResult = $conn->query($visitorCountQuery);
+    $visitorCount = $visitorCountResult->fetch_assoc()['totalVisitors']; // Fetching total visitor count
+
 
 
 
@@ -63,6 +68,7 @@ if (isset($_GET['id'])) {
 <!-- FontAwesome for Icons -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
 
+
 <!-- Custom CSS -->
 <link rel="stylesheet" href="Css_Admin/dashboard.css">
 
@@ -79,6 +85,8 @@ if (isset($_GET['id'])) {
             <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i> <span>Admin</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+            <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+
 
         </div>
         
@@ -158,21 +166,21 @@ if (isset($_GET['id'])) {
     </div>
 </div>
 
-    <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <span class="badge-status"><?php echo $userCount; ?> Total Visitor Log</span>
-                <i class="fas fa-user-friends fa-3x"></i>
-                <h5 class="card-title mt-3">Visitor Log</h5>
-                <p class="card-text">Manage and track visitor entries and activities.</p>
-                <div class="progress mt-2">
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo ($userCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $userCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
-                <a href="manageuser.php" class="btn btn-primary mt-3">View Details</a>
+<div class="col-lg-4 col-md-6 mb-4">
+    <div class="card text-center">
+        <div class="card-body">
+            <span class="badge-status"><?php echo $visitorCount; ?> Total Visitor Log</span>
+            <i class="fas fa-user-friends fa-3x"></i>
+            <h5 class="card-title mt-3">Visitor Log</h5>
+            <p class="card-text">Manage and track visitor entries and activities.</p>
+            <div class="progress mt-2">
+                <div class="progress-bar" role="progressbar" style="width: <?php echo ($visitorCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $visitorCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
+            <a href="manageuser.php" class="btn btn-primary mt-3">View Details</a>
         </div>
     </div>
 </div>
+
 
 
 

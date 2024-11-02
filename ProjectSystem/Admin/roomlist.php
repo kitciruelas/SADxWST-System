@@ -105,12 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 }
 
 
-/// Handle form submission for updating a room
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $room_id = $_POST['room_id'];
 
     // Check if the room number already exists for a different room
-    $sql_check = "SELECT COUNT(*) FROM Rooms WHERE room_number = ? AND room_id != ?";
+    $sql_check = "SELECT COUNT(*) FROM rooms WHERE room_number = ? AND room_id != ?";
     $stmt_check = $conn->prepare($sql_check);
     $stmt_check->bind_param("si", $_POST['room_number'], $room_id);
     $stmt_check->execute();
@@ -119,53 +118,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $stmt_check->close();
 
     if ($count > 0) {
-        // If room number already exists for another room, show an error
         echo "<script>alert('Error: Room number already exists for another room!'); window.location.href = 'roomlist.php';</script>";
     } else {
-        // Update room data using prepared statement
-        $sql = "UPDATE rooms SET room_number = ?, capacity = ?, room_monthlyrent = ?, room_desc = ?, status = ? WHERE room_id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('sidssi', $_POST['room_number'], $_POST['capacity'], $_POST['room_monthlyrent'], $_POST['room_desc'], $_POST['status'], $room_id);
+        // Prepare the base SQL update statement
+        $sql = "UPDATE rooms SET room_number = ?, capacity = ?, room_monthlyrent = ?, room_desc = ?, status = ?";
+        $params = [
+            $_POST['room_number'],
+            $_POST['capacity'],
+            $_POST['room_monthlyrent'],
+            $_POST['room_desc'],
+            $_POST['status'],
+        ];
 
-        if ($stmt->execute()) {
-            // Get the total number of rooms after the update
-            $sql_count = "SELECT COUNT(*) FROM Rooms";
-            $stmt_count = $conn->prepare($sql_count);
-            $stmt_count->execute();
-            $stmt_count->bind_result($total_rooms);
-            $stmt_count->fetch();
-            $stmt_count->close();
+        // Handle room picture upload
+        if (isset($_FILES['room_picture']) && $_FILES['room_picture']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = "../uploads/";
+            $fileName = time() . '_' . basename($_FILES['room_picture']['name']);
+            $uploadPath = $uploadDir . $fileName;
 
-            // Success message showing the total number of rooms
-            echo "<script>alert('Room updated successfully! Total rooms: $total_rooms'); window.location.href = 'roomlist.php';</script>";
-        } else {
-            echo "Error updating room: " . $stmt->error;
+            // Check if upload directory exists and is writable
+            if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
+                error_log("Upload directory does not exist or is not writable: " . $uploadDir, 3, 'error.log');
+                echo "<script>alert('Upload directory is not accessible.'); window.location.href = 'roomlist.php';</script>";
+                exit;
+            }
+
+            // Move the uploaded file
+            if (move_uploaded_file($_FILES['room_picture']['tmp_name'], $uploadPath)) {
+                // Append to SQL statement and parameters if upload is successful
+                $sql .= ", room_pic = ?";
+                $params[] = $fileName; // Add the new file name to the parameters
+            } else {
+                error_log("Error moving uploaded file: " . $_FILES['room_picture']['tmp_name'], 3, 'error.log');
+                echo "<script>alert('Error uploading room picture.'); window.location.href = 'roomlist.php';</script>";
+                exit;
+            }
         }
 
-        $stmt->close();
+        // Add the room_id to the parameters and complete the SQL statement
+        $sql .= " WHERE room_id = ?";
+        $params[] = $room_id;
+
+        // Prepare the statement for execution
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            // Determine the type string based on parameters
+            $types = str_repeat('s', count($params) - 1) . 'i'; // All parameters are strings except the last one (room_id)
+            $stmt->bind_param($types, ...$params);
+
+            // Execute the update
+            if ($stmt->execute()) {
+                if ($stmt->affected_rows > 0) {
+                    echo "<script>alert('Room updated successfully!'); window.location.href = 'roomlist.php';</script>";
+                } else {
+                    echo "<script>alert('No changes made to the room.'); window.location.href = 'roomlist.php';</script>";
+                }
+            } else {
+                error_log("SQL error: " . $stmt->error, 3, 'error.log');
+                echo "<script>alert('Error updating room in database: " . $stmt->error . "'); window.location.href = 'roomlist.php';</script>";
+            }
+            $stmt->close();
+        } else {
+            error_log("Prepare statement error: " . $conn->error, 3, 'error.log');
+            echo "<script>alert('Error preparing SQL statement.'); window.location.href = 'roomlist.php';</script>";
+        }
     }
 }
 
 
-// Handle room deletion
-if (isset($_GET['delete_room_id'])) {
-    $room_id = intval($_GET['delete_room_id']);
-    $sql = "DELETE FROM rooms WHERE room_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $room_id);
 
-    if ($stmt->execute()) {
-        // Use JavaScript for alert and redirection after success
-        echo "<script>
-                alert('Room deleted successfully');
-                window.location.href = 'roomlist.php?delete_success=1';
-              </script>";
-        exit(); // Ensure no further code is executed after redirection
+// Handle room archiving instead of deletion
+if (isset($_GET['delete_room_id'])) {
+    $room_id = intval($_GET['delete_room_id']); // Sanitize input
+
+    // Step 1: Archive the room by copying it to the archive table
+    $archiveSql = "INSERT INTO rooms_archive (room_id, room_number, room_desc, room_pic, room_monthlyrent, capacity, status, created_at, archived_at)
+                   SELECT room_id, room_number, room_desc, room_pic, room_monthlyrent, capacity, status, created_at, NOW()
+                   FROM rooms WHERE room_id = ?";
+    
+    $archiveStmt = $conn->prepare($archiveSql);
+    $archiveStmt->bind_param('i', $room_id);
+
+    if ($archiveStmt->execute()) {
+        // Step 2: Delete the room from the original table after archiving
+        $deleteSql = "DELETE FROM rooms WHERE room_id = ?";
+        $deleteStmt = $conn->prepare($deleteSql);
+        $deleteStmt->bind_param('i', $room_id);
+
+        if ($deleteStmt->execute()) {
+            // Use JavaScript for alert and redirection after success
+            echo "<script>
+                    alert('Room archived and deleted successfully');
+                    window.location.href = 'roomlist.php?delete_success=1';
+                  </script>";
+            exit(); // Ensure no further code is executed after redirection
+        } else {
+            echo "Error deleting room from the original table: " . $conn->error;
+        }
+
+        $deleteStmt->close();
     } else {
-        echo "Error deleting room: " . $conn->error;
+        echo "Error archiving room: " . $archiveStmt->error;
     }
 
-    $stmt->close();
+    $archiveStmt->close();
 }
 
 
@@ -265,7 +321,7 @@ $conn->close();
                 <option value="all" selected>Filter by</option>
                 <option value="room_number">Room Number</option>
                 <option value="capacity">Capacity</option>
-                <option value="status">Status</option>
+                <option value="status">Monthly Rent</option>
             </select>
         </div>
         <div class="col-6 col-md-2">
@@ -288,37 +344,46 @@ $conn->close();
             </tr>
         </thead>
         <tbody id="room-table-body">
-            <?php
-            if ($result->num_rows > 0) {
-                $counter = 1; // Initialize counter for No column
-                while ($row = $result->fetch_assoc()) {
-                    echo "<tr>";
-                    echo "<td>" . $counter++ . "</td>"; // Increment counter for each row
-                    echo "<td>" . $row["room_number"] . "</td>";
-                    echo "<td>" . $row["room_desc"] . "</td>";
-                    echo "<td>" . $row["capacity"] . "</td>";
-                    echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>"; // Monthly Rent, formatted with 2 decimals
-                    echo "<td>" . $row["status"] . "</td>";
-                    echo "<td>";
-                    if (!empty($row["room_pic"])) {
-                        echo "<img src='" . $row["room_pic"] . "' alt='Room Image' width='100'>";
-                    } else {
-                        echo "No Image";
-                    }
-                    echo "</td>";
-                    echo "<td>";
-                    echo "<a href='?edit_room_id=" . $row["room_id"] . "' class='custom-btn edit-btn'>Edit</a>";
-                    echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                    <input type='hidden' name='delete_room_id' value='" . $row["room_id"] . "' />
-                    <button type='submit' class='custom-btn delete-btn'>Delete</button>
-                  </form>";
-                    echo "</td>";
-                    echo "</tr>";
-                }
+        <?php
+if ($result->num_rows > 0) {
+    $counter = 1; // Initialize counter for No column
+    while ($row = $result->fetch_assoc()) {
+        echo "<tr>";
+        echo "<td>" . $counter++ . "</td>"; // Increment counter for each row
+        echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
+        echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
+        echo "<td>" . htmlspecialchars($row["capacity"]) . "</td>";
+        echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>"; // Monthly Rent, formatted with 2 decimals
+        echo "<td>" . htmlspecialchars($row["status"]) . "</td>";
+        echo "<td>";
+        
+        // Check if room_pic is not empty and file exists
+        if (!empty($row["room_pic"])) {
+            $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]); // Adjust path as necessary
+            if (file_exists($imagePath)) {
+                echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
             } else {
-                echo "<tr><td colspan='8'>No rooms found</td></tr>"; // Update colspan to match number of columns
+                echo "Image not found"; // Handle case where image file is missing
             }
-            ?>
+        } else {
+            echo "No Image"; // No image uploaded
+        }
+        
+        echo "</td>";
+        echo "<td>";
+        echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
+        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
+                <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
+                <button type='submit' class='custom-btn delete-btn'>Delete</button>
+              </form>";
+        echo "</td>";
+        echo "</tr>";
+    }
+} else {
+    echo "<tr><td colspan='8'>No rooms found</td></tr>"; // Update colspan to match number of columns
+}
+?>
+
         </tbody>
     </table>
 </div>
@@ -342,37 +407,52 @@ $conn->close();
                     <a href="roomlist.php" class="btn-close" aria-label="Close"></a>
                 </div>
                 <div class="modal-body">
-                    <form id="editRoomForm" action="roomlist.php" method="post">
-                        <!-- Hidden input for room_id -->
-                        <input type="hidden" id="edit_room_id" name="room_id" value="<?php echo isset($editRoom['room_id']) ? htmlspecialchars($editRoom['room_id']) : ''; ?>">
+                    <form id="editRoomForm" action="roomlist.php" method="post" enctype="multipart/form-data">
+                        <input type="hidden" id="edit_room_id" name="room_id" value="<?php echo htmlspecialchars($editRoom['room_id'] ?? ''); ?>">
 
                         <!-- Room Number -->
                         <div class="mb-3">
-                            <label for="room_number" class="form-label">Room Number</label>
-                            <input type="text" class="form-control" id="edit_room_number" name="room_number" value="<?php echo isset($editRoom['room_number']) ? htmlspecialchars($editRoom['room_number']) : ''; ?>" required>
+                            <label for="edit_room_number" class="form-label">Room Number</label>
+                            <input type="text" class="form-control" id="edit_room_number" name="room_number" value="<?php echo htmlspecialchars($editRoom['room_number'] ?? ''); ?>" required>
                         </div>
 
                         <!-- Capacity -->
                         <div class="mb-3">
-                            <label for="capacity" class="form-label">Capacity</label>
-                            <input type="number" class="form-control" id="edit_capacity" name="capacity" value="<?php echo isset($editRoom['capacity']) ? htmlspecialchars($editRoom['capacity']) : ''; ?>" required>
+                            <label for="edit_capacity" class="form-label">Capacity</label>
+                            <input type="number" class="form-control" id="edit_capacity" name="capacity" value="<?php echo htmlspecialchars($editRoom['capacity'] ?? ''); ?>" required>
                         </div>
 
                         <!-- Monthly Rent -->
                         <div class="mb-3">
-                            <label for="monthly_rent" class="form-label">Monthly Rent</label>
-                            <input type="number" step="0.01" class="form-control" id="edit_monthly_rent" name="room_monthlyrent" value="<?php echo isset($editRoom['room_monthlyrent']) ? htmlspecialchars($editRoom['room_monthlyrent']) : ''; ?>" required>
+                            <label for="edit_monthly_rent" class="form-label">Monthly Rent</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_monthly_rent" name="room_monthlyrent" value="<?php echo htmlspecialchars($editRoom['room_monthlyrent'] ?? ''); ?>" required>
                         </div>
 
                         <!-- Description -->
                         <div class="mb-3">
-                            <label for="room_desc" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_room_desc" name="room_desc" required><?php echo isset($editRoom['room_desc']) ? htmlspecialchars($editRoom['room_desc']) : ''; ?></textarea>
+                            <label for="edit_room_desc" class="form-label">Description</label>
+                            <textarea class="form-control" id="edit_room_desc" name="room_desc" required><?php echo htmlspecialchars($editRoom['room_desc'] ?? ''); ?></textarea>
+                        </div>
+
+                        <!-- Current Room Picture -->
+                        <?php if (!empty($editRoom['room_pic'])): ?>
+                            <div class="mb-3">
+                                <label class="form-label">Current Room Picture</label>
+                                <div>
+                                    <img src="../uploads/<?php echo htmlspecialchars($editRoom['room_pic']); ?>" alt="Current Room Picture" onerror="this.onerror=null; this.src='path/to/default-image.jpg';" style="max-width: 100%; height: 200px;">
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Upload New Picture -->
+                        <div class="mb-3">
+                            <label for="room_pic" class="form-label">Upload New Picture (optional)</label>
+                            <input type="file" class="form-control" id="room_pic" name="room_picture" accept="image/*">
                         </div>
 
                         <!-- Status -->
                         <div class="mb-3">
-                            <label for="status" class="form-label">Status</label>
+                            <label for="edit_status" class="form-label">Status</label>
                             <select class="form-select" id="edit_status" name="status" required>
                                 <option value="available" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'available' ? 'selected' : ''; ?>>Available</option>
                                 <option value="occupied" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'occupied' ? 'selected' : ''; ?>>Occupied</option>
@@ -380,7 +460,6 @@ $conn->close();
                             </select>
                         </div>
 
-                        <!-- Submit Button -->
                         <button type="submit" class="btn btn-primary">Save changes</button>
                     </form>
                 </div>
@@ -388,6 +467,9 @@ $conn->close();
         </div>
     </div>
 <?php endif; ?>
+
+
+
 
 
 

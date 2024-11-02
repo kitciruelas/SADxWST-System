@@ -51,15 +51,26 @@ if (isset($_POST['update'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
     $announcementId = $_POST['announcement-id'];
 
-    $sql = "DELETE FROM announce WHERE announcementId = $announcementId";
-    if (mysqli_query($conn, $sql)) {
-        echo "<script>alert('Announcement deleted successfully');</script>";
-        header("Location: " . $_SERVER['PHP_SELF']);
-        exit;
+    // Step 1: Copy the announcement to the archive table
+    $archiveSql = "INSERT INTO announce_archive (announcementId, title, content, date_published, is_displayed)
+                   SELECT announcementId, title, content, date_published, is_displayed
+                   FROM announce WHERE announcementId = $announcementId";
+
+    if (mysqli_query($conn, $archiveSql)) {
+        // Step 2: Delete the announcement from the original table
+        $deleteSql = "DELETE FROM announce WHERE announcementId = $announcementId";
+        if (mysqli_query($conn, $deleteSql)) {
+            echo "<script>alert('Announcement archived and deleted successfully');</script>";
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit;
+        } else {
+            echo "Error deleting announcement: " . mysqli_error($conn);
+        }
     } else {
-        echo "Error deleting announcement: " . mysqli_error($conn);
+        echo "Error archiving announcement: " . mysqli_error($conn);
     }
 }
+
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
 
@@ -110,7 +121,7 @@ mysqli_close($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="Css_Admin/admin-announce.css">
+    <link rel="stylesheet" href="Css_Admin/ad-announce.css">
 
     <title>Announcements</title>
    
@@ -126,7 +137,10 @@ mysqli_close($conn);
     <div class="sidebar-nav">
         <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i><span>Admin</span></a>
         <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a>
-    </div>
+        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+
+        </div>
 
     <div class="logout">
         <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
@@ -153,12 +167,13 @@ mysqli_close($conn);
         <div class="add-announcement" id="add-new-button">
             Add New Announcement
         </div>
+        
     </div>
-
     <div class="search-container">
-        <input type="text" id="announcement-search" placeholder="Search announcements...">
-        <span class="search-icon">&#128269;</span>
-    </div>
+  <input type="text" id="announcement-search" placeholder="Search announcements...">
+  <i class="fas fa-search search-icon"></i>
+</div>
+
 
     <div id="announcement-form" class="popup-form" style="display: none;">
         <h3 id="form-title">Add New Announcement</h3>
@@ -176,7 +191,7 @@ mysqli_close($conn);
             <button type="button" class="cancel-announcement" id="cancel-announcement">Cancel</button>
         </form>
     </div>
-    
+  
     <!-- update announcement -->
 
     <div id="update-form" class="popup-form" style="display: none;">

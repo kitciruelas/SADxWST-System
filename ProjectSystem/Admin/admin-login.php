@@ -13,9 +13,9 @@
   include '../config/login.php'; // or require 'config.php';
 ?>
   <div class="container">
-  <a href="../land-main/login.html" class="back-link">
+  <!--<a href="../land-main/landing.php" class="back-link">
   <i class="fas fa-arrow-left"></i>
-</a>
+</a>-->
 
     <div class="logo"></div>
     <h2>Dormio: Admin</h2>
@@ -29,7 +29,7 @@
   <div class="form-group">
     <input type="password" name="password" id="password" required placeholder=" " />
     <label for="password">Password</label>
-    <i class="eye-icon fas fa-eye" onclick="togglePasswordVisibility('password', this)"></i>
+    <i class="eye-icon fas fa-eye-slash" onclick="togglePasswordVisibility('password', this)"></i>
   </div>
 
   <button type="submit" class="btn">Sign in</button>

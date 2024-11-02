@@ -40,7 +40,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_user/users-dash.css">
+    <link rel="stylesheet" href="Css_user/usersdash.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
@@ -85,7 +85,7 @@ $conn->close();
 
                         <?php if (!empty($roomAssignment['room_pic'])): ?>
                             <!-- Display the room picture -->
-                            <img src="<?php echo htmlspecialchars($roomAssignment['room_pic']); ?>" alt="Room Picture" class="img-fluid rounded" style="max-width: 300px; height: auto;">
+                            <img src="<?php echo htmlspecialchars($roomAssignment['room_pic']); ?>" alt="Room Picture" class="img-fluid rounded" style="max-width: 500px; height: auto;">
                         <?php else: ?>
                             <p>No room picture available.</p>
                         <?php endif; ?>

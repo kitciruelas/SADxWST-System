@@ -86,7 +86,7 @@ if (isset($_GET['id'])) {
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-
+        
 
         </div>
         
@@ -176,7 +176,7 @@ if (isset($_GET['id'])) {
             <div class="progress mt-2">
                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($visitorCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $visitorCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
-            <a href="manageuser.php" class="btn btn-primary mt-3">View Details</a>
+            <a href="admin-visitor_log.php" class="btn btn-primary mt-3">View Details</a>
         </div>
     </div>
 </div>

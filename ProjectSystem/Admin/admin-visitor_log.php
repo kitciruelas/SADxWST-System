@@ -15,29 +15,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $visitor_id = intval($_POST['visitor_id']); // Sanitize input
 
-        // Prepare the SQL delete statement
-        $sql = "DELETE FROM visitors WHERE id = ?";
-        $stmt = $conn->prepare($sql);
+        // Step 1: Archive the visitor by copying to archive table
+        $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
+                       SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
+                       FROM visitors WHERE id = ?";
+        
+        $archiveStmt = $conn->prepare($archiveSql);
+        if ($archiveStmt) {
+            $archiveStmt->bind_param("i", $visitor_id); // Bind visitor ID as integer
+            
+            if ($archiveStmt->execute()) {
+                // Step 2: Delete the visitor from the original table
+                $deleteSql = "DELETE FROM visitors WHERE id = ?";
+                $deleteStmt = $conn->prepare($deleteSql);
 
-        if ($stmt) {
-            $stmt->bind_param("i", $visitor_id); // Bind visitor ID as integer
-            if ($stmt->execute()) {
-                echo "Visitor deleted successfully.";
-                header("Location: admin-visitor_log.php"); // Redirect after deletion
-                exit;
+                if ($deleteStmt) {
+                    $deleteStmt->bind_param("i", $visitor_id);
+                    if ($deleteStmt->execute()) {
+                        echo "Visitor archived and deleted successfully.";
+                        header("Location: admin-visitor_log.php"); // Redirect after archiving
+                        exit;
+                    } else {
+                        echo "Error deleting visitor from the original table.";
+                    }
+                    $deleteStmt->close();
+                } else {
+                    echo "Failed to prepare the delete statement.";
+                }
             } else {
-                echo "Error deleting visitor.";
+                echo "Error archiving visitor.";
             }
-            $stmt->close();
+            $archiveStmt->close();
         } else {
-            echo "Failed to prepare the SQL statement.";
+            echo "Failed to prepare the archive statement.";
         }
 
     } else {
         echo "Invalid request: Visitor ID is missing or empty.";
     }
 } else {
+    echo "Invalid request method.";
 }
+
 
 
 

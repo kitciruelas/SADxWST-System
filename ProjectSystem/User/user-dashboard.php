@@ -30,7 +30,6 @@ if (isset($_SESSION['id'])) {
             $_SESSION['login_time'] = $login_time;
 
             // Display the login time
-            echo "Login time (Philippines): " . htmlspecialchars($_SESSION['login_time']);
         } else {
             echo "Error updating login time: " . htmlspecialchars($stmt->error);
         }
@@ -146,107 +145,100 @@ $totalRooms = $totalResult->fetch_assoc()['total'];
 // Calculate total pages for pagination
 $totalPages = ceil($totalRooms / $limit);
 
-// Handle the form submission for room application
+
+// Check if the form is submitted via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get the user_id from the session
-    $userId = $_SESSION['id'];
-
-    // Get room_id and comments from the POST request
+    // Capture form data
     $roomId = isset($_POST['room_id']) ? intval($_POST['room_id']) : null;
-    $comments = isset($_POST['comments']) ? $_POST['comments'] : '';
+    $comments = isset($_POST['comments']) ? trim($_POST['comments']) : '';
 
-    // Validate form data
+    // Basic validation
     if ($roomId) {
-        // Check if the user has an active assignment for any room
-        $assignedCheckStmt = $conn->prepare("SELECT room_id FROM RoomApplications WHERE user_id = ? AND status = 'approved'");
-        $assignedCheckStmt->bind_param('i', $userId);
-        $assignedCheckStmt->execute();
-        $assignedCheckResult = $assignedCheckStmt->get_result();
+        // Sanitize user input
+        $comments = htmlspecialchars($comments);
 
-        if ($assignedCheckResult->num_rows > 0) {
-            // User is already assigned a room
-            echo "<script>alert('You are already assigned to another room.');</script>";
-        } else {
-            // Check if the user has already applied for this room
-            $checkStmt = $conn->prepare("SELECT status FROM RoomApplications WHERE user_id = ? AND room_id = ?");
-            $checkStmt->bind_param('ii', $userId, $roomId);
-            $checkStmt->execute();
-            $checkResult = $checkStmt->get_result();
-
-            if ($checkResult->num_rows > 0) {
-                // Fetch the current status of the application
-                $application = $checkResult->fetch_assoc();
-                $status = $application['status'];
-
-                // Show different messages based on the status of the application
-                if ($status == 'pending') {
-                    echo "<script>alert('You have already applied for this room, waiting for approval.');</script>";
-                } elseif ($status == 'approved') {
-                    echo "<script>alert('Your application for this room has already been approved.');</script>";
-                } elseif ($status == 'rejected') {
-                    echo "<script>alert('Your application for this room has been rejected.');</script>";
-                }
-            } else {
-                // Check the room's status and current occupancy
-                $roomCheckStmt = $conn->prepare("SELECT capacity, (SELECT COUNT(*) FROM RoomApplications WHERE room_id = ? AND status = 'approved') AS current_occupancy, status FROM Rooms WHERE room_id = ?");
-                $roomCheckStmt->bind_param('ii', $roomId, $roomId);
-                $roomCheckStmt->execute();
-                $roomResult = $roomCheckStmt->get_result();
-
-                if ($roomResult->num_rows > 0) {
-                    $room = $roomResult->fetch_assoc();
-                    $capacity = $room['capacity'];
-                    $currentOccupancy = $room['current_occupancy'];
-                    $roomStatus = $room['status']; // 'available', 'occupied', or 'maintenance'
-
-                    // Check the room status
-                    if ($roomStatus === 'maintenance') {
-                        echo "<script>alert('The room is currently under maintenance.');</script>";
-                    } elseif ($roomStatus === 'occupied') {
-                        echo "<script>alert('The room is currently occupied.');</script>";
-                    } elseif ($currentOccupancy >= $capacity) {
-                        echo "<script>alert('The room is currently full.');</script>";
-                    } else {
-                        // Prepare the SQL query to insert the application
-                        $stmt = $conn->prepare("INSERT INTO RoomApplications (user_id, room_id, application_date, status, comments) 
-                                                VALUES (?, ?, CURDATE(), 'pending', ?)");
-                        $stmt->bind_param('iis', $userId, $roomId, $comments);
-
-                        // Execute the query
-                        if ($stmt->execute()) {
-                            echo "<script>alert('Your application has been submitted successfully.');</script>";
-                        } else {
-                            echo "<script>alert('Error submitting application: " . $stmt->error . "');</script>";
-                        }
-
-                        // Close the statement
-                        $stmt->close();
-                    }
-                } else {
-                    echo "<script>alert('Room not found.');</script>";
-                }
-
-                // Close the room check statement
-                $roomCheckStmt->close();
-            }
-
-            // Close the check statement
-            $checkStmt->close();
+        // Ensure user is logged in
+        $userId = $_SESSION['id'] ?? null;
+        if (!$userId) {
+            echo "<p class='alert alert-warning'>User not logged in. Please log in to apply.</p>";
+            exit;
         }
 
-        // Close the assigned check statement
-        $assignedCheckStmt->close();
+        // Fetch the old room ID based on the current user
+        $stmt = $conn->prepare("SELECT room_id FROM roomassignments WHERE user_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $userId);  // Bind user_id to fetch the corresponding room_id
+            $stmt->execute();
+            $stmt->bind_result($oldRoomId);
+            $stmt->fetch();
+            $stmt->close();
+        } else {
+            echo "<p class='alert alert-danger'>Error: Could not prepare the statement to fetch old room ID.</p>";
+            exit;
+        }
+
+        // Check if oldRoomId is valid
+        if ($oldRoomId !== null) {
+            // If no comments provided, set it to "No comment"
+            if (empty($comments)) {
+                $comments = "No comment";
+            }
+
+            // Insert into the database
+            $stmt = $conn->prepare("INSERT INTO room_reassignments (new_room_id, old_room_id, user_id, comment, reassignment_date) VALUES (?, ?, ?, ?, NOW())");
+            if ($stmt) {
+                // Bind parameters
+                $stmt->bind_param("iiis", $roomId, $oldRoomId, $userId, $comments);
+
+                if ($stmt->execute()) {
+                    // Success message
+                    echo "<p class='alert alert-success'>Application submitted successfully!</p>";
+                    
+                    // Redirect after success
+                    header("Location: " . $_SERVER['PHP_SELF']); // Redirect to the same page
+                    exit; // Make sure to exit after the redirect
+                } else {
+                    // Execution error
+                    echo "<p class='alert alert-danger'>Error: " . htmlspecialchars($stmt->error) . "</p>";
+                }
+
+                // Close the statement
+                $stmt->close();
+            } else {
+                // Statement preparation error
+                echo "<p class='alert alert-danger'>Error: Could not prepare the statement for insertion.</p>";
+            }
+        } else {
+            echo "<p class='alert alert-warning'>No current room assignment found for this user.</p>";
+        }
     } else {
-        echo "<script>alert('Invalid room ID.');</script>";
+        // Validation error for room ID
+        echo "<p class='alert alert-warning'>Invalid room ID. Please try again.</p>";
     }
+
+    // Close the database connection if needed
+    // Uncomment the following line if you want to close the connection here
+    // $conn->close();
 }
 
 
-
+// Close the database connection
 // Query to fetch rooms from the database with limit and offset for pagination
 $sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms LIMIT $limit OFFSET $offset";
 $result = $conn->query($sql);
 
+$sql = "SELECT 
+            rooms.room_id, 
+            room_number, 
+            room_monthlyrent, 
+            capacity, 
+            room_desc, 
+            room_pic, 
+            status,
+            (SELECT COUNT(*) FROM roomassignments WHERE room_id = rooms.room_id) AS current_occupants 
+        FROM 
+            rooms";
+$result = $conn->query($sql);
 $conn->close();
 ?>
 
@@ -257,12 +249,20 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link href="Css_user/users-dash.css" rel="stylesheet" >
+    <link href="Css_user/usersdash.css" rel="stylesheet" >
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+
 
   
 </head>
@@ -304,76 +304,17 @@ $conn->close();
         ?>
 
         <!-- Button to trigger modal with dynamic data -->
-<button id="openEditUserModal" class="editUserModal"
-    onclick="openEditModal(
-        <?php echo $id; ?>, 
-        '<?php echo htmlspecialchars(addslashes($fname), ENT_QUOTES); ?>', 
-        '<?php echo htmlspecialchars(addslashes($lname), ENT_QUOTES); ?>', 
-        '<?php echo htmlspecialchars(addslashes($mi), ENT_QUOTES); ?>', 
-        <?php echo $age; ?>, 
-        '<?php echo htmlspecialchars(addslashes($address), ENT_QUOTES); ?>', 
-        '<?php echo htmlspecialchars(addslashes($contact), ENT_QUOTES); ?>', 
-        '<?php echo htmlspecialchars(addslashes($sex), ENT_QUOTES); ?>', 
-    )">
-    
-    <i class="fa fa-user"></i></button>
+        <a href="profile.php" class="editUserModal">
+    <i class="fa fa-user"></i>
+</a>
+
+
     
 
 
         <!-- Modal Content -->
-        <div id="editUserModal" class="modal">
-            <div class="addmodal-content">
-                <span class="close" onclick="closeEditModal()">&times;</span>
-                <h2>Edit Profile</h2>
-                <div class="card p-2 shadow-sm">
-                <h6 class="mb-0 text-left">
-    Login time (Philippines): 
-    <?php 
-    // Check if login_time is set in the session before displaying it
-    echo isset($_SESSION['login_time']) ? htmlspecialchars($_SESSION['login_time']) : 'Not logged in';
-    ?>
-</h6>
-                </div>
-                <form method="POST" action="">
-                    <input type="hidden" id="editUserId" name="user_id">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="editFname">First Name:</label>
-                            <input type="text" id="editFname" name="Fname" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editLname">Last Name:</label>
-                            <input type="text" id="editLname" name="Lname" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editMI">Middle Initial:</label>
-                            <input type="text" id="editMI" name="MI">
-                        </div>
-                        <div class="form-group">
-                            <label for="editAge">Age:</label>
-                            <input type="number" id="editAge" name="Age" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editAddress">Address:</label>
-                            <input type="text" id="editAddress" name="Address" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editContact">Contact Number:</label>
-                            <input type="text" id="editContact" name="contact" required pattern="[0-9]{10,11}" title="Please enter a valid contact number (10-11 digits)">
-                        </div>
-                        <div class="form-group">
-                            <label for="editSex">Sex:</label>
-                            <select id="editSex" name="Sex">
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        
-                    </div>
-                    <button type="submit" name="edit_user">Update</button>
-                </form>
-            </div>
-        </div>
+        
+              
     </div>
 
     <!-- ANNOUNCEMENT -->
@@ -397,50 +338,114 @@ $conn->close();
         </div>
 <div class="container">
 <!-- Filter Dropdown -->
+<div class="filter-dropdown mb-4 text-center">
+    <label for="statusFilter" class="me-2">Filter by Status:</label>
+    <select id="statusFilter" class="form-select d-inline-block w-auto" onchange="filterRooms()">
+        <option value="">All</option>
+        <?php 
+        $statuses = ['Available', 'Occupied', 'Maintenance']; 
+        foreach ($statuses as $status): ?>
+            <option value="<?php echo htmlspecialchars($status); ?>">
+                <?php echo htmlspecialchars($status); ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</div>
 
-<div class="filter-dropdown mb-3">
-        <label for="statusFilter">Filter by Status:</label>
-        <select id="statusFilter" class="form-select" onchange="filterRooms()">
-            <option value="">All</option>
-            <?php 
-            // Assuming $statuses is defined earlier
-            $statuses = ['Available', 'Occupied', 'Maintenance']; 
-            foreach ($statuses as $status): ?>
-                <option value="<?php echo htmlspecialchars($status); ?>">
-                    <?php echo htmlspecialchars($status); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
+<!-- Room List -->
+<div class="container">
+    <div class="row justify-content-center">
+    <?php
+if ($result === false) {
+    echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
+} elseif ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $currentOccupants = $row['current_occupants'] ?? 0; 
+        $totalCapacity = $row['capacity'];
 
+        // Determine room status
+        if ($currentOccupants >= $totalCapacity) {
+            $status = 'Occupied';
+        } elseif (strtolower($row['status']) === 'maintenance') {
+            $status = 'Maintenance';
+        } else {
+            $status = 'Available';
+        }
+        ?>
+        <!-- Room Card -->
+        <div class="col-md-4 room-card mb-4 me-3" data-status="<?php echo htmlspecialchars($status); ?>">
+            <div class="card h-100">
+                <?php if (!empty($row['room_pic']) && file_exists("../uploads/" . $row['room_pic'])): ?>
+                    <img src="<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>" 
+                         alt="Room Image" 
+                         class="card-img-top" 
+                         style="cursor: pointer;" 
+                         onclick="openModal('<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>')">
+                <?php else: ?>
+                    <img src="path/to/default/image.jpg" alt="No Image Available" class="card-img-top"> <!-- Fallback image -->
+                <?php endif; ?>
 
-<div class="row">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
+                    <p class="room-price">
+                        Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly
+                    </p>
+                    <p>Capacity: 
+                        <?php echo htmlspecialchars($currentOccupants) . '/' . htmlspecialchars($totalCapacity); ?> people
+                    </p>
+                    <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                    <p>Status: <?php echo htmlspecialchars($status); ?></p>
 
-    <div class="row" id="roomList">
-    <?php if ($result && $result->num_rows > 0): ?>
-        <?php while ($row = $result->fetch_assoc()): ?>
-            <div class="col-md-5 room-card" style="margin: 40PX;" data-status="<?php echo htmlspecialchars($row['status']); ?>">
-            <img src="<?php echo htmlspecialchars(string: $row['room_pic']); ?>" alt="Room Image" class="img-fluid" style="height: 300px; ">
-                <p class="room-price">Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
-                <h5>Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
-                <p>Capacity: <?php echo htmlspecialchars($row['capacity']); ?> people</p>
-                <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
-                <p>Status: <?php echo htmlspecialchars($row['status']); ?></p>
-                <button class="btn btn-primary apply-btn" 
-                        data-room-id="<?php echo $row['room_id']; ?>" 
-                        data-room-number="<?php echo htmlspecialchars($row['room_number']); ?>" 
-                        data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent']); ?>"
-                        data-room-capacity="<?php echo htmlspecialchars($row['capacity']); ?>" 
-                        data-room-status="<?php echo htmlspecialchars($row['status']); ?>" 
-                        data-toggle="modal" data-target="#applyModal">
-                    Apply Now!
-                </button>
+                    <div class="mt-auto">
+                        <?php if ($status === 'Maintenance'): ?>
+                            <button class="btn btn-warning" disabled>Under Maintenance</button>
+                        <?php elseif ($currentOccupants < $totalCapacity): ?>
+                            <button type="button" class="btn  apply-btn" data-bs-toggle="modal" data-bs-target="#applyModal"
+    data-room-id="<?php echo htmlspecialchars($row['room_id'] ?? ''); ?>"
+    data-room-number="<?php echo htmlspecialchars($row['room_number'] ?? ''); ?>"
+    data-room-price="<?php echo htmlspecialchars($row['rent_price'] ?? ''); ?>"
+    data-room-capacity="<?php echo htmlspecialchars($row['capacity'] ?? ''); ?>"
+    data-room-status="<?php echo htmlspecialchars($row['status'] ?? ''); ?>">
+    Apply for Room
+</button>
+<style>
+    .btn {
+    padding: 5px 12px; /* Make the button bigger */
+    background-color: #2B228A; /* Transparent background */
+    color: white; /* Text color */
+    border: 2px solid #2B228A; /* Border color */
+    border-radius: 30px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+}
+
+/* Hover effect */
+.apply-btn:hover {
+    background-color: white; /* Background color on hover */
+    color: #2B228A; /* Text color on hover */
+    border-color: #2B228A; /* Maintain border color on hover */
+}
+
+</style>
+
+                        <?php else: ?>
+                            <button class="btn btn-danger" disabled>Fully Occupied</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
-        <?php endwhile; ?>
-    <?php else: ?>
-        <p>No rooms available for the selected status.</p>
-    <?php endif; ?>
+        </div>
+        <?php
+    }
+} else {
+    echo "<p class='text-center'>No rooms available.</p>";
+}
+?>
+
     </div>
+</div>
+
+
     </div>
 
     <!-- Pagination Links -->
@@ -450,7 +455,7 @@ $conn->close();
         <!-- Previous Page Button -->
         <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
             Previous
-      /button>
+    </button>
 
         <!-- Page Indicator -->
         <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
@@ -467,38 +472,36 @@ $conn->close();
             
     </div>
     </div>
-
-    <!-- Modal Structure -->
-<div class="modal fade" id="applyModal" tabindex="-1" role="dialog" aria-labelledby="applyModalLabel" aria-hidden="true">
+    
+    <!-- Modal HTML Structure -->
+<div class="modal fade" id="applyModal" tabindex="-1" aria-labelledby="applyModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="applyModalLabel">Apply for Room</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="applyForm" action="user-dashboard.php" method="POST">
                     <!-- Hidden input for room_id -->
-                    <input type="hidden" id="roomId" name="room_id">
-
+                    <input type="hidden" name="room_id" id="room_id_input">
+                    
                     <!-- Room Information (populated dynamically) -->
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <p><strong>Room Number:</strong> <span id="modalRoomNumber"></span></p>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <p><strong>Rent Price:</strong> <span id="modalRoomPrice"></span></p>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <p><strong>Capacity:</strong> <span id="modalRoomCapacity"></span></p>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <p><strong>Status:</strong> <span id="modalRoomStatus"></span></p>
                     </div>
 
                     <!-- Optional Comments -->
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="comments">Comments (optional):</label>
                         <textarea id="comments" name="comments" class="form-control"></textarea>
                     </div>
@@ -514,6 +517,8 @@ $conn->close();
 
 
 
+
+
 <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -521,22 +526,8 @@ $conn->close();
     
     <!-- JavaScript -->
     <script>
-     
-     function filterRooms() {
-            const filterValue = document.getElementById('statusFilter').value.toLowerCase();
-            const rooms = document.querySelectorAll('.room-card');
 
-            rooms.forEach(room => {
-                const status = room.getAttribute('data-status').toLowerCase();
-                if (filterValue === '' || status === filterValue) {
-                    room.style.display = ''; // Show the room
-                } else {
-                    room.style.display = 'none'; // Hide the room
-                }
-            });
-        }
-
-        // When the "Apply Now!" button is clicked
+// When the "Apply for Room" button is clicked
 document.querySelectorAll('.apply-btn').forEach(button => {
     button.addEventListener('click', function () {
         // Fetch room data from the data-* attributes
@@ -547,7 +538,7 @@ document.querySelectorAll('.apply-btn').forEach(button => {
         const roomStatus = this.getAttribute('data-room-status');
 
         // Populate the modal fields with room data
-        document.getElementById('roomId').value = roomId;
+        document.getElementById('room_id_input').value = roomId;
         document.getElementById('modalRoomNumber').textContent = roomNumber;
         document.getElementById('modalRoomPrice').textContent = `$${roomPrice}`;
         document.getElementById('modalRoomCapacity').textContent = roomCapacity;
@@ -555,7 +546,38 @@ document.querySelectorAll('.apply-btn').forEach(button => {
     });
 });
 
+function closeModal() {
 
+    $('#applyModal').modal('hide');
+}
+         // Function to open the modal and set the image source
+    function openModal(imageSrc) {
+        document.getElementById('modalImage').src = imageSrc;
+        document.getElementById('imageModal').style.display = 'block';
+    }
+
+    // Function to close the modal
+    function closeModal() {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+    function filterRooms() {
+    var filterValue = document.getElementById('statusFilter').value.toLowerCase();
+    var roomCards = document.querySelectorAll('.room-card');
+
+    roomCards.forEach(function(card) {
+        // Get the status from data-status attribute
+        var status = card.getAttribute('data-status').toLowerCase();
+        
+        // Check if the card should be displayed
+        if (filterValue === "" || status === filterValue) {
+            card.style.display = ""; // Show card
+        } else {
+            card.style.display = "none"; // Hide card
+        }
+    });
+}
+
+ 
        // Function to open the edit modal and populate the form
         function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role) {
             document.getElementById('editUserId').value = id;

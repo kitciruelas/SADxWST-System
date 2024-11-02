@@ -1,9 +1,21 @@
 <?php
 // Database credentials
-define('DB_SERVER', 'localhost');
-define('DB_USERNAME', 'root');  // Change to your DB username
-define('DB_PASSWORD', '');      // Change to your DB password
-define('DB_NAME', 'dormio_db');
+if (!defined('DB_SERVER')) {
+    define('DB_SERVER', 'localhost');
+}
+
+if (!defined('DB_USERNAME')) {
+    define('DB_USERNAME', 'root');  // Change to your DB username
+}
+
+if (!defined('DB_PASSWORD')) {
+    define('DB_PASSWORD', '');      // Change to your DB password
+}
+
+if (!defined('DB_NAME')) {
+    define('DB_NAME', 'dormio_db');
+}
+
 
 // Attempt to connect to MySQL database
 $conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);

@@ -11,88 +11,94 @@ include '../config/config.php'; // Ensure this is correct
 // Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
+
 }
-// Check if the user is logged in
-if (!isset($_SESSION['id'])) {
-    echo "Unauthorized access. Please log in.";
-    exit;
-}
+// Check if the form is submitted
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $userId = $_POST['user_id'];
+    $roomId = $_POST['room_id'];
 
-// Handle form submission for room assignment
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $applicationId = intval($_POST['application_id']);
-    $roomId = intval($_POST['room_id']);
+    // Get the room's capacity
+    $roomCapacityQuery = "SELECT capacity FROM rooms WHERE room_id = ?";
+    $capacityStmt = $conn->prepare($roomCapacityQuery);
+    $capacityStmt->bind_param('i', $roomId);
+    $capacityStmt->execute();
+    $capacityResult = $capacityStmt->get_result();
+    $roomData = $capacityResult->fetch_assoc();
+    $roomCapacity = $roomData['capacity'];
 
-    // Fetch the user_id associated with the application
-    $fetchUserIdQuery = "SELECT user_id FROM RoomApplications WHERE application_id = ?";
-    $userStmt = $conn->prepare($fetchUserIdQuery);
-    $userStmt->bind_param('i', $applicationId);
-    $userStmt->execute();
-    $userStmt->bind_result($userId);
-    $userStmt->fetch();
-    $userStmt->close();
+    // Count current assignments in the room
+    $currentAssignmentsQuery = "SELECT COUNT(*) as current_count FROM roomassignments WHERE room_id = ?";
+    $currentAssignmentsStmt = $conn->prepare($currentAssignmentsQuery);
+    $currentAssignmentsStmt->bind_param('i', $roomId);
+    $currentAssignmentsStmt->execute();
+    $currentAssignmentsResult = $currentAssignmentsStmt->get_result();
+    $currentAssignmentsData = $currentAssignmentsResult->fetch_assoc();
+    $currentCount = $currentAssignmentsData['current_count'];
 
-    // Check if the user already has a room assigned
-    $checkAssignmentQuery = "SELECT assignment_id FROM RoomAssignments WHERE user_id = ?";
-    $assignmentStmt = $conn->prepare($checkAssignmentQuery);
-    $assignmentStmt->bind_param('i', $userId);
-    $assignmentStmt->execute();
-    $assignmentStmt->store_result();
-
-    if ($assignmentStmt->num_rows > 0) {
-        // Update existing room assignment
-        $updateRoomQuery = "UPDATE RoomAssignments SET room_id = ?, assignment_date = CURRENT_DATE WHERE user_id = ?";
-        $updateRoomStmt = $conn->prepare($updateRoomQuery);
-        $updateRoomStmt->bind_param('ii', $roomId, $userId);
-        if ($updateRoomStmt->execute()) {
-            echo "Room assignment updated successfully.";
-        } else {
-            echo "Error updating room assignment.";
-        }
-        $updateRoomStmt->close();
+    // Check if the room is at capacity
+    if ($currentCount >= $roomCapacity) {
+        // Alert for full capacity
+        echo "<script>alert('Cannot assign room. Room is at full capacity.');</script>";
     } else {
-        // Insert new room assignment
-        $insertRoomQuery = "INSERT INTO RoomAssignments (user_id, room_id, assignment_date) VALUES (?, ?, CURRENT_DATE)";
-        $insertRoomStmt = $conn->prepare($insertRoomQuery);
-        $insertRoomStmt->bind_param('ii', $userId, $roomId);
-        if ($insertRoomStmt->execute()) {
-            echo "Room assigned successfully.";
+        // Check if the user already has a room assigned
+        $checkAssignmentQuery = "SELECT assignment_id FROM roomassignments WHERE user_id = ?";
+        $assignmentStmt = $conn->prepare($checkAssignmentQuery);
+        $assignmentStmt->bind_param('i', $userId);
+        $assignmentStmt->execute();
+        $assignmentStmt->store_result();
+
+        if ($assignmentStmt->num_rows > 0) {
+            // Update existing room assignment
+            $updateRoomQuery = "UPDATE roomassignments SET room_id = ?, assignment_date = CURRENT_DATE WHERE user_id = ?";
+            $updateRoomStmt = $conn->prepare($updateRoomQuery);
+            $updateRoomStmt->bind_param('ii', $roomId, $userId);
+            
+            if ($updateRoomStmt->execute()) {
+                echo "<script>alert('Room assignment updated successfully.');</script>";
+            } else {
+                echo "<script>alert('Error updating room assignment.');</script>";
+            }
+            $updateRoomStmt->close();
         } else {
-            echo "Error assigning room.";
+            // Insert new room assignment
+            $insertRoomQuery = "INSERT INTO roomassignments (user_id, room_id, assignment_date) VALUES (?, ?, CURRENT_DATE)";
+            $insertRoomStmt = $conn->prepare($insertRoomQuery);
+            $insertRoomStmt->bind_param('ii', $userId, $roomId);
+            
+            if ($insertRoomStmt->execute()) {
+                echo "<script>alert('Room assigned successfully.');</script>";
+            } else {
+                echo "<script>alert('Error assigning room.');</script>";
+            }
+            $insertRoomStmt->close();
         }
-        $insertRoomStmt->close();
+        $assignmentStmt->close();
     }
-    $assignmentStmt->close();
+    // Close the capacity check statement
+    $capacityStmt->close();
+    // Close the current assignments check statement
+    $currentAssignmentsStmt->close();
 }
 
-// SQL query to get approved applications and their current room assignments (if any)
-$sql = "
-    SELECT ra.application_id, 
-           CONCAT(u.fname, ' ', u.lname) AS resident_name, 
-           r.room_number, 
-           r.room_desc, 
-           ra.room_id AS current_room_id, 
-           (SELECT room_number FROM rooms WHERE room_id = ass.room_id) AS assigned_room_number
-    FROM roomapplications AS ra
-    LEFT JOIN rooms AS r ON ra.room_id = r.room_id
-    LEFT JOIN users AS u ON ra.user_id = u.id
-    LEFT JOIN roomassignments AS ass ON ra.user_id = ass.user_id
-    WHERE ra.status = 'approved'
-";
+
+$sql = "SELECT users.id, CONCAT(users.fname, ' ', users.lname) AS resident, rooms.room_number, rooms.room_monthlyrent 
+        FROM users 
+        LEFT JOIN roomassignments ON users.id = roomassignments.user_id 
+        LEFT JOIN rooms ON roomassignments.room_id = rooms.room_id 
+        ORDER BY users.id DESC"; // Ordering by users.id in descending order
 
 $applicationsResult = $conn->query($sql);
 
 
-// Fetch available rooms from Rooms table
-$availableRoomsQuery = "SELECT room_id, room_number FROM Rooms WHERE status = 'available'";
-$availableRoomsResult = $conn->query($availableRoomsQuery);
 
-$availableRooms = [];
-if ($availableRoomsResult->num_rows > 0) {
-    while ($room = $availableRoomsResult->fetch_assoc()) {
-        $availableRooms[] = $room;
-    }
-}
+
+// Fetch available rooms for dropdown
+$roomsQuery = "SELECT room_id, room_number FROM rooms WHERE status = 'available'";
+$roomsResult = $conn->query($roomsQuery);
+$availableRooms = $roomsResult->fetch_all(MYSQLI_ASSOC);
+
+
 $conn->close();
 
 ?>
@@ -153,47 +159,38 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Application Room</h2>
+        <h2>Room Assign</h2>
     </div>
 
     <!-- Main content -->
     <div class="main-content">        
         
-    <h2>Room Assignments</h2>
+      <!-- <h2>Room Assignments</h2>-->
 
-    <!-- Display the list of approved applications -->
-<?php if ($applicationsResult->num_rows > 0): ?>
+
+      <?php if ($applicationsResult->num_rows > 0): ?>
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Application ID</th>
-                <th>Resident</th>
-                <th>Current Room Number</th>
-                <th>Assigned Room Number</th> <!-- Show the assigned room if any -->
-                <th>Assign New Room</th> <!-- Dropdown to assign a new room -->
+                <th>No.</th> <!-- Serial Number Column -->
+                <th>Resident</th> <!-- Combined Name Column -->
+                <th>Room Assigned</th>
+                <th>Monthly Rent</th>
+                <th>Assign New Room</th>
             </tr>
         </thead>
         <tbody>
-            <?php while ($application = $applicationsResult->fetch_assoc()): ?>
+            <?php 
+            $counter = 1; // Initialize counter
+            while ($row = $applicationsResult->fetch_assoc()): ?>
                 <tr>
-                    <td><?php echo htmlspecialchars($application['application_id']); ?></td>
-                    <td><?php echo htmlspecialchars($application['resident_name']); ?></td>
-                    <td><?php echo htmlspecialchars($application['room_number']); ?></td>
-
+                    <td><?php echo $counter++; ?></td> <!-- Display the current counter and increment -->
+                    <td><?php echo htmlspecialchars($row['resident']); ?></td> <!-- Use the combined name -->
+                    <td><?php echo htmlspecialchars($row['room_number'] ?? 'No Room Assigned'); ?></td>
+                    <td><?php echo isset($row['room_monthlyrent']) ? number_format($row['room_monthlyrent'], 2) : 'N/A'; ?></td>
                     <td>
-                        <?php if (!empty($application['assigned_room_number'])): ?>
-                            <?php echo htmlspecialchars($application['assigned_room_number']); ?>
-                        <?php else: ?>
-                            Not yet assigned
-                        <?php endif; ?>
-                    </td>
-
-                    <td>
-                        <!-- Room assignment form -->
-                        <form action="room-assign.php" method="POST">
-                            <input type="hidden" name="application_id" value="<?php echo $application['application_id']; ?>">
-
-                            <!-- Dropdown for selecting a new room -->
+                        <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
+                            <input type="hidden" name="user_id" value="<?php echo $row['id']; ?>">
                             <select name="room_id" required>
                                 <option value="">Select Room</option>
                                 <?php foreach ($availableRooms as $room): ?>
@@ -202,7 +199,6 @@ $conn->close();
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-
                             <button type="submit" class="btn btn-primary">Assign Room</button>
                         </form>
                     </td>
@@ -211,9 +207,8 @@ $conn->close();
         </tbody>
     </table>
 <?php else: ?>
-    <p>No approved applications available for assignment.</p>
+    <p>No users found.</p>
 <?php endif; ?>
-
 
 
        </div>

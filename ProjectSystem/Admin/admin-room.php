@@ -28,26 +28,10 @@ $applicationsQuery = "SELECT COUNT(*) AS pendingApplications FROM  RoomApplicati
 $applicationsResult = $conn->query($applicationsQuery);
 $pendingApplications = $applicationsResult->fetch_assoc()['pendingApplications'];
 
-// Set limit of records per page
-$limit = 6;
 
-// Get the current page number from the URL, default to page 1
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 
-// Calculate the starting point (offset)
-$offset = ($page - 1) * $limit;
+    
 
-// Query to fetch rooms from the database with limit and offset for pagination
-$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms LIMIT $limit OFFSET $offset";
-$result = $conn->query($sql);
-
-// Query to get the total number of rooms (for pagination calculation)
-$totalRoomsQuery = "SELECT COUNT(*) AS total FROM rooms";
-$totalResult = $conn->query($totalRoomsQuery);
-$totalRooms = $totalResult->fetch_assoc()['total'];
-
-// Calculate total pages
-$totalPages = ceil($totalRooms / $limit);
 
 $conn->close();
 ?>
@@ -148,13 +132,12 @@ $conn->close();
                     </div>
                 </div>
 
-                <!-- Room Application Card -->
                 <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card text-center">
                         <div class="card-body">
-                            <span class="badge-status"><?php echo $pendingApplications; ?> Pending Applications</span>
+                            <span class="badge-status"><?php echo $pendingApplications; ?> Pending Reassign</span>
                             <i class="fas fa-file-alt fa-3x"></i>
-                            <h5 class="card-title mt-3">Room Application</h5>
+                            <h5 class="card-title mt-3">Reassign Room</h5>
                             <p class="card-text">Apply for room allocation.</p>
                             <div class="progress mt-2">
                                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($pendingApplications / 100) * 100; ?>%;" aria-valuenow="<?php echo $pendingApplications; ?>" aria-valuemin="0" aria-valuemax="100"></div>
@@ -166,75 +149,7 @@ $conn->close();
             </div>
         </div>
 
-                <!-- Room Display-->
-
-                <h1 class="text-center">Rooms</h1>
-
-<div class="container">
-    <div class="row">
-
-        <!-- Loop through the database records and display each room -->
-        <?php
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                ?>
-                <div class="col-md-4">
-                    <div class="room-card">
-                        <!-- Display room image -->
-                        <img src="<?php echo $row['room_pic']; ?>" alt="Room Image">
-
-                        <!-- Rent Price -->
-                        <p class="room-price">Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
-                        
-                         <!-- Room Number -->
-                         <h5>Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
-
-                        <!-- Room Capacity -->
-                        <p>Capacity: <?php echo htmlspecialchars($row['capacity']); ?> people</p>
-
-                        <!-- Room Description -->
-                        <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
-
-                        <!-- Room Status -->
-                        <p>Status: <?php echo htmlspecialchars($row['status']); ?></p>
-
-                        <button class="apply-btn" id="applyNowBtn">Apply Now!</button>
-                                        </div>
-                </div>
-                <?php
-            }
-        } else {
-            echo "<p>No rooms available.</p>";
-        }
-        ?>
-
-    </div>
-
-    <!-- Pagination Links -->
-    <div class="pagination">
-         <!-- Pagination Links -->
-    <div id="pagination">
-        <!-- Previous Page Button -->
-        <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
-            Previous
-        </button>
-
-        <!-- Page Indicator -->
-        <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
-
-        <!-- Next Page Button -->
-        <button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
-            Next
-        </button>
-    </div>
-</div>
-
-</div>
-
-            
-    </div>
-
-
+    
     
     <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

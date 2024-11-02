@@ -103,24 +103,66 @@ if (isset($_POST['edit_user'])) {
     }
 }
  
-// Handle delete user request
+
+// Handle delete (archive) user request
 if (isset($_POST['delete_user'])) {
     $userId = intval($_POST['user_id']);
     
-    $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-
-    if ($stmt) {
-        $stmt->bind_param("i", $userId);
-        if ($stmt->execute()) {
-            echo "<script>alert('User deleted successfully!');</script>";
+    // Archive user from users table
+    $archiveUsers = $conn->prepare("INSERT INTO users_archive (id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, archived_at)
+                                    SELECT id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, NOW()
+                                    FROM users WHERE id = ?");
+    
+    if ($archiveUsers) {
+        $archiveUsers->bind_param("i", $userId);
+        if ($archiveUsers->execute()) {
+            // Prepare delete statement for users after archiving
+            $stmtUsers = $conn->prepare("DELETE FROM users WHERE id = ?");
+            if ($stmtUsers) {
+                $stmtUsers->bind_param("i", $userId);
+                if ($stmtUsers->execute()) {
+                    echo "<script>alert('User archived and deleted successfully!');</script>";
+                } else {
+                    echo "<script>alert('Error deleting user: " . $stmtUsers->error . "');</script>";
+                }
+                $stmtUsers->close();
+            }
         } else {
-            echo "<script>alert('Error: " . $stmt->error . "');</script>";
+            echo "<script>alert('Error archiving user: " . $archiveUsers->error . "');</script>";
         }
-        $stmt->close();
+        $archiveUsers->close();
     } else {
-        echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
+        echo "<script>alert('Error preparing statement for user archiving: " . $conn->error . "');</script>";
+    }
+    
+    // Archive staff if applicable
+    $archiveStaff = $conn->prepare("INSERT INTO staff_archive (id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, archived_at)
+                                    SELECT id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, NOW()
+                                    FROM staff WHERE id = ?");
+    
+    if ($archiveStaff) {
+        $archiveStaff->bind_param("i", $userId);
+        if ($archiveStaff->execute()) {
+            // Prepare delete statement for staff after archiving
+            $stmtStaff = $conn->prepare("DELETE FROM staff WHERE id = ?");
+            if ($stmtStaff) {
+                $stmtStaff->bind_param("i", $userId);
+                if ($stmtStaff->execute()) {
+                    // Optionally alert if staff entry was deleted
+                } else {
+                    echo "<script>alert('Error deleting staff: " . $stmtStaff->error . "');</script>";
+                }
+                $stmtStaff->close();
+            }
+        } else {
+            echo "<script>alert('Error archiving staff: " . $archiveStaff->error . "');</script>";
+        }
+        $archiveStaff->close();
+    } else {
+        echo "<script>alert('Error preparing statement for staff archiving: " . $conn->error . "');</script>";
     }
 }
+
 
 
 // Handle the filter and search from the query string
@@ -188,7 +230,7 @@ if (!empty($search)) {
     $sql .= ") as combined_data";  // No search, show all filtered results
 }
 
-$sql .= " ORDER BY Lname ASC LIMIT $startRow, $rowsPerPage";
+$sql .= " ORDER BY id DESC LIMIT $startRow, $rowsPerPage";
 
 $result = $conn->query($sql);
 
@@ -238,38 +280,45 @@ $result = $conn->query($sql);
         <h2>Manage Users</h2>
     </div>
 
-
-    <!-- Main content -->
-    <div class="main-content">        
-        <div class="button">
-         <div class="search-container">
-         <form method="GET" action="" class="search-form" style="position: relative;">
-    <input type="text" id="searchInput" name="search" placeholder="Search for names, roles, etc." value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" style="padding-left: 30px;">
-    <button type="submit" style="display: none;"></button>
-    <span style="position: absolute; top: 40%; left: 8px; transform: translateY(-50%); color: #ccc;">
-        <i class="fas fa-search"></i>
-    </span>
-</form>
-           <button id="createButton" class="btn" data-bs-toggle="modal" data-bs-target="#userModal">Add User</button>
-
-                <!-- <button onclick="printTable()">Print Table</button> -->
-         </div>
-         
-        </div
     
+    <!-- Main content -->
+    <div class="main-content">   
+    <!-- Search Form -->
+    <div class="search-container" style="flex: 1; margin-right: auto;"> <!-- Flex for search -->
+        <form method="GET" action="" class="search-form" style="position: relative; width: 100%;"> <!-- Search form -->
+            <input type="text" id="searchInput" name="search" placeholder="Search for names, roles, etc." 
+                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
+                style="padding-left: 30px; padding-right: 30px; width: 100%; box-sizing: border-box;">
+            <button type="submit" style="display: none;"></button>
+            <span style="position: absolute; top: 40%; left: 8px; transform: translateY(-50%); color: #ccc;">
+                <i class="fas fa-search"></i>
+            </span>
+        </form>
+    </div>
+
 
         <!-- User Table Structure -->
         <div class="table-container">
-            
-            <form method="GET" action="" class="filter-form" style="    margin-right: 5px; ">
-        <label for="filter" >Filter by Role:</label>
+   <!-- Add User Button -->
+   
+    <!-- Filter Form -->
+    <div class="container" style="display: flex; align-items: center; justify-content: space-between;"> <!-- Main container -->
+    <!-- Filter Form -->
+    <form method="GET" action="" class="filter-form" style="margin-left: 10px;"> <!-- Filter form -->
+        <label for="filter">Filter by Role:</label>
         <select name="filter" id="filter" onchange="this.form.submit()">
             <option value="all" <?php if ($filter === 'all') echo 'selected'; ?>>All</option>
             <option value="General User" <?php if ($filter === 'General User') echo 'selected'; ?>>General User</option>
             <option value="Staff" <?php if ($filter === 'Staff') echo 'selected'; ?>>Staff</option>
         </select>
     </form> 
-        
+
+    <!-- Add User Button -->
+    <div class="button" style="margin-left: auto;"> <!-- Flex for button -->
+        <button  onclick="showModal()" id="createButton" class="btn" data-bs-toggle="modal" data-bs-target="#userModal">Add User</button>
+    </div>
+</div>
+
             <table id="userTable" class="table">
                 <thead>
                     <tr>
@@ -362,8 +411,8 @@ if ($result === false) {
         <!-- Add User Modal -->
 <div id="userModal" class="modal">
     <div class="addmodal-content">
-        <span class="close" onclick="hideModal()" style="cursor:pointer;">&times;</span>
-        <h2 id="add-user">Add New User</h2>
+    <span class="close" onclick="hideModal()" style="cursor: pointer; font-size: 24px;">&times;</span>
+    <h2 id="add-user">Add New User</h2>
         <form method="POST" action="" onsubmit="return validateForm();">
             <div class="form-grid">
                 <div class="form-group">
@@ -417,7 +466,20 @@ if ($result === false) {
         </form>
     </div>
 </div>
-
+<style>
+    /* Modal Background */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1050; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.5); /* Black w/ opacity */
+}
+</style>
 <!-- Edit User Modal -->
 <div id="editUserModal" class="modal">
     <div class="addmodal-content">
@@ -471,6 +533,12 @@ if ($result === false) {
 
         <!-- JavaScript for modal functionality -->
         <script>
+function hideModal() {
+    const modal = document.getElementById("userModal");
+    modal.style.display = "none"; // Hide the modal
+}
+
+            
    document.addEventListener('DOMContentLoaded', function() {
     const rowsPerPage = 10; // Limit to 10 rows per page
     let currentPage = 1;

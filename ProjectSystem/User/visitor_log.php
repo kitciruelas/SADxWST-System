@@ -70,23 +70,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // **Delete Visitor Logic**
-    if (isset($_POST['delete_visitor_id'])) {
-        $visitorId = (int)$_POST['delete_visitor_id'];
+   // **Archive Visitor Logic**
+if (isset($_POST['delete_visitor_id'])) {  // Using delete trigger as archive action
+    $visitorId = (int)$_POST['delete_visitor_id'];
 
-        $stmt = $conn->prepare(
-            "DELETE FROM visitors WHERE id = ? AND visiting_user_id = ?"
-        );
-        $stmt->bind_param("ii", $visitorId, $userId);
+    // Start a transaction
+    $conn->begin_transaction();
 
-        if ($stmt->execute()) {
-            echo "<script>alert('Visitor deleted successfully!'); window.location.href='visitor_log.php';</script>";
-            exit();
-        } else {
-            echo "<script>alert('Error deleting visitor: " . $stmt->error . "'); window.history.back();</script>";
-            exit();
-        }
+    // Step 1: Archive the visitor by copying it to the archive table
+    $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
+                   SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
+                   FROM visitors WHERE id = ? AND visiting_user_id = ?";
+    $stmt = $conn->prepare($archiveSql);
+    $stmt->bind_param("ii", $visitorId, $userId);
+
+    if (!$stmt->execute()) {
+        echo "<script>alert('Error archiving visitor: " . $stmt->error . "'); window.history.back();</script>";
+        $conn->rollback();
+        exit();
     }
+    $stmt->close();
+
+    // Step 2: Delete the visitor from the original `visitors` table
+    $deleteSql = "DELETE FROM visitors WHERE id = ? AND visiting_user_id = ?";
+    $stmt = $conn->prepare($deleteSql);
+    $stmt->bind_param("ii", $visitorId, $userId);
+
+    if (!$stmt->execute()) {
+        echo "<script>alert('Error deleting visitor: " . $stmt->error . "'); window.history.back();</script>";
+        $conn->rollback();
+        exit();
+    }
+    $stmt->close();
+
+    // Commit the transaction
+    $conn->commit();
+
+    echo "<script>alert('Visitor Deleted successfully!'); window.location.href='visitor_log.php';</script>";
+    exit();
+}
+
 }
 
 
@@ -124,7 +147,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_user/v-log.css">
+    <link rel="stylesheet" href="Css_user/vip-log.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">

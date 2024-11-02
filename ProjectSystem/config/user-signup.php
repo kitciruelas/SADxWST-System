@@ -69,10 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Contact number validation (10-11 digits)
-    if (!preg_match('/^[0-9]{10,11}$/', $contact)) {
-        echo "<script>alert('Please enter a valid contact number (10-11 digits).'); window.history.back();</script>";
+    if (!preg_match('/^09[0-9]{8,9}$/', $contact)) {
+        echo "<script>alert('Please enter a valid contact number. It should be 10 or 11 digits long and start with 09.'); window.history.back();</script>";
         exit;
     }
+    
 
     // Sex validation (ensure it's a valid option)
     $validSexOptions = ['Male', 'Female', 'Other'];

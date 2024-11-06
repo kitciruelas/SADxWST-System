@@ -41,11 +41,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                           </script>";
                 } else {
                     // Redirect back to login page on invalid password
-                    echo "<script>alert('Wrong email and password. Please try again.'); window.location.href = '../Admin/admin-login.php';</script>";
+                    echo "<script>alert('Wrong email and password. Please try again.'); window.location.href = '../Admin/index.php';</script>";
                 }
             } else {
                 // Redirect back to login page if no account found
-                echo "<script>alert('Wrong email and password. Please try again.'); window.location.href = '../Admin/admin-login.php';</script>";
+                echo "<script>alert('Wrong email and password. Please try again.'); window.location.href = '../Admin/index.php';</script>";
             }
             $stmt->close();
         }

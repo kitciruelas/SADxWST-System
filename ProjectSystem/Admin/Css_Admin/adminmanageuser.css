@@ -625,7 +625,7 @@ input, select {
 }
 
 button {
-    padding: 6px 12px; /* Button padding */
+    padding: 6px 10px; /* Button padding */
     background-color: transparent; /* Transparent background */
     color: 2B228A; /* White text */
     border: none; /* No border */
@@ -649,7 +649,7 @@ button:hover {
     color:#2B228A; /* White text on hover */
 }
 .btn-delete {
-    padding: 6px 12px; /* Button padding */
+    padding: 6px 10px; /* Button padding */
     background-color: transparent; /* Transparent background */
     color: red; /* Text color */
     border: none; /* No border */

@@ -160,65 +160,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Ensure user is logged in
         $userId = $_SESSION['id'] ?? null;
         if (!$userId) {
-            echo "<p class='alert alert-warning'>User not logged in. Please log in to apply.</p>";
+            echo "<script>alert('User not logged in. Please log in to apply.') ;window.history.back();</script>";
             exit;
         }
 
         // Fetch the old room ID based on the current user
         $stmt = $conn->prepare("SELECT room_id FROM roomassignments WHERE user_id = ?");
         if ($stmt) {
-            $stmt->bind_param("i", $userId);  // Bind user_id to fetch the corresponding room_id
+            $stmt->bind_param("i", $userId);
             $stmt->execute();
             $stmt->bind_result($oldRoomId);
             $stmt->fetch();
             $stmt->close();
         } else {
-            echo "<p class='alert alert-danger'>Error: Could not prepare the statement to fetch old room ID.</p>";
+            echo "<script>alert('Error: Could not prepare the statement to fetch old room ID.');window.history.back();</script>";
             exit;
         }
 
-        // Check if oldRoomId is valid
-        if ($oldRoomId !== null) {
-            // If no comments provided, set it to "No comment"
-            if (empty($comments)) {
-                $comments = "No comment";
-            }
+        // Check if the selected room is the same as the current room
+        if ($oldRoomId === $roomId) {
+            echo "<script>alert('You are already assigned to this room. Please select a different room.');window.history.back();</script>";
+            exit;
+        }
 
-            // Insert into the database
-            $stmt = $conn->prepare("INSERT INTO room_reassignments (new_room_id, old_room_id, user_id, comment, reassignment_date) VALUES (?, ?, ?, ?, NOW())");
-            if ($stmt) {
-                // Bind parameters
-                $stmt->bind_param("iiis", $roomId, $oldRoomId, $userId, $comments);
+        // Check for existing reassignment requests
+        $stmt = $conn->prepare("SELECT status FROM room_reassignments WHERE user_id = ? ORDER BY reassignment_date DESC LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $stmt->bind_result($existingStatus);
+            $stmt->fetch();
+            $stmt->close();
 
-                if ($stmt->execute()) {
-                    // Success message
-                    echo "<p class='alert alert-success'>Application submitted successfully!</p>";
-                    
-                    // Redirect after success
-                    header("Location: " . $_SERVER['PHP_SELF']); // Redirect to the same page
-                    exit; // Make sure to exit after the redirect
-                } else {
-                    // Execution error
-                    echo "<p class='alert alert-danger'>Error: " . htmlspecialchars($stmt->error) . "</p>";
-                }
-
-                // Close the statement
-                $stmt->close();
-            } else {
-                // Statement preparation error
-                echo "<p class='alert alert-danger'>Error: Could not prepare the statement for insertion.</p>";
+            // Allow reassignment if the last request was approved or rejected
+            if ($existingStatus === 'pending') {
+                echo "<script>alert('You already have a reassignment request waiting for approval.');window.history.back();</script>";
+                exit;
             }
         } else {
-            echo "<p class='alert alert-warning'>No current room assignment found for this user.</p>";
+            echo "<script>alert('Error: Could not prepare the statement to check existing requests.');window.history.back();</script>";
+            exit;
+        }
+
+        // If no comments provided, set it to "No comment"
+        if (empty($comments)) {
+            $comments = "No comment";
+        }
+
+        // Insert into the database
+        $stmt = $conn->prepare("INSERT INTO room_reassignments (new_room_id, old_room_id, user_id, comment, reassignment_date, status) VALUES (?, ?, ?, ?, NOW(), 'pending')");
+        if ($stmt) {
+            $stmt->bind_param("iiis", $roomId, $oldRoomId, $userId, $comments);
+
+            if ($stmt->execute()) {
+                echo "<script>alert('Application submitted successfully!');</script>";
+                echo "<script>window.location.href = '" . $_SERVER['PHP_SELF'] . "';</script>";
+                exit;
+            } else {
+                echo "<script>alert('Error: " . htmlspecialchars($stmt->error) . "');</script>";
+            }
+
+            $stmt->close();
+        } else {
+            echo "<script>alert('Error: Could not prepare the statement for insertion.');</script>";
         }
     } else {
-        // Validation error for room ID
-        echo "<p class='alert alert-warning'>Invalid room ID. Please try again.</p>";
+        echo "<script>alert('Invalid room ID. Please try again.');</script>";
     }
-
-    // Close the database connection if needed
-    // Uncomment the following line if you want to close the connection here
-    // $conn->close();
 }
 
 
@@ -249,22 +257,17 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link href="Css_user/usersdash.css" rel="stylesheet" >
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-<!-- Bootstrap CSS -->
+<!-- Font Awesome CSS for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link href="Css_user/userdashboard.css" rel="stylesheet">
+
+<!-- Your custom CSS (placed last to ensure it overrides Bootstrap) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- Bootstrap JS and dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
 
-
-  
 </head>
 <body>
 
@@ -288,20 +291,8 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
-        <!-- Button to trigger modal with dynamic data -->
-        <?php
-        // Set default values for session variables if not set
-        $id = isset($_SESSION['id']) ? (int)$_SESSION['id'] : 0;
-        $fname = isset($_SESSION['Fname']) ? htmlspecialchars($_SESSION['Fname'], ENT_QUOTES) : '';
-        $lname = isset($_SESSION['Lname']) ? htmlspecialchars($_SESSION['Lname'], ENT_QUOTES) : '';
-        $mi = isset($_SESSION['MI']) ? htmlspecialchars($_SESSION['MI'], ENT_QUOTES) : '';
-        $age = isset($_SESSION['Age']) ? (int)$_SESSION['Age'] : 0;
-        $address = isset($_SESSION['Address']) ? htmlspecialchars($_SESSION['Address'], ENT_QUOTES) : '';
-        $contact = isset($_SESSION['contact']) ? htmlspecialchars($_SESSION['contact'], ENT_QUOTES) : '';
-        $sex = isset($_SESSION['Sex']) ? htmlspecialchars($_SESSION['Sex'], ENT_QUOTES) : '';
-
-        ?>
+        <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["Fname"]); ?>!</h2>
+        
 
         <!-- Button to trigger modal with dynamic data -->
         <a href="profile.php" class="editUserModal">
@@ -336,9 +327,12 @@ $conn->close();
                 <?php endif; ?>
             </div>
         </div>
+
+
+        
 <div class="container">
 <!-- Filter Dropdown -->
-<div class="filter-dropdown mb-4 text-center">
+<div class="filter-dropdown mb-4 text-start">
     <label for="statusFilter" class="me-2">Filter by Status:</label>
     <select id="statusFilter" class="form-select d-inline-block w-auto" onchange="filterRooms()">
         <option value="">All</option>
@@ -351,6 +345,7 @@ $conn->close();
         <?php endforeach; ?>
     </select>
 </div>
+
 
 <!-- Room List -->
 <div class="container">
@@ -373,7 +368,7 @@ if ($result === false) {
         }
         ?>
         <!-- Room Card -->
-        <div class="col-md-4 room-card mb-4 me-3" data-status="<?php echo htmlspecialchars($status); ?>">
+        <div class="col-md-3 room-card mb-4 me-3" data-status="<?php echo htmlspecialchars($status); ?>">
             <div class="card h-100">
                 <?php if (!empty($row['room_pic']) && file_exists("../uploads/" . $row['room_pic'])): ?>
                     <img src="<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>" 
@@ -400,33 +395,15 @@ if ($result === false) {
                         <?php if ($status === 'Maintenance'): ?>
                             <button class="btn btn-warning" disabled>Under Maintenance</button>
                         <?php elseif ($currentOccupants < $totalCapacity): ?>
-                            <button type="button" class="btn  apply-btn" data-bs-toggle="modal" data-bs-target="#applyModal"
+                            <button type="button" class="btns btn-primary apply-btn" data-bs-toggle="modal" data-bs-target="#applyModal"
     data-room-id="<?php echo htmlspecialchars($row['room_id'] ?? ''); ?>"
     data-room-number="<?php echo htmlspecialchars($row['room_number'] ?? ''); ?>"
-    data-room-price="<?php echo htmlspecialchars($row['rent_price'] ?? ''); ?>"
+    data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent'] ?? ''); ?>"
     data-room-capacity="<?php echo htmlspecialchars($row['capacity'] ?? ''); ?>"
     data-room-status="<?php echo htmlspecialchars($row['status'] ?? ''); ?>">
-    Apply for Room
+    Reassign Room
 </button>
-<style>
-    .btn {
-    padding: 5px 12px; /* Make the button bigger */
-    background-color: #2B228A; /* Transparent background */
-    color: white; /* Text color */
-    border: 2px solid #2B228A; /* Border color */
-    border-radius: 30px; /* Rounded corners */
-    cursor: pointer; /* Pointer cursor on hover */
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
-}
 
-/* Hover effect */
-.apply-btn:hover {
-    background-color: white; /* Background color on hover */
-    color: #2B228A; /* Text color on hover */
-    border-color: #2B228A; /* Maintain border color on hover */
-}
-
-</style>
 
                         <?php else: ?>
                             <button class="btn btn-danger" disabled>Fully Occupied</button>
@@ -467,7 +444,6 @@ if ($result === false) {
     </div>
 </div>
 
-</div>
 
             
     </div>
@@ -514,6 +490,7 @@ if ($result === false) {
 </div>
 
 
+</div>
 
 
 
@@ -522,6 +499,8 @@ if ($result === false) {
 <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
 
     
     <!-- JavaScript -->
@@ -540,7 +519,7 @@ document.querySelectorAll('.apply-btn').forEach(button => {
         // Populate the modal fields with room data
         document.getElementById('room_id_input').value = roomId;
         document.getElementById('modalRoomNumber').textContent = roomNumber;
-        document.getElementById('modalRoomPrice').textContent = `$${roomPrice}`;
+        document.getElementById('modalRoomPrice').textContent = `₱${roomPrice}`;
         document.getElementById('modalRoomCapacity').textContent = roomCapacity;
         document.getElementById('modalRoomStatus').textContent = roomStatus;
     });

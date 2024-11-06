@@ -3,7 +3,7 @@ session_start();
 include '../config/config.php'; // or require 'config.php';
 
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
-    header("location: admin-login.php");
+    header("location: index.php");
     exit;
 }
 if (!isset($_SESSION['login_time'])) {
@@ -52,6 +52,9 @@ if (isset($_GET['id'])) {
         $announcement = mysqli_fetch_assoc($result);
     }
 }
+
+
+
 ?>
 
 <!DOCTYPE html>
@@ -67,6 +70,8 @@ if (isset($_GET['id'])) {
 
 <!-- FontAwesome for Icons -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 
 <!-- Custom CSS -->
@@ -134,9 +139,16 @@ if (isset($_GET['id'])) {
         
      
         <div class="dashboard container">
+
+
+ 
+
     <!-- Row for Grid Alignment -->
     <div class="row">
     <div class="col-lg-4 col-md-6 mb-4">
+        
+   
+
         <div class="card text-center">
             <div class="card-body">
                 <span class="badge-status"><?php echo $userCount; ?> Total Users</span>
@@ -191,7 +203,6 @@ if (isset($_GET['id'])) {
     <!-- Script -->
 
     <script>
-
 // Form validation function
 function validateForm() {
     let fname = document.getElementById('editFname').value;

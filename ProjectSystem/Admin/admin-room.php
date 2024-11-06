@@ -24,7 +24,7 @@ $assignedRoomResult = $conn->query($assignedRoomQuery);
 $assignedRooms = $assignedRoomResult->fetch_assoc()['assignedRooms'];
 
 // Query for room applications
-$applicationsQuery = "SELECT COUNT(*) AS pendingApplications FROM  RoomApplications WHERE status = 'pending'";
+$applicationsQuery = "SELECT COUNT(*) AS pendingApplications FROM  room_reassignments WHERE status = 'pending'";
 $applicationsResult = $conn->query($applicationsQuery);
 $pendingApplications = $applicationsResult->fetch_assoc()['pendingApplications'];
 
@@ -62,24 +62,8 @@ $conn->close();
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
 
             <!-- Room Manager Dropdown Menu -->
-            <div class="nav-item dropdown">
-                <a href="#" class="nav-link active dropdown-toggle" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-building"></i> 
-                    <span>Room Manager</span>
-                </a>
-                <div class="dropdown-menu" aria-labelledby="roomManagerDropdown" style="background-color: #2B228A; border-radius: 9px;">
-                <a class="dropdown-item" href="roomlist.php">
-                    <i class="fas fa-list"></i> <span>Room List</span>
-                </a>
-                <a class="dropdown-item" href="room-assign.php">
-                    <i class="fas fa-user-check"></i> <span>Room Assign</span>
-                </a>
-                <a class="dropdown-item" href="application-room.php">
-                    <i class="fas fa-file-alt"></i> <span>Room Application</span>
-                </a>
-            </div>
+            <a href="#" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
 
-            </div>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
 

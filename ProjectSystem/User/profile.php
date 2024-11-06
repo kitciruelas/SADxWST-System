@@ -28,7 +28,7 @@ function getUserById($user_id) {
   return null;
 }
 
-$query = "SELECT fname, lname, mi, age, sex, contact, address, profile_pic,email FROM users WHERE id = ?";
+$query = "SELECT fname, lname, mi, suffix, birthdate, age, sex, contact, address, profile_pic, email FROM users WHERE id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $userId);
 $stmt->execute();
@@ -41,12 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstName = $_POST['firstName'] ?? '';
     $lastName = $_POST['lastName'] ?? '';
     $middleInitial = $_POST['middleInitial'] ?? '';
+    $suffix = $_POST['suffix'] ?? '';
+    $birthdate = $_POST['birthdate'] ?? ''; // Birthdate input
     $age = $_POST['age'] ?? '';
     $sex = $_POST['sex'] ?? '';
     $contact = $_POST['contact'] ?? '';
     $address = $_POST['address'] ?? '';
     $profilePic = $user['profile_pic'];
 
+    // Validate and process profile picture upload
     if (isset($_FILES['profilePic']) && $_FILES['profilePic']['error'] === UPLOAD_ERR_OK) {
         $targetDir = "../uploads/";
         $fileName = uniqid() . "-" . basename($_FILES["profilePic"]["name"]);
@@ -65,11 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $updateQuery = "UPDATE users SET fname = ?, lname = ?, mi = ?, age = ?, sex = ?, contact = ?, address = ?, profile_pic = ? WHERE id = ?";
+    // Prepare the update query including suffix and birthdate
+    $updateQuery = "UPDATE users SET fname = ?, lname = ?, mi = ?, suffix = ?, birthdate = ?, age = ?, sex = ?, contact = ?, address = ?, profile_pic = ? WHERE id = ?";
     $stmt = $conn->prepare($updateQuery);
 
     if ($stmt) {
-        $stmt->bind_param("sssisissi", $firstName, $lastName, $middleInitial, $age, $sex, $contact, $address, $profilePic, $userId);
+        $stmt->bind_param("sssssisissi", $firstName, $lastName, $middleInitial, $suffix, $birthdate, $age, $sex, $contact, $address, $profilePic, $userId);
         if ($stmt->execute()) {
             $updateSuccess = true; // Set flag on successful update
             echo "<script>
@@ -84,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "Error preparing update statement: " . $conn->error;
     }
 }
+
 $conn->close();
 
 
@@ -157,11 +162,11 @@ $conn->close();
       <!-- Personal Information -->
       <div class="accordion-item">
         <h2 class="accordion-header">
-          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#personalInfo" aria-expanded="true">
+          <button class="accordion-button" type="button"  data-bs-target="#personalInfo" aria-expanded="true">
             Personal Information
           </button>
         </h2>
-        <div id="personalInfo" class="accordion-collapse collapse show">
+        <div id="personalInfo" class="accordion-collapse">
   <div class="accordion-body">
     <div class="row mb-3">
       <div class="col-md-3">
@@ -189,53 +194,61 @@ $conn->close();
       <!-- Other personal info fields go here -->
   
 
-              <div class="col-md-9 mt-3">
-                
-                <div class="container">
-                  <div class="row mb-3 justify-content-center">
-                    <div class="col-md-4">
-                      <label class="form-label">First Name</label>
-                      <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['fname']); ?>" readonly />
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Last Name</label>
-                      <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['lname']); ?>" readonly />
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Middle Initial</label>
-                      <input type="text" class="form-control" maxlength="1" value="<?php echo htmlspecialchars($user['mi']); ?>" readonly />
-                    </div>
-                  </div>
-                  <div class="row mb-3 justify-content-center">
-                    <div class="col-md-4">
-                      <label class="form-label">Age</label>
-                      <input type="number" class="form-control" value="<?php echo htmlspecialchars($user['age']); ?>" readonly />
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Sex</label>
-                      <select class="form-control" name="sex" disabled>
-                        <option value="" disabled>Select Sex</option>
-                        <option value="Male" <?php echo ($user['sex'] === 'Male') ? 'selected' : ''; ?>>Male</option>
-                        <option value="Female" <?php echo ($user['sex'] === 'Female') ? 'selected' : ''; ?>>Female</option>
-                      </select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Contact</label>
-                      <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['contact']); ?>" readonly />
-                    </div>
-                  </div>
-                  <div class="row mb-3">
-                    <div class="col-md-4">
-                      <label class="form-label">Address</label>
-                      <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['address']); ?>" readonly />
-      
-                    </div>
-                  </div>
-                  <div class="text-end mt-3">
-                  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
-                  </div>
-                </div>
-              </div>
+      <div class="col-md-9 mt-3">
+    <div class="container">
+        <div class="row mb-3 justify-content-center">
+            <div class="col-md-4">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['fname']); ?>" readonly />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['lname']); ?>" readonly />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Middle Name</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['mi']); ?>" readonly />
+            </div>
+        </div>
+        <div class="row mb-3 justify-content-center">
+            <div class="col-md-4">
+                <label class="form-label">Suffix</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['suffix']); ?>" readonly />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Birthdate</label>
+                <input type="date" class="form-control" value="<?php echo htmlspecialchars($user['birthdate']); ?>" readonly />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Age</label>
+                <input type="number" class="form-control" value="<?php echo htmlspecialchars($user['age']); ?>" readonly />
+            </div>
+        </div>
+        <div class="row mb-3 justify-content-center">
+            <div class="col-md-4">
+                <label class="form-label">Sex</label>
+                <select class="form-control" name="sex" disabled>
+                    <option value="" disabled>Select Sex</option>
+                    <option value="Male" <?php echo ($user['sex'] === 'Male') ? 'selected' : ''; ?>>Male</option>
+                    <option value="Female" <?php echo ($user['sex'] === 'Female') ? 'selected' : ''; ?>>Female</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Contact</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['contact']); ?>" readonly />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['address']); ?>" readonly />
+            </div>
+        </div>
+            
+        <div class="text-end mt-3">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+        </div>
+    </div>
+</div>
+
             </div>
           </div>
         </div>
@@ -248,7 +261,7 @@ $conn->close();
       Account Information
     </button>
   </h2>  
-  <div id="accountInfo" class="accordion-collapse collapse">
+  <div id="accountInfo" class="accordion-collapse collapse ">
     <div class="accordion-body">
       <form id="accountInfoForm" method="POST">
         <div class="row"> <!-- Added a row for Bootstrap grid -->
@@ -308,16 +321,28 @@ $conn->close();
           <!-- Second Row -->
           <div class="row mb-3">
             <div class="col-md-6">
-              <label for="middleInitial" class="form-label">Middle Initial</label>
-              <input type="text" class="form-control" name="middleInitial" maxlength="1" value="<?php echo htmlspecialchars($user['mi']); ?>" />
+              <label for="middleInitial" class="form-label">Middle Name</label>
+              <input type="text" class="form-control" name="middleInitial" value="<?php echo htmlspecialchars($user['mi']); ?>" />
+            </div>
+            <div class="col-md-6">
+              <label for="suffix" class="form-label">Suffix</label>
+              <input type="text" class="form-control" name="suffix" value="<?php echo htmlspecialchars($user['suffix']); ?>" />
+            </div>
+          </div>
+
+          <!-- Third Row -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="birthdate" class="form-label">Birthdate</label>
+              <input type="date" class="form-control" name="birthdate" value="<?php echo htmlspecialchars($user['birthdate']); ?>" required />
             </div>
             <div class="col-md-6">
               <label for="age" class="form-label">Age</label>
               <input type="number" class="form-control" name="age" value="<?php echo htmlspecialchars($user['age']); ?>" required />
             </div>
           </div>
-          
-          <!-- Additional Fields in the Second Row -->
+
+          <!-- Additional Fields in the Fourth Row -->
           <div class="row mb-3">
             <div class="col-md-6">
               <label for="sex" class="form-label">Sex</label>
@@ -407,7 +432,8 @@ $conn->close();
                             // Download link for the QR code
                             
                             echo "<div class='text-center mt-3'>";
-                            echo "<a href='$qr_code_file' class='btn btn-outline-secondary' download='My_QR_Code" . $user['id'] . ".png'><i class='fas fa-download'></i></a>";
+                            echo "<a href='$qr_code_file' class='btn btn-outline-secondary' download='Dormio-QR_Code_" . $user['fname'] . "_" . $user['lname'] . "_" . $user['id'] . ".png'><i class='fas fa-download'></i></a>";
+
                             echo "</div>";
                         } else {
                             echo "<div class='alert alert-danger'>User not found.</div>";

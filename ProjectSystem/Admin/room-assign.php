@@ -81,23 +81,68 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $currentAssignmentsStmt->close();
 }
 
+// Fetch room assignments for all users
+$currentAssignmentsQuery = "
+    SELECT 
+        users.id AS user_id, 
+        CONCAT(users.fname, ' ', users.lname) AS resident, 
+        rooms.room_number AS assigned_room_number,  -- Renamed to assigned_room_number
+        rooms.room_monthlyrent AS assigned_monthly_rent  -- Renamed to assigned_monthly_rent
+    FROM users 
+    LEFT JOIN roomassignments ON users.id = roomassignments.user_id 
+    LEFT JOIN rooms ON roomassignments.room_id = rooms.room_id 
+    ORDER BY users.id DESC"; // Ordering by users.id in descending order
 
-$sql = "SELECT users.id, CONCAT(users.fname, ' ', users.lname) AS resident, rooms.room_number, rooms.room_monthlyrent 
-        FROM users 
-        LEFT JOIN roomassignments ON users.id = roomassignments.user_id 
-        LEFT JOIN rooms ON roomassignments.room_id = rooms.room_id 
-        ORDER BY users.id DESC"; // Ordering by users.id in descending order
+$currentAssignmentsResult = $conn->query($currentAssignmentsQuery);
 
-$applicationsResult = $conn->query($sql);
+// Fetch reassignment data
+$reassignmentsQuery = "
+    SELECT 
+        ra.user_id, 
+        CONCAT(u.fname, ' ', u.lname) AS resident,
+        rn.room_number AS assigned_room_number,  -- Now only one room number as assigned_room_number
+        rn.room_monthlyrent AS assigned_monthly_rent,
+        ra.status AS reassignment_status
+    FROM room_reassignments ra
+    JOIN users u ON ra.user_id = u.id
+    JOIN rooms rn ON ra.new_room_id = rn.room_id  -- Only fetch the new room for reassignments
+    ORDER BY ra.user_id ASC";
 
+$reassignmentsResult = $conn->query($reassignmentsQuery);
 
+// Merge data for display logic
+$assignmentsData = [];
+if ($currentAssignmentsResult->num_rows > 0) {
+    while ($row = $currentAssignmentsResult->fetch_assoc()) {
+        $assignmentsData[$row['user_id']] = $row;
+    }
+}
 
+if ($reassignmentsResult->num_rows > 0) {
+    while ($row = $reassignmentsResult->fetch_assoc()) {
+        if (isset($assignmentsData[$row['user_id']])) {
+            // Only merge the room details, overwriting the old room number if it exists
+            $assignmentsData[$row['user_id']]['assigned_room_number'] = $row['assigned_room_number'];
+            $assignmentsData[$row['user_id']]['assigned_monthly_rent'] = $row['assigned_monthly_rent'];
+            $assignmentsData[$row['user_id']]['reassignment_status'] = $row['reassignment_status'];
+        } else {
+            $assignmentsData[$row['user_id']] = $row;
+        }
+    }
+}
 
-// Fetch available rooms for dropdown
-$roomsQuery = "SELECT room_id, room_number FROM rooms WHERE status = 'available'";
-$roomsResult = $conn->query($roomsQuery);
-$availableRooms = $roomsResult->fetch_all(MYSQLI_ASSOC);
+// Sample query to fetch available rooms
+$availableRoomsQuery = "SELECT room_id, room_number FROM rooms WHERE status = 'available'";
+$availableRoomsResult = $conn->query($availableRoomsQuery);
 
+$availableRooms = [];
+if ($availableRoomsResult->num_rows > 0) {
+    while ($room = $availableRoomsResult->fetch_assoc()) {
+        $availableRooms[] = $room;
+    }
+} else {
+    echo "No available rooms found.";
+}
 
 $conn->close();
 
@@ -126,30 +171,9 @@ $conn->close();
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-
-
-            <!-- Room Manager Dropdown Menu -->
-            <div class="nav-item dropdown">
-                
-                <a href="#" class="nav-link active dropdown-toggle" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-building"></i> 
-                    <span>Room Manager</span>
-                </a>
-                <div class="dropdown-menu" aria-labelledby="roomManagerDropdown" style="background-color: #2B228A; border-radius: 9px;">
-                <a class="dropdown-item" href="roomlist.php">
-                    <i class="fas fa-list"></i> <span>Room List</span>
-                </a>
-                <a class="dropdown-item" href="room-assign.php">
-                    <i class="fas fa-user-check"></i> <span>Room Assign</span>
-                </a>
-                <a class="dropdown-item" href="application-room.php">
-                    <i class="fas fa-file-alt"></i> <span>Room Application</span>
-                </a>
-                
-            </div>
+            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
-            </div>
 
         </div>
         <div class="logout">
@@ -159,62 +183,109 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
+        
         <h2>Room Assign</h2>
+        
+    </div>
+    
+
+                              <!-- AYUSIN ANG ROOM ASSIGN AND REASSINGN HUHU -->
+    <!-- Main content -->
+    <div class="main-content">
+    <div class="container">
+
+    <div class="d-flex justify-content-start">
+    <butto type="button" class="btn" onclick="window.history.back();">
+    <i class="fas fa-arrow-left fa-2x me-1"></i></button>
+</div>
+</div>
+<div class="container mt-5">
+    <!-- Search and Filter Section -->
+    <div class="row mb-4">
+        <div class="col-12 col-md-8">
+            <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+        </div>
+        <div class="col-6 col-md-2">
+            <select id="filterSelect" class="form-select">
+               
+            <option value="all" selected>Filter by</option>
+                <option value="resident">Resident</option>
+                <option value="current_room">Current Room</option>
+                <option value="new_room">New Room</option>
+                <option value="monthly_rent">Monthly Rent</option>
+        
+            </select>
+        </div>
     </div>
 
-    <!-- Main content -->
-    <div class="main-content">        
-        
-      <!-- <h2>Room Assignments</h2>-->
 
 
-      <?php if ($applicationsResult->num_rows > 0): ?>
-    <table class="table table-bordered">
+
+    <?php if (!empty($assignmentsData)): ?>
+    <table class="table table-bordered" id="assignmentTable">
         <thead>
             <tr>
-                <th>No.</th> <!-- Serial Number Column -->
-                <th>Resident</th> <!-- Combined Name Column -->
-                <th>Room Assigned</th>
+                <th>No.</th>
+                <th>Resident</th>
+                <th>Room</th> <!-- Changed from "New Room" to just "Room" -->
                 <th>Monthly Rent</th>
                 <th>Assign New Room</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="room-table-body">
             <?php 
-            $counter = 1; // Initialize counter
-            while ($row = $applicationsResult->fetch_assoc()): ?>
+            $counter = 1;
+            foreach ($assignmentsData as $row):
+                $hasAssignedRoom = !empty($row['assigned_room_number']);
+                $isApproved = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'approved');
+                $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
+                $isRejected = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'rejected');
+                
+                // Only show the form if the room is not assigned or has a pending reassignment
+                $showAssignForm = !$hasAssignedRoom || ($isPending && !$isRejected);
+                $showAssignForm = $showAssignForm && !$isRejected;
+            ?>
                 <tr>
-                    <td><?php echo $counter++; ?></td> <!-- Display the current counter and increment -->
-                    <td><?php echo htmlspecialchars($row['resident']); ?></td> <!-- Use the combined name -->
-                    <td><?php echo htmlspecialchars($row['room_number'] ?? 'No Room Assigned'); ?></td>
-                    <td><?php echo isset($row['room_monthlyrent']) ? number_format($row['room_monthlyrent'], 2) : 'N/A'; ?></td>
+                    <td><?php echo $counter++; ?></td>
+                    <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
+                    <td class="room"><?php echo htmlspecialchars($row['assigned_room_number'] ?? 'No Room Assigned'); ?></td>
+                    <td class="monthly_rent"><?php echo isset($row['assigned_monthly_rent']) ? number_format($row['assigned_monthly_rent'], 2) : 'N/A'; ?></td>
                     <td>
-                        <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
-                            <input type="hidden" name="user_id" value="<?php echo $row['id']; ?>">
-                            <select name="room_id" required>
-                                <option value="">Select Room</option>
-                                <?php foreach ($availableRooms as $room): ?>
-                                    <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
-                                        <?php echo htmlspecialchars($room['room_number']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit" class="btn btn-primary">Assign Room</button>
-                        </form>
+                        <?php if ($showAssignForm): ?>
+                            <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
+                                <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
+                                <select name="room_id" required>
+    <option value="">Select Room</option>
+    <?php foreach ($availableRooms as $room): ?>
+        <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
+            <?php echo htmlspecialchars($room['room_number']); ?>
+        </option>
+    <?php endforeach; ?>
+</select>
+
+                                <button type="submit">Assign</button>
+                            </form>
+                        <?php else: ?>
+                            <span class="text-success">Room Assignment Active</span>
+                        <?php endif; ?>
                     </td>
                 </tr>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </tbody>
     </table>
 <?php else: ?>
-    <p>No users found.</p>
+    <p>No room assignments found.</p>
 <?php endif; ?>
 
+<!-- Pagination Controls -->
+<div id="pagination">
+    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
+    <span id="pageIndicator">Page 1</span>
+    <button id="nextPage" onclick="nextPage()">Next</button>
+</div>
 
-       </div>
 
-            
-   
+
     
     <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -222,6 +293,81 @@ $conn->close();
 
     <!-- Hamburgermenu Script -->
     <script>
+// JavaScript for client-side pagination
+const rowsPerPage = 10; // Display 10 rows per page
+let currentPage = 1;
+const rows = document.querySelectorAll('#room-table-body tr');
+const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+// Show the initial set of rows
+showPage(currentPage);
+
+function showPage(page) {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    rows.forEach((row, index) => {
+        row.style.display = index >= start && index < end ? '' : 'none';
+    });
+    document.getElementById('pageIndicator').innerText = `Page ${page}`;
+    document.getElementById('prevPage').disabled = page === 1;
+    document.getElementById('nextPage').disabled = page === totalPages;
+}
+
+function nextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        showPage(currentPage);
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        showPage(currentPage);
+    }
+}
+
+         document.addEventListener('DOMContentLoaded', function() {
+        const filterSelect = document.getElementById('filterSelect');
+        const searchInput = document.getElementById('searchInput');
+        const table = document.getElementById('assignmentTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        function filterTable() {
+            const filterBy = filterSelect.value;
+            const searchTerm = searchInput.value.toLowerCase();
+
+            Array.from(rows).forEach(row => {
+                let cellText = '';
+
+                // Get text based on selected filter
+                switch(filterBy) {
+                    case 'resident':
+                        cellText = row.querySelector('.resident').textContent.toLowerCase();
+                        break;
+                    case 'current_room':
+                        cellText = row.querySelector('.current_room').textContent.toLowerCase();
+                        break;
+                    case 'new_room':
+                        cellText = row.querySelector('.new_room').textContent.toLowerCase();
+                        break;
+                    case 'monthly_rent':
+                        cellText = row.querySelector('.monthly_rent').textContent.toLowerCase();
+                        break;
+                    default:
+                        // Search across all columns if "all" is selected
+                        cellText = row.textContent.toLowerCase();
+                }
+
+                // Show or hide row based on search match
+                row.style.display = cellText.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        // Attach event listeners to filter and search input
+        filterSelect.addEventListener('change', filterTable);
+        searchInput.addEventListener('keyup', filterTable);
+    });
 
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const sidebar = document.getElementById('sidebar');

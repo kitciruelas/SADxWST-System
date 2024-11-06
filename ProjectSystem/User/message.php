@@ -1,38 +1,11 @@
 <?php
 session_start();
-include '../config/config.php'; // Ensure correct path to your config file
-
-// Assuming the user is logged in and their ID is stored in $_SESSION['id']
-$userId = $_SESSION['id'];
-
-// Fetch the room assignment for the logged-in user
-// SQL query to fetch room assignments, including room picture
-$query = "
-  SELECT ra.assignment_id, r.room_number, r.room_pic, r.room_monthlyrent, ra.assignment_date
-FROM RoomAssignments ra
-JOIN Rooms r ON ra.room_id = r.room_id
-WHERE ra.user_id = ?
-
-";
+include '../config/config.php';
 
 
-
-
-$stmt = $conn->prepare($query);
-$stmt->bind_param('i', $userId);
-$stmt->execute();
-$result = $stmt->get_result();
-
-// Check if the user has an assigned room
-if ($result->num_rows > 0) {
-    $roomAssignment = $result->fetch_assoc();
-} else {
-    $roomAssignment = null; // No room assigned
-}
-
-
-$conn->close();
 ?>
+
+
 
 
 <!DOCTYPE html>
@@ -45,7 +18,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    
+  
 </head>
 <body>
 
@@ -69,39 +42,34 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Your Room Assign</h2>
+        <h2>Message</h2>
 
     </div>
     <div class="main-content">      
-
-    <div class="container h-100">
-    <div class="row d-flex justify-content-center align-items-center" style="min-height: 100vh;">
-        <div class="col-12 col-md-8 col-lg-6">
-            <div class="card shadow-sm w-100 mt-3">
-                <div class="card-body text-center">
-                    <!-- PHP Room Assignment Logic -->
-                    <?php if ($roomAssignment): ?>
-                        <h5 class="card-title"><strong>Room:</strong> <?php echo htmlspecialchars($roomAssignment['room_number']); ?></h5>
-                        <p class="card-text"><strong>Monthly Rent:</strong> <?php echo htmlspecialchars($roomAssignment['room_monthlyrent']); ?></p>
-
-                        <p class="card-text"><strong>Assign Date:</strong> <?php echo htmlspecialchars($roomAssignment['assignment_date']); ?></p>
-                        <?php if (!empty($roomAssignment['room_pic'])): ?>
-                            <!-- Display the room picture -->
-                            <img src="<?php echo htmlspecialchars($roomAssignment['room_pic']); ?>" alt="Room Picture" class="img-fluid rounded" style="max-width: 500px; height: auto;">
-                        <?php else: ?>
-                            <p>No room picture available.</p>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <p class="card-text">You have not been assigned a room yet.</p>
-                    <?php endif; ?>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-4">
+                <h4>Groups</h4>
+                <ul class="list-group" id="groupList">
+                    <!-- Group names populated here via PHP or AJAX -->
+                </ul>
+            </div>
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">Chat Room</div>
+                    <div class="card-body" id="chatBox" style="height: 400px; overflow-y: scroll;">
+                        <!-- Messages loaded here -->
+                    </div>
+                    <div class="card-footer">
+                        <form id="messageForm">
+                            <input type="text" id="messageInput" class="form-control" placeholder="Type a message">
+                            <button type="submit" class="btn btn-primary mt-2">Send</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-
-      
     </div>
 
 
@@ -110,12 +78,29 @@ $conn->close();
 
 
 <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
     
     <!-- JavaScript -->
     <script>
+    // JavaScript for handling message sending
+    $('#messageForm').on('submit', function(e) {
+            e.preventDefault();
+            let message = $('#messageInput').val();
+            $.post('send_message.php', { message: message, group_id: selectedGroupId }, function() {
+                $('#messageInput').val('');
+                loadMessages(selectedGroupId);
+            });
+        });
+
+        function loadMessages(groupId) {
+            $.get('fetch_messages.php', { group_id: groupId }, function(data) {
+                $('#chatBox').html(data);
+            });
+        }
 
         // Sidebar toggle
         const hamburgerMenu = document.getElementById('hamburgerMenu');

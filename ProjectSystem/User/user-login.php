@@ -31,7 +31,11 @@
     <i class="eye-icon fas fa-eye-slash" onclick="togglePasswordVisibility('password', this)"></i>
     </div>
 
-      
+      <!-- Google reCAPTCHA widget -->
+<div class="form-group">
+    <div class="g-recaptcha" data-sitekey="6LfVgHUqAAAAAJtQJXShsLo2QbyGby2jquueTZYV"></div>
+</div>
+
       <button type="submit" class="btn">Sign in</button>
 
       <p class="forgot-password"><a href="forgot-password.php">Forgot Password?</a></p>
@@ -79,12 +83,18 @@ input:not(:placeholder-shown) + label {
   color: #007bff; /* Change this to your desired color */
 }
 
-
+.g-recaptcha {
+    transform: scale(0.9);
+    transform-origin: 0 0;
+    margin-top: 5px;
+}
 
 
 </style>
-  <script>
 
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+  <script>
 
      
     function togglePasswordVisibility(fieldId, icon) {

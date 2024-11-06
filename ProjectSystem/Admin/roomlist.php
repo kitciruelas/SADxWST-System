@@ -241,9 +241,11 @@ if (isset($_GET['edit_room_id'])) {
     $stmt->close();
 }
 
-// Fetch all room data for the room listing
-$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms";
+$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic 
+        FROM rooms 
+        ORDER BY room_id DESC";
 $result = $conn->query($sql);
+
 
 $conn->close();
 ?>
@@ -271,31 +273,10 @@ $conn->close();
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+              
 
-
-            <!-- Room Manager Dropdown Menu -->
-            <div class="nav-item dropdown">
-                <a href="admin-room.php" class="nav-link dropdown-toggle" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-building"></i> 
-                    <span>Room Manager</span>
-                </a>
-                <div class="dropdown-menu" aria-labelledby="roomManagerDropdown" style="background-color: #2B228A; border-radius: 9px;">
-                <!-- Dropdown Menu Items -->
-                <a class="dropdown-item" href="roomlist.php">
-                    <i class="fas fa-list"></i> <span>Room List</span>
-                </a>
-                <a class="dropdown-item" href="room-assign.php">
-                    <i class="fas fa-user-check"></i> <span>Room Assign</span>
-                </a>
-                <a class="dropdown-item" href="application-room.php">
-                    <i class="fas fa-file-alt"></i> <span>Room Application</span>
-                </a>
-
-            </div>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-
-            </div>
-
 
         </div>
         <div class="logout">
@@ -309,7 +290,13 @@ $conn->close();
     </div>
 
     <!-- Main content -->
-    <div class="main-content">        
+    <div class="main-content">
+    <div class="container">
+
+<div class="d-flex justify-content-start">
+<button type="button" class="btn " onclick="window.history.back();">
+    <i class="fas fa-arrow-left fa-2x me-2"></i></button>
+</div>        
     <div class="container mt-5">
     <!-- Search and Filter Section -->
     <div class="row mb-4">

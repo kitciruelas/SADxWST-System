@@ -16,63 +16,82 @@ if (!$conn) {
 // Initialize variable for error message
 $errorMessage = '';
 
+// Handle create user request
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
-    // Collect form data
-    $fname = $_POST['Fname'];
-    $lname = $_POST['Lname'];
-    $mi = $_POST['MI'];
-    $age = $_POST['Age'];
-    $address = $_POST['Address'];
-    $contact = $_POST['contact'];
-    $sex = $_POST['Sex'];
-    $role = $_POST['Role'];  // General User or Staff
-    $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT); // Hash password
+    // Collect and sanitize form data
+    $fname = trim($_POST['Fname']);
+    $lname = trim($_POST['Lname']);
+    $mi = trim($_POST['MI']);
+    $suffix = trim($_POST['Suffix']);
+    $birthdate = trim($_POST['Birthdate']); // Expected format from input: YYYY-MM-DD
+    $age = (int) $_POST['Age'];
+    $address = trim($_POST['Address']);
+    $contact = trim($_POST['contact']);
+    $sex = trim($_POST['sex']);
+    $role = trim($_POST['Role']);  // General User or Staff
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
 
-    // Server-side validation
-    if (empty($fname) || empty($lname) || empty($age) || empty($address) || empty($contact) || empty($sex) || empty($email) || empty($_POST['password'])) {
-        $errorMessage = 'All fields are required.';
+    // Handle optional Suffix field
+    $suffix = empty($suffix) ? NULL : $suffix;
+
+    // Validate form data
+    $errorMessage = '';
+    if (empty($fname) || empty($lname) || empty($age) || empty($address) || empty($contact) || empty($sex) || empty($email) || empty($password)) {
+        $errorMessage = 'All required fields must be filled.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Invalid email format.';
-    } elseif (strlen($_POST['password']) < 6) {
+    } elseif (strlen($password) < 6) {
         $errorMessage = 'Password must be at least 6 characters long.';
-    } else {
-        // Determine the SQL insert statement based on the role
-        if ($role === 'Staff') {
-            // Prepare SQL for inserting into staff table
-            $sql = "INSERT INTO staff (fname, lname, mi, age, address, contact, sex, email, password) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    }
+
+    if (!$errorMessage) {
+        // Hash password for security
+        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+
+        // Format the birthdate to ensure it is in 'YYYY-MM-DD' format and not '0000-00-00'
+        $birthdateFormatted = date('Y-m-d', strtotime($birthdate));
+        if ($birthdateFormatted === '0000-00-00' || !$birthdateFormatted) {
+            $errorMessage = 'Birthdate cannot be 0000-00-00 or empty.';
         } else {
-            // Prepare SQL for inserting into users table (General User)
-            $sql = "INSERT INTO users (fname, lname, mi, age, address, contact, sex, email, password) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        }
+            // Select the SQL insert statement based on the role
+            $sql = ($role === 'Staff') 
+                ? "INSERT INTO staff (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                : "INSERT INTO users (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        // Prepare the statement
-        if ($stmt = $conn->prepare($sql)) {
-            // Bind the parameters for both users or staff tables
-            $stmt->bind_param("sssisssss", $fname, $lname, $mi, $age, $address, $contact, $sex, $email, $password);
-
-            // Execute the statement
-            if ($stmt->execute()) {
-                // Directly display a success message using a JavaScript alert
-                if ($role === 'Staff') {
-                    echo "<script>alert('Staff member added successfully!');</script>";
+            // Prepare the statement
+            if ($stmt = $conn->prepare($sql)) {
+                $stmt->bind_param(
+                    "sssssssssss", 
+                    $fname, 
+                    $lname, 
+                    $mi, 
+                    $suffix, 
+                    $birthdateFormatted, 
+                    $age, 
+                    $address, 
+                    $contact, 
+                    $sex, 
+                    $email, 
+                    $hashedPassword
+                );
+                
+                // Execute the statement and handle potential errors
+                if ($stmt->execute()) {
+                    echo "<script>alert('User added successfully!');</script>";
                 } else {
-                    echo "<script>alert('General user added successfully!');</script>";
+                    $errorMessage = "Error inserting user: " . htmlspecialchars($stmt->error);
                 }
+                $stmt->close();
             } else {
-                $errorMessage = "Error inserting user: " . $stmt->error;
+                $errorMessage = "Error preparing the statement: " . htmlspecialchars($conn->error);
             }
-
-            // Close the statement
-            $stmt->close();
-        } else {
-            $errorMessage = "Error preparing the statement: " . $conn->error;
         }
     }
 
-    // Display error message if any
+    // Display any error message
     if (!empty($errorMessage)) {
         echo "<script>alert('$errorMessage');</script>";
     }
@@ -81,28 +100,56 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
 // Handle edit user request
 if (isset($_POST['edit_user'])) {
     $userId = intval($_POST['user_id']);
-    $Fname = trim($_POST['Fname']);
-    $Lname = trim($_POST['Lname']);
-    $MI = trim($_POST['MI']);
-    $Age = intval($_POST['Age']);
-    $Address = trim($_POST['Address']);
+    $fname = trim($_POST['Fname']);
+    $lname = trim($_POST['Lname']);
+    $mi = trim($_POST['MI']);
+    $suffix = trim($_POST['Suffix']);
+    $birthdate = trim($_POST['Birthdate']);
+    $age = intval($_POST['Age']);
+    $address = trim($_POST['Address']);
     $contact = trim($_POST['contact']);
-    $Sex = $_POST['Sex'];
+    $sex = trim($_POST['Sex']);
 
-    $stmt = $conn->prepare("UPDATE users SET Fname = ?, Lname = ?, MI = ?, Age = ?, Address = ?, contact = ?, Sex = ? WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("sssisssi", $Fname, $Lname, $MI, $Age, $Address, $contact, $Sex, $userId);
-        if ($stmt->execute()) {
-            echo "<script>alert('User updated successfully!'); closeEditModal();</script>";
+    // Validate birthdate format (YYYY-MM-DD)
+    if (!DateTime::createFromFormat('Y-m-d', $birthdate)) {
+        echo "<script>alert('Invalid date format for birthdate. Please use YYYY-MM-DD.');</script>";
+        return; // Stop execution if the date is invalid
+    }
+
+    // Function to execute update and handle errors
+    function executeUpdate($conn, $query, $params, $types) {
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $stmt->bind_param($types, ...$params); // Spread operator to unpack parameters
+            if ($stmt->execute()) {
+                return true;
+            } else {
+                echo "<script>alert('Error executing query: " . htmlspecialchars($stmt->error) . "');</script>";
+                return false;
+            }
         } else {
-            echo "<script>alert('Error: " . $stmt->error . "');</script>";
+            echo "<script>alert('Error preparing statement: " . htmlspecialchars($conn->error) . "');</script>";
+            return false;
         }
-        $stmt->close();
-    } else {
-        echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
+    }
+
+    // Prepare queries
+    $userQuery = "UPDATE users SET Fname = ?, Lname = ?, MI = ?, Suffix = ?, Birthdate = ?, Age = ?, Address = ?, contact = ?, Sex = ? WHERE id = ?";
+    $staffQuery = "UPDATE staff SET Fname = ?, Lname = ?, MI = ?, Suffix = ?, Birthdate = ?, Age = ?, Address = ?, contact = ?, Sex = ? WHERE id = ?";
+
+    // Define parameter types
+    $userTypes = "sssssssisi"; // 9 strings, 1 integer
+    $staffTypes = "sssssssisi"; // 9 strings, 1 integer
+
+    // Execute updates
+    $userUpdateSuccess = executeUpdate($conn, $userQuery, [$fname, $lname, $mi, $suffix, $birthdate, $age, $address, $contact, $sex, $userId], $userTypes);
+    $staffUpdateSuccess = executeUpdate($conn, $staffQuery, [$fname, $lname, $mi, $suffix, $birthdate, $age, $address, $contact, $sex, $userId], $staffTypes);
+
+    if ($userUpdateSuccess || $staffUpdateSuccess) { // Update is successful if either operation succeeds
+        echo "<script>alert('User updated successfully!'); closeEditModal();</script>";
     }
 }
- 
+
 
 // Handle delete (archive) user request
 if (isset($_POST['delete_user'])) {
@@ -121,7 +168,7 @@ if (isset($_POST['delete_user'])) {
             if ($stmtUsers) {
                 $stmtUsers->bind_param("i", $userId);
                 if ($stmtUsers->execute()) {
-                    echo "<script>alert('User archived and deleted successfully!');</script>";
+                    echo "<script>alert('User deleted successfully!');</script>";
                 } else {
                     echo "<script>alert('Error deleting user: " . $stmtUsers->error . "');</script>";
                 }
@@ -163,9 +210,7 @@ if (isset($_POST['delete_user'])) {
     }
 }
 
-
-
-// Handle the filter and search from the query string
+// Handle filter and search from the query string
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';  // Prevent SQL injection
 
@@ -174,73 +219,75 @@ $rowsPerPage = 10; // Show 10 records per page
 $currentPage = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1; // Default to page 1
 $startRow = ($currentPage - 1) * $rowsPerPage; // Calculate starting row
 
-// Base SQL query to count total rows
-$totalRowsQuery = "SELECT COUNT(*) AS total FROM (";  // Counting total rows
-
-// Adjust query based on the filter selection
+// Base SQL query to count total rows with filters and search
+$totalRowsQuery = "SELECT COUNT(*) AS total FROM (";
 if ($filter === 'General User') {
-    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users";
+    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'General User' AS Role FROM users";
 } elseif ($filter === 'Staff') {
-    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
+    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
 } else {
-    // 'all' or unspecified - show both General User and Staff
     $totalRowsQuery .= "
-        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users
+        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'General User' AS Role FROM users
         UNION ALL
-        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
+        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
 }
 
-// Apply the search condition only if the search is not empty
+// Add search filter if applicable
+$totalRowsQuery .= ") AS combined_data";
 if (!empty($search)) {
-    $totalRowsQuery .= ") as combined_data WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
-} else {
-    $totalRowsQuery .= ") as combined_data";  // No search, show all filtered results
+    $totalRowsQuery .= " WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
 }
 
+// Execute total row count query
 $totalRowsResult = $conn->query($totalRowsQuery);
-
-// Handle query failure
 if ($totalRowsResult === false) {
     die("Error: " . $conn->error);
 }
 
 $totalRows = $totalRowsResult->fetch_assoc()['total'];
-$totalPages = ceil($totalRows / $rowsPerPage);  // Calculate the total number of pages
-
-// SQL query to fetch data with pagination and search filter
+$totalPages = ceil($totalRows / $rowsPerPage);
 $sql = "
-    SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, Role FROM (
+    SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, Role 
+    FROM (
 ";
 
+// Apply filter to select from either `users` or `staff`, or both if no specific filter is set
 if ($filter === 'General User') {
-    $sql .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users";
-} elseif ($filter === 'Staff') {
-    $sql .= "SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
-} else {
     $sql .= "
-        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'General User' AS Role FROM users
-        UNION ALL
-        SELECT id, Fname, Lname, MI, Age, Address, contact, Sex, 'Staff' AS Role FROM staff";
-}
-
-// Apply the search condition only if the search is not empty
-if (!empty($search)) {
-    $sql .= ") as combined_data WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
+        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'General User' AS Role 
+        FROM users
+    ";
+} elseif ($filter === 'Staff') {
+    $sql .= "
+        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'Staff' AS Role 
+        FROM staff
+    ";
 } else {
-    $sql .= ") as combined_data";  // No search, show all filtered results
+    // No specific filter, so combine both tables
+    $sql .= "
+        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'General User' AS Role 
+        FROM users
+        UNION ALL
+        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, 'Staff' AS Role 
+        FROM staff
+    ";
 }
 
+$sql .= ") AS combined_data";
+
+// Apply search filter if a search term is provided
+if (!empty($search)) {
+    $sql .= " WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
+}
+
+// Apply sorting and pagination
 $sql .= " ORDER BY id DESC LIMIT $startRow, $rowsPerPage";
 
 $result = $conn->query($sql);
-
-// Handle query failure
 if ($result === false) {
     die("Error: " . $conn->error);
 }
 
-
-$result = $conn->query($sql);
 ?>
 
 
@@ -253,6 +300,7 @@ $result = $conn->query($sql);
     <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
 
 
 
@@ -319,51 +367,82 @@ $result = $conn->query($sql);
     </div>
 </div>
 
-            <table id="userTable" class="table">
-                <thead>
-                    <tr>
-                        <th>No.</th>
-                        <th>Name</th>
-                        <th>Age</th>
-                        <th>Address</th>
-                        <th>Contact No.</th>
-                        <th>Sex</th>
-                        <th>Role</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php
-
-                // Execute the query and check for errors
-$result = $conn->query($sql);
+<table id="userTable" class="table">
+    <thead>
+        <tr>
+            <th>No.</th>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Birthdate</th>
+            <th>Address</th>
+            <th>Contact No.</th>
+            <th>Sex</th>
+            <th>Role</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php
 
 if ($result === false) {
     // Output the error if the query fails
-    echo "Error: " . $conn->error;
+    echo "Error: " . htmlspecialchars($conn->error);
 } else {
-    // Proceed to check if there are rows
+    // Check if there are rows returned
     if ($result->num_rows > 0) {
         $no = 1;
         while ($row = $result->fetch_assoc()) {
-            // Process the rows and output the table rows
+            // Process user details
             $userId = $row['id'];
             $fullName = htmlspecialchars($row['Fname']) . ' ';
+            
+            // Handle middle initial if it exists
             if (!empty($row['MI'])) {
-                $fullName .= htmlspecialchars($row['MI']) . '. ';
+                $fullName .= htmlspecialchars(substr($row['MI'], 0, 1)) . '. ';
             }
             $fullName .= htmlspecialchars($row['Lname']);
+            
+            // Append the suffix if it exists
+            if (!empty($row['Suffix'])) {
+                $fullName .= ' ' . htmlspecialchars($row['Suffix']);
+            }
 
+            // Safely format the birthdate
+            $birthdate = !empty($row['Birthdate']) && $row['Birthdate'] !== '0000-00-00' ? new DateTime($row['Birthdate']) : null;
+            $formattedBirthdate = $birthdate ? $birthdate->format('F d, Y') : 'N/A'; // Handle missing or invalid birthdate
+
+            // Use isset to prevent undefined index warnings
+            $address = isset($row['Address']) ? htmlspecialchars($row['Address']) : 'N/A';
+            $contact = isset($row['contact']) ? htmlspecialchars($row['contact']) : 'N/A';
+            $sex = isset($row['Sex']) ? htmlspecialchars($row['Sex']) : 'N/A';
+            $role = isset($row['Role']) ? htmlspecialchars($row['Role']) : 'N/A';
+            $mi = isset($row['MI']) ? htmlspecialchars($row['MI']) : '';
+            $suffix = isset($row['Suffix']) ? htmlspecialchars($row['Suffix']) : '';
+
+            // Display user data in table rows
             echo "<tr>
                 <td data-label='No.'>" . $no . "</td>
                 <td data-label='Name'>" . $fullName . "</td>
                 <td data-label='Age'>" . intval($row['Age']) . "</td>
-                <td data-label='Address'>" . htmlspecialchars($row['Address']) . "</td>
-                <td data-label='Contact No.'>" . htmlspecialchars($row['contact']) . "</td>
-                <td data-label='Sex'>" . htmlspecialchars($row['Sex']) . "</td>
-                <td data-label='Role'>" . htmlspecialchars($row['Role']) . "</td>
+                <td data-label='Birthdate'>" . htmlspecialchars($formattedBirthdate) . "</td>
+                <td data-label='Address'>" . $address . "</td>
+                <td data-label='Contact No.'>" . $contact . "</td>
+                <td data-label='Sex'>" . $sex . "</td>
+                <td data-label='Role'>" . $role . "</td>
                 <td>
-                    <button class='btn-edit' onclick='openEditModal($userId, \"" . htmlspecialchars($row['Fname']) . "\", \"" . htmlspecialchars($row['Lname']) . "\", \"" . htmlspecialchars($row['MI']) . "\", " . intval($row['Age']) . ", \"" . htmlspecialchars($row['Address']) . "\", \"" . htmlspecialchars($row['contact']) . "\", \"" . htmlspecialchars($row['Sex']) . "\", \"" . htmlspecialchars($row['Role']) . "\")'>Edit</button>
+                    <button class='btn-edit' onclick='openEditModal(
+                        $userId,
+                        \"" . htmlspecialchars($row['Fname']) . "\",
+                        \"" . htmlspecialchars($row['Lname']) . "\",
+                        \"$mi\",
+                        " . intval($row['Age']) . ",
+                        \"$address\",
+                        \"$contact\",
+                        \"$sex\",
+                        \"$role\",
+                        \"$suffix\",
+                        \"" . htmlspecialchars($row['Birthdate'] ?? '') . "\"
+                    )'>Edit</button>
                     <form method='POST' action='' style='display:inline'>
                         <input type='hidden' name='user_id' value='$userId'>
                         <input type='hidden' name='delete_user' value='1'>
@@ -371,16 +450,19 @@ if ($result === false) {
                     </form>
                 </td>
             </tr>";
+
             $no++;
         }
     } else {
-        echo "<tr><td colspan='8'>No users or staff found.</td></tr>";
+        echo "<tr><td colspan='9'>No users found.</td></tr>";
     }
 }
 ?>
 
-                </tbody>
-            </table>
+
+    </tbody>
+</table>
+
  
 </div>
 <div style="text-align: center;">
@@ -409,7 +491,7 @@ if ($result === false) {
     
 
         <!-- Add User Modal -->
-<div id="userModal" class="modal">
+        <div id="userModal" class="modal">
     <div class="addmodal-content">
     <span class="close" onclick="hideModal()" style="cursor: pointer; font-size: 24px;">&times;</span>
     <h2 id="add-user">Add New User</h2>
@@ -424,31 +506,45 @@ if ($result === false) {
                     <input type="text" id="lname" name="Lname" required>
                 </div>
                 <div class="form-group">
-                    <label for="mi">Middle Initial:</label>
+                    <label for="mi">Middle Name:</label>
                     <input type="text" id="mi" name="MI">
                 </div>
+                <div class="form-group">
+    <label for="suffix">Suffix (Optional):</label>
+    <input type="text" id="suffix" name="Suffix"> <!-- Optional by default -->
+</div>
+
+<div class="form-group">
+                <label for="birthdate">Birthdate:</label>
+                <input type="date" id="birthdate" name="Birthdate" class="form-control" required>
+            </div>
                 <div class="form-group">
                     <label for="age">Age:</label>
                     <input type="number" id="age" name="Age" required>
                 </div>
                 <div class="form-group">
-                    <label for="address">Address:</label>
-                    <input type="text" id="address" name="Address" required>
+                    <label for="sex">Sex:</label>
+<select id="sex" name="sex" required>
+    <option value="" disabled selected>Select Sex</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+</select>
+
                 </div>
                 <div class="form-group">
                     <label for="contact">Contact Number:</label>
                     <input type="text" id="contact" name="contact" required>
                 </div>
+             
                 <div class="form-group">
-                    <label for="sex">Sex:</label>
-                    <select id="sex" name="Sex">
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </select>
+                    <label for="address">Address:</label>
+                    <input type="text" id="address" name="Address" required>
                 </div>
                 <div class="form-group">
                     <label for="role">Role:</label>
                     <select id="role" name="Role" required>
+                    <option value="" disabled selected>Select Role</option>
+
                         <option value="General User">General User</option>
                         <option value="Staff">Staff</option>
                     </select>
@@ -466,6 +562,7 @@ if ($result === false) {
         </form>
     </div>
 </div>
+
 <style>
     /* Modal Background */
 .modal {
@@ -497,9 +594,17 @@ if ($result === false) {
                     <input type="text" id="editLname" name="Lname" required>
                 </div>
                 <div class="form-group">
-                    <label for="editMI">Middle Initial:</label>
-                    <input type="text" id="editMI" name="MI">
+                    <label for="editMI">Middle Name:</label>
+                    <input type="text" id="editMI" name="MI" required>
                 </div>
+                <div class="form-group">
+                    <label for="editSuffix">Suffix:</label>
+                    <input type="text" id="editSuffix" name="Suffix">
+                </div>
+                <div class="form-group">
+                    <label for="editBirthdate">Birthdate:</label>
+                    <input type="date" id="editBirthdate" name="Birthdate" required>
+                    </div>
                 <div class="form-group">
                     <label for="editAge">Age:</label>
                     <input type="number" id="editAge" name="Age" required>
@@ -519,9 +624,6 @@ if ($result === false) {
                         <option value="Female">Female</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    
-                </div>
             </div>
             <button type="submit" name="edit_user">Update</button>
         </form>
@@ -529,10 +631,13 @@ if ($result === false) {
 </div>
 
 
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
         <!-- JavaScript for modal functionality -->
         <script>
+
+
 function hideModal() {
     const modal = document.getElementById("userModal");
     modal.style.display = "none"; // Hide the modal
@@ -637,7 +742,7 @@ function hideModal() {
 }
 
 // Show the Edit User Modal
-function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role) {
+function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role,Suffix,Birthdate) {
     document.getElementById('editUserId').value = id;
     document.getElementById('editFname').value = Fname;
     document.getElementById('editLname').value = Lname;
@@ -646,6 +751,10 @@ function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role) {
     document.getElementById('editAddress').value = Address;
     document.getElementById('editContact').value = contact;
     document.getElementById('editSex').value = Sex;
+
+    // Added fields for Suffix and Birthdate
+    document.getElementById('editSuffix').value = Suffix;
+    document.getElementById('editBirthdate').value = Birthdate;
 
     document.getElementById('editUserModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';  // Prevent background scroll when modal is open
@@ -656,6 +765,7 @@ function closeEditModal() {
     document.getElementById('editUserModal').style.display = 'none';
     document.body.style.overflow = 'auto';  // Restore background scrolling
 }
+
 
 // Close modal when clicking outside the content
 window.onclick = function(event) {

@@ -585,7 +585,7 @@ body {
     display: block;
   }
   .accordion-button {
-    background-color: #007bff;
+    background-color: #2B228A;
     color: white;
   }
   .accordion-button:not(.collapsed) {

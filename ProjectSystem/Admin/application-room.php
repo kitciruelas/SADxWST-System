@@ -12,55 +12,90 @@ include '../config/config.php'; // Ensure this is correct
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-// Fetch room applications with corresponding room and user details
-$sql = "
-    SELECT 
-    ra.application_id, 
-    r.room_number, 
-    CONCAT(u.fname, ' ', u.lname) AS resident,
-    r.room_desc AS type_application, 
-    ra.comments, -- Assuming you want to include the comment field
-    ra.status
-FROM RoomApplications ra
-JOIN users u ON ra.user_id = u.id
-JOIN Rooms r ON ra.room_id = r.room_id
-ORDER BY ra.application_id
 
-";
-$result = $conn->query($sql);
 
-// Check if the user is logged in and if the form is submitted via POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['id'])) {
-    
-    // Get the application ID and new status from the form
-    $applicationId = intval($_POST['application_id']);
+// Assuming $conn is the MySQLi connection
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $reassignmentId = $_POST['reassignment_id'];
     $newStatus = $_POST['status'];
 
-    // Ensure the status is valid
+    // Validate status
     if (in_array($newStatus, ['pending', 'approved', 'rejected'])) {
-        // Prepare the SQL query to update the application status
-        $stmt = $conn->prepare("UPDATE RoomApplications SET status = ? WHERE application_id = ?");
-        if ($stmt) {
-            $stmt->bind_param('si', $newStatus, $applicationId);
-            
-            // Execute the query
-            if ($stmt->execute()) {
-                // After updating the status, redirect to avoid form resubmission
-             header("Location: application-room.php?status=success");
-                exit; // Ensure the script stops after the redirect
-            } else {
-                echo "<script>alert('Error: " . $stmt->error . "');</script>";
+        // Update the reassignment status in the room_reassignments table
+        $stmt = $conn->prepare("UPDATE room_reassignments SET status = ? WHERE reassignment_id = ?");
+        $stmt->bind_param("si", $newStatus, $reassignmentId);
+
+        if ($stmt->execute()) {
+            echo "<script>alert('Reassignment status updated successfully.');</script>";
+
+            // Proceed only if the status is approved
+            if ($newStatus === 'approved') {
+                // Fetch reassignment details to get user_id, old_room_id, and new_room_id
+                $fetchDetailsQuery = "
+                    SELECT user_id, old_room_id, new_room_id
+                    FROM room_reassignments
+                    WHERE reassignment_id = ?
+                ";
+                $fetchDetailsStmt = $conn->prepare($fetchDetailsQuery);
+                $fetchDetailsStmt->bind_param("i", $reassignmentId);
+                $fetchDetailsStmt->execute();
+                $reassignmentDetails = $fetchDetailsStmt->get_result()->fetch_assoc();
+                $fetchDetailsStmt->close();
+
+                if ($reassignmentDetails) {
+                    $userId = $reassignmentDetails['user_id'];
+                    $newRoomId = $reassignmentDetails['new_room_id'];
+
+                    // Update the roomassignments table for the new room
+                    $updateAssignmentQuery = "
+                        UPDATE roomassignments
+                        SET room_id = ?, assignment_date = CURRENT_DATE
+                        WHERE user_id = ?
+                    ";
+                    $updateAssignmentStmt = $conn->prepare($updateAssignmentQuery);
+                    $updateAssignmentStmt->bind_param("ii", $newRoomId, $userId);
+
+                    if ($updateAssignmentStmt->execute()) {
+                        echo "<script>alert('User\'s room assignment updated to new room successfully.');</script>";
+                    } else {
+                        echo "Error updating room assignment: " . $updateAssignmentStmt->error;
+                    }
+
+                    $updateAssignmentStmt->close();
+                } else {
+                    echo "<script>alert('Reassignment details not found.');</script>";
+                }
             }
-            $stmt->close();
         } else {
-            echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
+            echo "Error updating status: " . $stmt->error;
         }
+
+        $stmt->close();
     } else {
-        echo "<script>alert('Invalid status value.');</script>";
+        echo "Invalid status.";
     }
-} else {
-    echo "Unauthorized access or invalid request method.";
 }
+
+
+
+$sql = "
+    SELECT 
+        rr.reassignment_id, 
+        CONCAT(u.fname, ' ', u.lname) AS resident,
+        COALESCE(ro.room_number, 'N/A') AS old_room_number, -- Use COALESCE to handle NULL old rooms
+        rn.room_number AS new_room_number,
+        rr.reassignment_date,
+        IFNULL(rr.comment, 'No comment') AS comments, -- Correct field name assumed
+        rr.status
+    FROM room_reassignments rr
+    JOIN users u ON rr.user_id = u.id
+    LEFT JOIN rooms ro ON rr.old_room_id = ro.room_id
+    JOIN rooms rn ON rr.new_room_id = rn.room_id
+    ORDER BY rr.reassignment_id ASC
+";
+
+$result = $conn->query($sql);
 
 $conn->close();
 
@@ -73,7 +108,6 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
@@ -89,27 +123,11 @@ $conn->close();
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+            <a href="#" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
 
-            <!-- Room Manager Dropdown Menu -->
-            <div class="nav-item dropdown">
-                <a href="#" class="nav-link active dropdown-toggle" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-building"></i> 
-                    <span>Room Manager</span>
-                </a>
-                <div class="dropdown-menu" aria-labelledby="roomManagerDropdown" style="background-color: #2B228A; border-radius: 9px;">
-                <a class="dropdown-item" href="roomlist.php" style="color: #ffffff;">
-                    <i class="fas fa-list"></i> Room List
-                </a>
-                <a class="dropdown-item" href="room-assign.php" style="color: #ffffff;">
-                    <i class="fas fa-user-check"></i> Room Assign
-                </a>
-                <a class="dropdown-item" href="application-room.php" style="color: #ffffff;">
-                    <i class="fas fa-file-alt"></i> Room Application
-                </a>
-            </div>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
-            </div>
+       
 
         </div>
         <div class="logout">
@@ -119,73 +137,106 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Application Room</h2>
+        <h2>Room Reassign</h2>
     </div>
 
     <!-- Main content -->
-    <div class="main-content">        
+    <div class="main-content">
         
-    <table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>No.</th>
-            <th>Room Number</th>
-            <th>Resident</th>
-            <th>Type of Application</th>
-            <th>Comment</th> <!-- Move Comment to its own column in the right place -->
-            <th>Status</th> <!-- Status should come after Comment -->
-        </tr>
-    </thead>
-    <tbody>
-        <?php
-        if ($result->num_rows > 0) {
-            $no = 1; // Counter for row number
-            while ($row = $result->fetch_assoc()) {
-                ?>
-                <tr>
-                    <td><?php echo $no++; ?></td>
-                    <td><?php echo htmlspecialchars($row['room_number']); ?></td>
-                    <td><?php echo htmlspecialchars($row['resident']); ?></td>
-                    <td><?php echo htmlspecialchars($row['type_application']); ?></td>
-                    
-                    <!-- Display the comment in the Comment column -->
-                    <td><?php echo !empty($row['comments']) ? htmlspecialchars($row['comments']) : 'No comment'; ?></td>
-                    <td> <!-- Status comes after the comment -->
-                        <span class="badge 
-                            <?php echo ($row['status'] == 'approved') ? 'badge-success' : 
-                                       (($row['status'] == 'rejected') ? 'badge-danger' : 'badge-warning'); ?>">
-                            <?php echo htmlspecialchars($row['status']); ?>
-                        </span>
+    <div class="container">
 
-                        <!-- If the status is pending, show Approve and Reject buttons -->
-                        <?php if ($row['status'] == 'pending') { ?>
-                            <form method="POST" action="application-room.php" style="display:inline;">
-                                <input type="hidden" name="application_id" value="<?php echo $row['application_id']; ?>">
+    <div class="d-flex justify-content-start">
+    <button type="button" class="btn " onclick="window.history.back();">
+        <i class="fas fa-arrow-left fa-2x me-2"></i></button>
+</div>
+</div>
+<div class="container mt-5">
+    <!-- Search and Filter Section -->
+    <div class="row mb-4">
+        <div class="col-12 col-md-8">
+            <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+        </div>
+        <div class="col-6 col-md-2">
+            <select id="filterSelect" class="form-select">
+                <option value="all" selected>Filter by</option>
+                <option value="resident">Resident</option>
+                <option value="old_room_number">Old Room Number</option>
+                <option value="new_room">Reassign Room</option>
+                <option value="monthly_rent">Monthly Rent</option>
+                <option value="status">Status</option>
+            </select>
+        </div>
+    </div>
 
-                                <!-- Dropdown for selecting status -->
-                                <select id="statusDropdown" name="status" class="form-control form-control-sm" style="display:inline-block; width:auto;">
-                                    <option value="pending" <?php echo ($row['status'] == 'pending') ? 'selected' : ''; ?>>Pending</option>
-                                    <option value="approved" <?php echo ($row['status'] == 'approved') ? 'selected' : ''; ?>>Approved</option>
-                                    <option value="rejected" <?php echo ($row['status'] == 'rejected') ? 'selected' : ''; ?>>Rejected</option>
-                                </select>
+   <!-- Table Section -->
+<div>
+    <table id="assignmentTable" class="table table-bordered">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Old Room Number</th>
+                <th>Resident</th>
+                <th>Reassign Room</th>
+                <th>Comment</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="room-table-body">
+            <?php
+            if ($result->num_rows > 0) {
+                $no = 1; // Row counter
+                while ($row = $result->fetch_assoc()) {
+                    ?>
+                    <tr>
+                        <td><?php echo $no++; ?></td>
+                        <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>
+                        <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
+                        <td class="new_room"><?php echo htmlspecialchars($row['new_room_number'] ?? 'N/A'); ?></td>
+                        <td><?php echo !empty($row['comments']) ? htmlspecialchars($row['comments']) : 'No comment'; ?></td>
+                        <td class="status">
+                            <!-- Status Badge -->
+                            <span class="badge 
+                                <?php echo ($row['status'] == 'approved') ? 'bg-success' : 
+                                           (($row['status'] == 'rejected') ? 'bg-danger' : 'bg-warning'); ?>">
+                                <?php echo htmlspecialchars($row['status']); ?>
+                            </span>
 
-                                <!-- Submit button to apply the change -->
-                                <button type="submit" class="btn btn-primary btn-sm">Update Status</button>
-                            </form>
-                        <?php } ?>
-                    </td>
-                </tr>
-                <?php
+                            <!-- Status Update Form for Pending Reassignments -->
+                            <?php if ($row['status'] == 'pending') { ?>
+                                <form method="POST" action="application-room.php" class="d-inline">
+                                    <input type="hidden" name="reassignment_id" value="<?php echo $row['reassignment_id']; ?>">
+
+                                    <!-- Status Dropdown -->
+                                    <select name="status" class="form-select form-select-sm d-inline w-auto">
+                                        <option value="pending" <?php echo ($row['status'] == 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="rejected">Rejected</option>
+                                    </select>
+
+                                    <!-- Update Button -->
+                                    <button type="submit" class="btn btn-primary btn-sm">Update Status</button>
+                                </form>
+                            <?php } ?>
+                        </td>
+                    </tr>
+                    <?php
+                }
+            } else {
+                echo "<tr><td colspan='6' class='text-center'>No reassignments found.</td></tr>";
             }
-        } else {
-            echo "<tr><td colspan='6'>No applications found.</td></tr>";
-        }
-        ?>
-    </tbody>
-</table>
+            ?>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination Controls -->
+<div id="pagination">
+    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
+    <span id="pageIndicator">Page 1</span>
+    <button id="nextPage" onclick="nextPage()">Next</button>
+</div>
 
 
-       </div>
 
             
    
@@ -196,6 +247,91 @@ $conn->close();
 
     <!-- Hamburgermenu Script -->
     <script>
+// JavaScript for client-side pagination
+const rowsPerPage = 10; // Display 10 rows per page
+let currentPage = 1;
+const rows = document.querySelectorAll('#room-table-body tr');
+const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+// Show the initial set of rows
+showPage(currentPage);
+
+function showPage(page) {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    rows.forEach((row, index) => {
+        row.style.display = index >= start && index < end ? '' : 'none';
+    });
+    document.getElementById('pageIndicator').innerText = `Page ${page}`;
+    document.getElementById('prevPage').disabled = page === 1;
+    document.getElementById('nextPage').disabled = page === totalPages;
+}
+
+function nextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        showPage(currentPage);
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        showPage(currentPage);
+    }
+}
+
+
+
+         document.addEventListener('DOMContentLoaded', function() {
+    const filterSelect = document.getElementById('filterSelect');
+    const searchInput = document.getElementById('searchInput');
+    const table = document.getElementById('assignmentTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    // Function to filter table based on filter selection and search term
+    function filterTable() {
+        const filterBy = filterSelect.value;
+        const searchTerm = searchInput.value.toLowerCase();
+
+        // Iterate through each row in the table
+        Array.from(rows).forEach(row => {
+            let cellText = '';
+
+            // Get text from the appropriate cell based on the selected filter
+            switch(filterBy) {
+                case 'resident':
+                    cellText = row.querySelector('.resident').textContent.toLowerCase();
+                    break;
+                case 'old_room_number':
+                    cellText = row.querySelector('.old_room_number').textContent.toLowerCase();
+                    break;
+                case 'new_room':
+                    cellText = row.querySelector('.new_room').textContent.toLowerCase();
+                    break;
+                case 'monthly_rent':
+                    cellText = row.querySelector('.monthly_rent')?.textContent.toLowerCase() || ''; // Optional chaining for null safety
+                    break;
+                case 'status':
+                    cellText = row.querySelector('.status').textContent.toLowerCase();
+                    break;
+                default:
+                    // Search across all text in the row if "all" is selected
+                    cellText = row.textContent.toLowerCase();
+            }
+
+            // Show or hide the row based on whether the cell text includes the search term
+            row.style.display = cellText.includes(searchTerm) ? '' : 'none';
+        });
+    }
+
+    // Attach event listeners to filter selection and search input
+    filterSelect.addEventListener('change', filterTable);
+    searchInput.addEventListener('keyup', filterTable);
+});
+
+
+        
 
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const sidebar = document.getElementById('sidebar');

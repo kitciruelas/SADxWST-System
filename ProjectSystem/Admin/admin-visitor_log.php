@@ -54,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "Invalid request: Visitor ID is missing or empty.";
     }
 } else {
-    echo "Invalid request method.";
 }
 
 
@@ -161,7 +160,7 @@ $conn->close();
                 <th scope="col">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="visitor-table-body">
             <?php if ($result->num_rows > 0): 
                 $counter = 1;
                 while ($row = $result->fetch_assoc()):
@@ -178,13 +177,11 @@ $conn->close();
                     <td><?= $checkInTime ?></td>
                     <td><?= $checkOutTime ?></td>
                     <td>
-                    <form action="admin-visitor_log.php" method="post" style="display:inline;">
-        <input type="hidden" name="visitor_id" value="<?= $row['id']; ?>">
-        <button type="submit" class="btn btn-danger btn-sm" 
-            onclick="return confirm('Are you sure you want to delete this visitor?')">Delete</button>
-    </form>
-
-
+                        <form action="admin-visitor_log.php" method="post" style="display:inline;">
+                            <input type="hidden" name="visitor_id" value="<?= $row['id']; ?>">
+                            <button type="submit" class="btn btn-danger btn-sm" 
+                                onclick="return confirm('Are you sure you want to delete this visitor?')">Delete</button>
+                        </form>
                     </td>
                 </tr>
             <?php endwhile; else: ?>
@@ -194,7 +191,13 @@ $conn->close();
     </table>
 </div>
 
+<!-- Pagination Controls -->
+<div id="pagination">
+    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
+    <span id="pageIndicator">Page 1</span>
+    <button id="nextPage" onclick="nextPage()">Next</button>
 </div>
+
 
 
 
@@ -209,6 +212,39 @@ $conn->close();
     
     <!-- JavaScript -->
     <script>
+// JavaScript for client-side pagination
+const rowsPerPage = 10; // Display 10 rows per page
+let currentPage = 1;
+const rows = document.querySelectorAll('#visitor-table-body tr');
+const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+// Show the initial set of rows
+showPage(currentPage);
+
+function showPage(page) {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    rows.forEach((row, index) => {
+        row.style.display = index >= start && index < end ? '' : 'none';
+    });
+    document.getElementById('pageIndicator').innerText = `Page ${page}`;
+    document.getElementById('prevPage').disabled = page === 1;
+    document.getElementById('nextPage').disabled = page === totalPages;
+}
+
+function nextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        showPage(currentPage);
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        showPage(currentPage);
+    }
+}
 
 function validateForm() {
         const contactInfo = document.getElementById('contact_info').value;

@@ -258,7 +258,6 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <!-- Font Awesome CSS for icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -281,6 +280,8 @@ $conn->close();
         <a href="#" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="user_room.php" class="nav-link"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
+        <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
 
         </div>
         
@@ -395,7 +396,7 @@ if ($result === false) {
                         <?php if ($status === 'Maintenance'): ?>
                             <button class="btn btn-warning" disabled>Under Maintenance</button>
                         <?php elseif ($currentOccupants < $totalCapacity): ?>
-                            <button type="button" class="btns btn-primary apply-btn" data-bs-toggle="modal" data-bs-target="#applyModal"
+                            <button type="submit" class="btn  apply-btn " data-bs-toggle="modal" data-bs-target="#applyModal"
     data-room-id="<?php echo htmlspecialchars($row['room_id'] ?? ''); ?>"
     data-room-number="<?php echo htmlspecialchars($row['room_number'] ?? ''); ?>"
     data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent'] ?? ''); ?>"
@@ -424,6 +425,7 @@ if ($result === false) {
 
 
     </div>
+   
 
     <!-- Pagination Links -->
     <div class="pagination">
@@ -454,7 +456,7 @@ if ($result === false) {
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="applyModalLabel">Apply for Room</h5>
+                <h5 class="modal-title" id="applyModalLabel">Room Reassign</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -478,9 +480,9 @@ if ($result === false) {
 
                     <!-- Optional Comments -->
                     <div class="form-group mb-3">
-                        <label for="comments">Comments (optional):</label>
-                        <textarea id="comments" name="comments" class="form-control"></textarea>
-                    </div>
+    <label for="comments">Reasons:</label>
+    <textarea id="comments" name="comments" class="form-control" required></textarea>
+</div>
 
                     <button type="submit" class="btn btn-primary">Submit Application</button>
                 </form>

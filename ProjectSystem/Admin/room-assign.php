@@ -100,17 +100,17 @@ $reassignmentsQuery = "
     SELECT 
         ra.user_id, 
         CONCAT(u.fname, ' ', u.lname) AS resident,
-        rn.room_number AS assigned_room_number,  -- Now only one room number as assigned_room_number
+        rn.room_number AS assigned_room_number,  
         rn.room_monthlyrent AS assigned_monthly_rent,
         ra.status AS reassignment_status
     FROM room_reassignments ra
     JOIN users u ON ra.user_id = u.id
-    JOIN rooms rn ON ra.new_room_id = rn.room_id  -- Only fetch the new room for reassignments
+    JOIN rooms rn ON ra.new_room_id = rn.room_id  
     ORDER BY ra.user_id ASC";
 
 $reassignmentsResult = $conn->query($reassignmentsQuery);
 
-// Merge data for display logic
+// Initialize assignments data
 $assignmentsData = [];
 if ($currentAssignmentsResult->num_rows > 0) {
     while ($row = $currentAssignmentsResult->fetch_assoc()) {
@@ -120,17 +120,11 @@ if ($currentAssignmentsResult->num_rows > 0) {
 
 if ($reassignmentsResult->num_rows > 0) {
     while ($row = $reassignmentsResult->fetch_assoc()) {
-        if (isset($assignmentsData[$row['user_id']])) {
-            // Only merge the room details, overwriting the old room number if it exists
-            $assignmentsData[$row['user_id']]['assigned_room_number'] = $row['assigned_room_number'];
-            $assignmentsData[$row['user_id']]['assigned_monthly_rent'] = $row['assigned_monthly_rent'];
-            $assignmentsData[$row['user_id']]['reassignment_status'] = $row['reassignment_status'];
-        } else {
-            $assignmentsData[$row['user_id']] = $row;
-        }
+        $assignmentsData[$row['user_id']]['assigned_room_number'] = $row['assigned_room_number'];
+        $assignmentsData[$row['user_id']]['assigned_monthly_rent'] = $row['assigned_monthly_rent'];
+        $assignmentsData[$row['user_id']]['reassignment_status'] = $row['reassignment_status'];
     }
 }
-
 // Sample query to fetch available rooms
 $availableRoomsQuery = "SELECT room_id, room_number FROM rooms WHERE status = 'available'";
 $availableRoomsResult = $conn->query($availableRoomsQuery);
@@ -143,6 +137,24 @@ if ($availableRoomsResult->num_rows > 0) {
 } else {
     echo "No available rooms found.";
 }
+
+// Process form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['room_id'])) {
+    $userId = $_POST['user_id'];
+    $roomId = $_POST['room_id'];
+
+    // Perform the room assignment in the database
+    $query = "UPDATE room_assignments SET room_id = ? WHERE user_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ii", $roomId, $userId);
+    $success = $stmt->execute();
+
+    // Set a flag if the assignment is successful
+    if ($success) {
+        $_SESSION['assignment_success'] = true;
+    }
+}
+
 
 $conn->close();
 
@@ -173,6 +185,7 @@ $conn->close();
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
 
 
         </div>
@@ -195,11 +208,12 @@ $conn->close();
     <div class="container">
 
     <div class="d-flex justify-content-start">
-    <butto type="button" class="btn" onclick="window.history.back();">
-    <i class="fas fa-arrow-left fa-2x me-1"></i></button>
+    <a href="admin-room.php" class="btn " onclick="window.location.reload();">
+    <i class="fas fa-arrow-left fa-2x me-1"></i></a>
+
 </div>
 </div>
-<div class="container mt-5">
+<div class="container mt-1">
     <!-- Search and Filter Section -->
     <div class="row mb-4">
         <div class="col-12 col-md-8">
@@ -220,14 +234,13 @@ $conn->close();
 
 
 
-
     <?php if (!empty($assignmentsData)): ?>
     <table class="table table-bordered" id="assignmentTable">
         <thead>
             <tr>
                 <th>No.</th>
                 <th>Resident</th>
-                <th>Room</th> <!-- Changed from "New Room" to just "Room" -->
+                <th>Room</th>
                 <th>Monthly Rent</th>
                 <th>Assign New Room</th>
             </tr>
@@ -236,14 +249,16 @@ $conn->close();
             <?php 
             $counter = 1;
             foreach ($assignmentsData as $row):
+                // Skip the row if the user was successfully assigned
+                if (isset($_SESSION['assigned_user_id']) && $_SESSION['assigned_user_id'] == $row['user_id']) {
+                    continue;
+                }
+
                 $hasAssignedRoom = !empty($row['assigned_room_number']);
-                $isApproved = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'approved');
                 $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
-                $isRejected = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'rejected');
                 
-                // Only show the form if the room is not assigned or has a pending reassignment
-                $showAssignForm = !$hasAssignedRoom || ($isPending && !$isRejected);
-                $showAssignForm = $showAssignForm && !$isRejected;
+                // Show the form only if the room is not assigned or has a pending reassignment
+                $showAssignForm = !$hasAssignedRoom || $isPending;
             ?>
                 <tr>
                     <td><?php echo $counter++; ?></td>
@@ -255,15 +270,14 @@ $conn->close();
                             <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
                                 <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
                                 <select name="room_id" required>
-    <option value="">Select Room</option>
-    <?php foreach ($availableRooms as $room): ?>
-        <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
-            <?php echo htmlspecialchars($room['room_number']); ?>
-        </option>
-    <?php endforeach; ?>
-</select>
-
-                                <button type="submit">Assign</button>
+                                    <option value="">Select Room</option>
+                                    <?php foreach ($availableRooms as $room): ?>
+                                        <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
+                                            <?php echo htmlspecialchars($room['room_number']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" class="btn btn-primary">Assign</button>
                             </form>
                         <?php else: ?>
                             <span class="text-success">Room Assignment Active</span>
@@ -273,9 +287,14 @@ $conn->close();
             <?php endforeach; ?>
         </tbody>
     </table>
+    <?php unset($_SESSION['assigned_user_id']); // Clear the flag after display ?>
 <?php else: ?>
     <p>No room assignments found.</p>
 <?php endif; ?>
+
+
+
+
 
 <!-- Pagination Controls -->
 <div id="pagination">
@@ -283,7 +302,41 @@ $conn->close();
     <span id="pageIndicator">Page 1</span>
     <button id="nextPage" onclick="nextPage()">Next</button>
 </div>
+<style>
+    /* Style for the entire table */
+    .table {
+        background-color: #f8f9fa; /* Light background for the table */
+        border-collapse: collapse; /* Ensures borders don't double up */
+    }
 
+    /* Style for table headers */
+    .table th {
+        background-color: #2B228A; /* Dark background */
+        color: #ffffff; /* White text */
+        font-weight: bold;
+        text-align: center;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6; /* Bottom border only */
+    }
+
+    /* Style for table rows */
+    .table td {
+        padding: 10px;
+        vertical-align: middle; /* Center content vertically */
+        border-bottom: 1px solid #dee2e6; /* Border only at the bottom of each row */
+    }
+
+    /* Optional hover effect for rows */
+    .table tbody tr:hover {
+        background-color: #e9ecef; /* Slightly darker background on hover */
+    }
+
+    /* Styling the action buttons */
+    .table .btn {
+        margin-right: 5px; /* Space between buttons */
+    }
+
+</style>
 
 
     

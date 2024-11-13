@@ -139,6 +139,7 @@ mysqli_close($conn);
         <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
         <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+        <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
 
         </div>
 
@@ -174,42 +175,6 @@ mysqli_close($conn);
   <i class="fas fa-search search-icon"></i>
 </div>
 
-
-    <div id="announcement-form" class="popup-form" style="display: none;">
-        <h3 id="form-title">Add New Announcement</h3>
-        <form id="announcement-form-inner" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-            <input type="hidden" id="announcement-id" name="announcement-id">
-            <div class="input-container">
-                <label for="announcement-title">Title:</label>
-                <input type="text" id="announcement-title" name="announcement-title" required>
-            </div>
-            <div class="input-container">
-                <label for="announcement-content">Content:</label>
-                <textarea id="announcement-content" name="announcement-content" required></textarea>
-            </div>
-            <button type="submit" name="submit" id="submit-button">Submit</button>
-            <button type="button" class="cancel-announcement" id="cancel-announcement">Cancel</button>
-        </form>
-    </div>
-  
-    <!-- update announcement -->
-
-    <div id="update-form" class="popup-form" style="display: none;">
-        <h3 id="form-title">Update Announcement</h3>
-        <form id="update-form-inner" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-            <input type="hidden" id="update-announcement-id" name="announcement-id">
-            <div class="input-container">
-                <label for="update-announcement-title">Title:</label>
-                <input type="text" id="update-announcement-title" name="announcement-title" required>
-            </div>
-            <div class="input-container">
-                <label for="update-announcement-content">Content:</label>
-                <textarea id="update-announcement-content" name="announcement-content" required></textarea>
-            </div>
-            <button type="submit" name="update" id="update-button">Update</button>
-            <button type="button" class="cancel-update" id="cancel-update">Cancel</button>
-        </form>
-    </div>
 
 <!-- Announcemnet table -->
 
@@ -258,8 +223,77 @@ mysqli_close($conn);
     <?php endif; ?>
 </div>
 
+<style>
+    /* Style for the entire table */
+    .table {
+        background-color: #f8f9fa; /* Light background for the table */
+        border-collapse: collapse; /* Ensures borders don't double up */
+    }
 
-</div>
+    /* Style for table headers */
+    .table th {
+        background-color: #2B228A; /* Dark background */
+        color: #ffffff; /* White text */
+        font-weight: bold;
+        text-align: center;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6; /* Bottom border only */
+    }
+
+    /* Style for table rows */
+    .table td {
+        padding: 10px;
+        vertical-align: middle; /* Center content vertically */
+        border-bottom: 1px solid #dee2e6; /* Border only at the bottom of each row */
+    }
+
+    /* Optional hover effect for rows */
+    .table tbody tr:hover {
+        background-color: #e9ecef; /* Slightly darker background on hover */
+    }
+
+    /* Styling the action buttons */
+    .table .btn {
+        margin-right: 5px; /* Space between buttons */
+    }
+
+</style>
+
+<div id="announcement-form" class="popup-form" style="display: none;">
+        <h3 id="form-title">Add New Announcement</h3>
+        <form id="announcement-form-inner" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+            <input type="hidden" id="announcement-id" name="announcement-id">
+            <div class="input-container">
+                <label for="announcement-title">Title:</label>
+                <input type="text" id="announcement-title" name="announcement-title" required>
+            </div>
+            <div class="input-container">
+                <label for="announcement-content">Content:</label>
+                <textarea id="announcement-content" name="announcement-content" required></textarea>
+            </div>
+            <button type="submit" name="submit" id="submit-button">Submit</button>
+            <button type="button" class="cancel-announcement" id="cancel-announcement">Cancel</button>
+        </form>
+    </div>
+  
+    <!-- update announcement -->
+
+    <div id="update-form" class="popup-form" style="display: none;">
+        <h3 id="form-title">Update Announcement</h3>
+        <form id="update-form-inner" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+            <input type="hidden" id="update-announcement-id" name="announcement-id">
+            <div class="input-container">
+                <label for="update-announcement-title">Title:</label>
+                <input type="text" id="update-announcement-title" name="announcement-title" required>
+            </div>
+            <div class="input-container">
+                <label for="update-announcement-content">Content:</label>
+                <textarea id="update-announcement-content" name="announcement-content" required></textarea>
+            </div>
+            <button type="submit" name="update" id="update-button">Update</button>
+            <button type="button" class="cancel-update" id="cancel-update">Cancel</button>
+        </form>
+    </div>
 
 <!-- JScript -->
 

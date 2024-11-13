@@ -91,6 +91,9 @@ if (isset($_GET['id'])) {
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+
         
 
         </div>
@@ -104,7 +107,6 @@ if (isset($_GET['id'])) {
     <div class="topbar">
         <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
 
-        <p>Login time: <?php echo htmlspecialchars($_SESSION['login_time']); ?></p>
 
       
 

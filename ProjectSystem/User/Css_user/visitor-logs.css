@@ -51,8 +51,9 @@ body {
     background-color: white; /* Dark blue for active link */
     color:#2B228A; /* Optional: change text color to highlight active link */
     border: 2px solid rgb(255, 255, 255); /* Add a yellow border around the entire link */
-    border-radius: 30px; /* Add rounded corners */
+    border-radius: 30px ; /* Add rounded corners */
     padding: 12px; /* Adjust padding to account for border */
+ 
 }
 
   /* Default icon style inside sidebar links */
@@ -407,9 +408,6 @@ button:hover {
 .main-content {
     position: relative; /* Change to relative */
     margin-left: 200px; /* Matches sidebar width */
-    padding: 20px;
-    padding-top: 80px; /* To push content below the topbar */
-    background-color: #f4f4f4;
     min-height: calc(100vh - 70px); /* Adjust height to exclude top bar */
     transition: all 0.3s ease;
     display: flex; /* Use flexbox for alignment */
@@ -584,37 +582,3 @@ body {
     margin: 0 auto;
     display: block;
   }
-  .accordion-button {
-    background-color: #2B228A;
-    color: white;
-  }
-  .accordion-button:not(.collapsed) {
-    background-color: #0056b3;
-    color: white;
-  }
- 
-
-  .back-link {
-    display: inline-flex;
-    align-items: center;
-    font-family: Arial, sans-serif;
-    font-size: 30px;
-    text-decoration: none;
-    color: #333;
-    transition: color 0.3s ease; /* Smooth transition on hover */
-  }
-  
-  .back-link .icon {
-    margin-right:1000px;
-    transform: translateX(-5px); /* Initial left position for slide effect */
-    transition: transform 0.3s ease; /* Smooth slide effect */
-  }
-  
-  .back-link:hover {
-    color: #070742;
-  }
-  
-  .back-link:hover .icon {
-    transform: translateX(0); /* Reset position on hover to slide in */
-  }
-  

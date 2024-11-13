@@ -59,6 +59,7 @@ $conn->close();
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="user_room.php" class="nav-link active"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
+        <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
 
         </div>
         

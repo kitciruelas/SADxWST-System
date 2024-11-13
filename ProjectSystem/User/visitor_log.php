@@ -147,7 +147,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_user/vip-log.css">
+    <link rel="stylesheet" href="Css_user/visitor-logs.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
@@ -161,7 +161,11 @@ $conn->close();
 
 <!-- Bootstrap JS -->
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-
+<style>
+.main-content {
+   padding-top: 80px;
+}
+</style>
 </head>
 <body>
 
@@ -175,6 +179,8 @@ $conn->close();
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="user_room.php" class="nav-link"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link active"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
+        <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
         </div>
         
         <div class="logout">
@@ -188,7 +194,7 @@ $conn->close();
 
     </div>
     <div class="main-content">      
-    <div class="container mt-5">
+    <div class="container mt-1">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="input-group w-25">
             <label class="input-group-text" for="filterSelect">Filter by</label>

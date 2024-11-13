@@ -79,7 +79,7 @@ $conn->close();
                             <a class="nav-link" href="#contact-us">Contact</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link btn btn-primary text-white" href="../User/user-login.php">Login</a>
+                            <a class="nav-link btn btn-primary text-white" href="../User/user-login.php">Log in</a>
                         </li>
                     </ul>
                 </div>

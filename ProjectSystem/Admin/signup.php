@@ -15,7 +15,15 @@
   <div class="container">
     <div class="logo"></div>
     <h2>Create an Account</h2>
-    <form action="signup.php" method="post">
+    <form action="../config/signup.php" method="post">
+      <div>
+        <label for="fname">First Name:</label>
+        <input type="text" name="fname" id="fname" required>
+      </div>
+      <div>
+        <label for="lname">Last Name:</label>
+        <input type="text" name="lname" id="lname" required>
+      </div>
       <div>
         <label for="username">Username:</label>
         <input type="text" name="username" id="username" required>
@@ -41,7 +49,8 @@
       
       <button type="submit" class="btn">Sign up</button>
     </form>
-  </div>
+</div>
+
 
   <script>
     function togglePasswordVisibility(fieldId, icon) {

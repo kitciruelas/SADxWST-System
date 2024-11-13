@@ -123,9 +123,11 @@ $conn->close();
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="#" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+            <a href="admin-room.php" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
 
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+
 
        
 
@@ -146,11 +148,11 @@ $conn->close();
     <div class="container">
 
     <div class="d-flex justify-content-start">
-    <button type="button" class="btn " onclick="window.history.back();">
-        <i class="fas fa-arrow-left fa-2x me-2"></i></button>
+    <a href="admin-room.php" class="btn " onclick="window.location.reload();">
+    <i class="fas fa-arrow-left fa-2x me-1"></i></a>
 </div>
 </div>
-<div class="container mt-5">
+<div class="container mt-1">
     <!-- Search and Filter Section -->
     <div class="row mb-4">
         <div class="col-12 col-md-8">
@@ -236,7 +238,41 @@ $conn->close();
     <button id="nextPage" onclick="nextPage()">Next</button>
 </div>
 
+<style>
+    /* Style for the entire table */
+    .table {
+        background-color: #f8f9fa; /* Light background for the table */
+        border-collapse: collapse; /* Ensures borders don't double up */
+    }
 
+    /* Style for table headers */
+    .table th {
+        background-color: #2B228A; /* Dark background */
+        color: #ffffff; /* White text */
+        font-weight: bold;
+        text-align: center;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6; /* Bottom border only */
+    }
+
+    /* Style for table rows */
+    .table td {
+        padding: 10px;
+        vertical-align: middle; /* Center content vertically */
+        border-bottom: 1px solid #dee2e6; /* Border only at the bottom of each row */
+    }
+
+    /* Optional hover effect for rows */
+    .table tbody tr:hover {
+        background-color: #e9ecef; /* Slightly darker background on hover */
+    }
+
+    /* Styling the action buttons */
+    .table .btn {
+        margin-right: 5px; /* Space between buttons */
+    }
+
+</style>
 
             
    

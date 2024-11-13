@@ -61,7 +61,7 @@ input:focus {
 label {
   position: absolute;
   left: 12px;
-  top: 50%; /* Center the label vertically */
+  top: 40%; /* Center the label vertically */
   transform: translateY(-50%); /* Adjust for perfect centering */
   transition: all 0.2s ease;
   color: #999;

@@ -24,7 +24,9 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         </div>
         <div class="sidebar-nav">
             <a href="user-dashboard.php" class="nav-link"><i class="fas fa-user"></i> <span>Profile</span></a>
+            <a href="staff-chat.php" class="nav-link"><i class="fas fa-users"></i> <span>Chat</span></a>
             <a href="#" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+
         </div>
         <div class="logout">
             <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>

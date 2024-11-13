@@ -17,7 +17,7 @@
   <i class="fas fa-arrow-left"></i>
 </a>
     <div class="logo"></div>
-    <h2>Dormio: An Integrated Dorm Management System</h2>
+    <h2>Log in</h2>
     <form action="../config/slogin.php" method="post">
     <form>
   <div class="form-group">
@@ -36,7 +36,7 @@
     <div class="g-recaptcha" data-sitekey="6LfVgHUqAAAAAJtQJXShsLo2QbyGby2jquueTZYV"></div>
 </div>
 
-      <button type="submit" class="btn">Sign in</button>
+      <button type="submit" class="btn">Log in</button>
 
       <p class="forgot-password"><a href="forgot-password.php">Forgot Password?</a></p>
      <!--  <p>Don't have an account? <a href="signup.php">Sign up here</a></p>-->
@@ -67,7 +67,7 @@ input:focus {
 label {
   position: absolute;
   left: 12px;
-  top: 50%; /* Center the label vertically */
+  top: 40%; /* Center the label vertically */
   transform: translateY(-50%); /* Adjust for perfect centering */
   transition: all 0.2s ease;
   color: #999;

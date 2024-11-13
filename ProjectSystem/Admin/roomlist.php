@@ -247,6 +247,8 @@ $sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, stat
 $result = $conn->query($sql);
 
 
+
+
 $conn->close();
 ?>
 
@@ -260,9 +262,14 @@ $conn->close();
     <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <!-- Sidebar -->
@@ -297,7 +304,7 @@ $conn->close();
 <button type="button" class="btn " onclick="window.history.back();">
     <i class="fas fa-arrow-left fa-2x me-2"></i></button>
 </div>        
-    <div class="container mt-5">
+    <div class="container mt-1">
     <!-- Search and Filter Section -->
     <div class="row mb-4">
         <div class="col-12 col-md-8">
@@ -313,18 +320,25 @@ $conn->close();
         </div>
         <div class="col-6 col-md-2">
             <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
+            
         </div>
+        <div class="col-6 col-md-2 mt-1 ms-auto">
+        <a href="View-roomassign.php" class="text-decoration-none">
+    <button type="button" class="custom-btns">View Assign</button>
+</a>
+        </div>
+
     </div>
-         <!-- Room Table -->
+ <!-- Room Table -->
 <div class="table-responsive">
     <table class="table table-bordered">
         <thead class="table-light">
             <tr>
-                <th>No</th> <!-- Changed ID to No -->
+                <th>No</th>
                 <th>Room Number</th>
                 <th>Room Description</th>
                 <th>Capacity</th>
-                <th>Monthly Rent</th> <!-- Monthly Rent Column -->
+                <th>Monthly Rent</th>
                 <th>Status</th>
                 <th>Room Picture</th>
                 <th>Action</th>
@@ -332,45 +346,43 @@ $conn->close();
         </thead>
         <tbody id="room-table-body">
         <?php
-if ($result->num_rows > 0) {
-    $counter = 1; // Initialize counter for No column
-    while ($row = $result->fetch_assoc()) {
-        echo "<tr>";
-        echo "<td>" . $counter++ . "</td>"; // Increment counter for each row
-        echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
-        echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
-        echo "<td>" . htmlspecialchars($row["capacity"]) . "</td>";
-        echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>"; // Monthly Rent, formatted with 2 decimals
-        echo "<td>" . htmlspecialchars($row["status"]) . "</td>";
-        echo "<td>";
-        
-        // Check if room_pic is not empty and file exists
-        if (!empty($row["room_pic"])) {
-            $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]); // Adjust path as necessary
-            if (file_exists($imagePath)) {
-                echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
-            } else {
-                echo "Image not found"; // Handle case where image file is missing
+        if ($result->num_rows > 0) {
+            $counter = 1;
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>";
+                echo "<td>" . $counter++ . "</td>";
+                echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
+                echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
+                echo "<td>" . htmlspecialchars($row["capacity"]) . "</td>";
+                echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
+                echo "<td>" . htmlspecialchars($row["status"]) . "</td>";
+                echo "<td>";
+                
+                if (!empty($row["room_pic"])) {
+                    $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
+                    if (file_exists($imagePath)) {
+                        echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
+                    } else {
+                        echo "Image not found";
+                    }
+                } else {
+                    echo "No Image";
+                }
+                
+                echo "</td>";
+                echo "<td>";
+                echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
+                echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
+                        <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
+                        <button type='submit' class='custom-btn delete-btn'>Delete</button>
+                      </form>";
+                echo "</td>";
+                echo "</tr>";
             }
         } else {
-            echo "No Image"; // No image uploaded
+            echo "<tr><td colspan='8'>No rooms found</td></tr>";
         }
-        
-        echo "</td>";
-        echo "<td>";
-        echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
-        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                <button type='submit' class='custom-btn delete-btn'>Delete</button>
-              </form>";
-        echo "</td>";
-        echo "</tr>";
-    }
-} else {
-    echo "<tr><td colspan='8'>No rooms found</td></tr>"; // Update colspan to match number of columns
-}
-?>
-
+        ?>
         </tbody>
     </table>
 </div>
@@ -383,6 +395,41 @@ if ($result->num_rows > 0) {
     <span id="pageIndicator">Page 1</span>
     <button id="nextPage" onclick="nextPage()">Next</button>
 </div>
+<style>
+    /* Style for the entire table */
+    .table {
+        background-color: #f8f9fa; /* Light background for the table */
+        border-collapse: collapse; /* Ensures borders don't double up */
+    }
+
+    /* Style for table headers */
+    .table th {
+        background-color: #2B228A; /* Dark background */
+        color: #ffffff; /* White text */
+        font-weight: bold;
+        text-align: center;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6; /* Bottom border only */
+    }
+
+    /* Style for table rows */
+    .table td {
+        padding: 10px;
+        vertical-align: middle; /* Center content vertically */
+        border-bottom: 1px solid #dee2e6; /* Border only at the bottom of each row */
+    }
+
+    /* Optional hover effect for rows */
+    .table tbody tr:hover {
+        background-color: #e9ecef; /* Slightly darker background on hover */
+    }
+
+    /* Styling the action buttons */
+    .table .btn {
+        margin-right: 5px; /* Space between buttons */
+    }
+
+</style>
         </div>
     </div>
     <?php if ($editRoom): ?>
@@ -517,11 +564,16 @@ if ($result->num_rows > 0) {
 </div>
 
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+
     <!-- Bootstrap JS and Popper.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Hamburger Menu Script -->
     <script>
+   
+
          function openEditModal(roomId) {
         // Fetch room data using AJAX or populate it using server-side rendering
         fetch('get_room.php?room_id=' + roomId)

@@ -145,7 +145,7 @@ function printAttendance($user_id, $message) {
                 <div class="card shadow">
                     <div class="card-body">
                         <h3 class="card-title">Scanned Data</h3>
-                        <p class="card-text"><strong>Student ID:</strong> <span id="id_display"></span></p>
+                        <p class="card-text"><strong>Users ID:</strong> <span id="id_display"></span></p>
                     </div>
                 </div>
             </div>
@@ -173,7 +173,7 @@ function processStudentID(studentID) {
         return;
     }
 
-    // Display the scanned Student ID
+    // Display the scanned 
     document.getElementById('id_display').textContent = studentID;
     document.getElementById('result').style.display = 'block';
 

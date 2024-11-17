@@ -78,8 +78,8 @@ SELECT
     pm.attendance_id AS ID,
     CONCAT(u.fname, ' ', u.lname) AS Resident_Name,
     r.room_number AS Room_Number,
-    pm.check_in AS Check_In_Time,
-    pm.check_out AS Check_Out_Time,
+    DATE_FORMAT(pm.check_in, '%Y-%m-%d %h:%i %p') AS Check_In_Time,  -- Format check_in with AM/PM
+    DATE_FORMAT(pm.check_out, '%Y-%m-%d %h:%i %p') AS Check_Out_Time, -- Format check_out with AM/PM
     pm.date AS Date
 FROM 
     presencemonitoring pm
@@ -90,9 +90,9 @@ JOIN
 JOIN 
     rooms r ON ra.room_id = r.room_id
 ORDER BY 
-    pm.check_in DESC;  -- Sorting by check_in in ascending order
-
+    pm.check_in DESC;  -- Sorting by check_in in descending order
 ";
+
 
 $result = $conn->query($query);
 

@@ -37,8 +37,12 @@ if (isset($_POST['update'])) {
     $updated_title = $_POST['announcement-title'];
     $updated_content = $_POST['announcement-content'];
 
-    $sql = "UPDATE announce SET title = '$updated_title', content = '$updated_content' WHERE announcementId = $announcement_id";
-    if (mysqli_query($conn, $sql)) {
+    $sql = "UPDATE announce 
+    SET title = '$updated_title', 
+        content = '$updated_content', 
+        date_published = NOW() 
+    WHERE announcementId = $announcement_id";
+if (mysqli_query($conn, $sql)) {
         echo "<script>alert('Announcement updated successfully');</script>";
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
@@ -121,7 +125,9 @@ mysqli_close($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="Css_Admin/ad-announce.css">
+    <link rel="stylesheet" href="Css_Admin/admin-announce.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
 
     <title>Announcements</title>
    
@@ -154,34 +160,41 @@ mysqli_close($conn);
 
 
 <!-- Announcement -->
-<div class="centered-content">
-<button class="back-button" onclick="location.href='dashboard.php'"><i class="fas fa-arrow-left"></i></button>
-    <h2><i class="fas fa-bullhorn announcement-icon"></i> Announcements</h2>
+<div class="centered-content ">
+<button class="back-button" onclick="location.href='dashboard.php'"><i class="fas fa-arrow-left fa-2x"></i></button>
+<h2 class="announcements-heading mb-4"> 
+    <i class="fas fa-bullhorn announcement-icon"></i> Announcements
+</h2>
 </div>
 
-    <div class="announcement-options">
-        <div class="announcement-option">
-            <p>Create New Announcement</p>
-            <p>Notify all</p>
-        </div>
-
-        <div class="add-announcement" id="add-new-button">
-            Add New Announcement
-        </div>
-        
+   <!-- Announcement Options -->
+<div class="announcement-options">
+    <div class="announcement-option">
+        <p>Create New Announcement</p>
+        <p>Notify all</p>
     </div>
-    <div class="search-container">
-  <input type="text" id="announcement-search" placeholder="Search announcements...">
-  <i class="fas fa-search search-icon"></i>
+    <div class="add-announcement btn btn-primary d-inline-flex align-items-center" id="add-new-button">
+    <i class="fas fa-plus me-2"></i> Add Announcement
+</div>
+
+<!-- Include Font Awesome for Icons if not already included -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+</div>
+
+<!-- Search Container -->
+<div class="search-container mb-4">
+    <input type="text" id="announcement-search" class="form-control custom-input-small" placeholder="Search announcements...">
+    <i class="fas fa-search search-icon"></i>
 </div>
 
 
-<!-- Announcemnet table -->
 
+<!-- Announcements Table -->
 <div class="announcements">
     <?php if (!empty($announcements)): ?>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped" id="announcementTable">
                 <thead class="thead-dark">
                     <tr>
                         <th scope="col">No.</th>
@@ -197,9 +210,9 @@ mysqli_close($conn);
                     foreach ($announcements as $announcement): ?>
                         <tr>
                             <td><?= $counter++ ?></td>
-                            <td><?= htmlspecialchars($announcement['title']) ?></td>
-                            <td><?= htmlspecialchars($announcement['content']) ?></td>
-                            <td><?= htmlspecialchars($announcement['date_published']) ?></td>
+                            <td class="title"><?= htmlspecialchars($announcement['title']) ?></td>
+                            <td class="content"><?= htmlspecialchars($announcement['content']) ?></td>
+                            <td class="date_published"><?= htmlspecialchars($announcement['date_published']) ?></td>
                             <td>
                                 <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
                                     <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
@@ -207,7 +220,6 @@ mysqli_close($conn);
                                         <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
                                     </button>
                                 </form>
-                                
                                 <button class="btn btn-sm btn-primary update-button" data-id="<?= $announcement['announcementId'] ?>">
                                     <i class="far fa-edit"></i> Edit
                                 </button>
@@ -222,7 +234,6 @@ mysqli_close($conn);
         <p class="alert alert-info text-center">No announcements yet.</p>
     <?php endif; ?>
 </div>
-
 <style>
     /* Style for the entire table */
     .table {
@@ -291,7 +302,7 @@ mysqli_close($conn);
                 <textarea id="update-announcement-content" name="announcement-content" required></textarea>
             </div>
             <button type="submit" name="update" id="update-button">Update</button>
-            <button type="button" class="cancel-update" id="cancel-update">Cancel</button>
+            <button type="button" class="cancel-announcement" id="cancel-update">Cancel</button>
         </form>
     </div>
 

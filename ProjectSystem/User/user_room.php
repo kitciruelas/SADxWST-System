@@ -80,21 +80,25 @@ $conn->close();
         <div class="col-12 col-md-8 col-lg-6">
             <div class="card shadow-sm w-100 mt-3">
                 <div class="card-body text-center">
-                    <!-- PHP Room Assignment Logic -->
-                    <?php if ($roomAssignment): ?>
-                        <h5 class="card-title"><strong>Room:</strong> <?php echo htmlspecialchars($roomAssignment['room_number']); ?></h5>
-                        <p class="card-text"><strong>Monthly Rent:</strong> <?php echo htmlspecialchars($roomAssignment['room_monthlyrent']); ?></p>
+                <?php if ($roomAssignment): ?>
+    <h5 class="card-title"><strong>Room:</strong> <?php echo htmlspecialchars($roomAssignment['room_number']); ?></h5>
+    <p class="card-text"><strong>Monthly Rent:</strong> <?php echo htmlspecialchars($roomAssignment['room_monthlyrent']); ?></p>
+    <p class="card-text"><strong>Assign Date:</strong> <?php echo htmlspecialchars($roomAssignment['assignment_date']); ?></p>
 
-                        <p class="card-text"><strong>Assign Date:</strong> <?php echo htmlspecialchars($roomAssignment['assignment_date']); ?></p>
-                        <?php if (!empty($roomAssignment['room_pic'])): ?>
-                            <!-- Display the room picture -->
-                            <img src="<?php echo htmlspecialchars($roomAssignment['room_pic']); ?>" alt="Room Picture" class="img-fluid rounded" style="max-width: 500px; height: auto;">
-                        <?php else: ?>
-                            <p>No room picture available.</p>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <p class="card-text">You have not been assigned a room yet.</p>
-                    <?php endif; ?>
+    <?php if (!empty($roomAssignment['room_pic'])): 
+        $imagePath = "../uploads/" . htmlspecialchars($roomAssignment['room_pic']); 
+    ?>
+        <!-- Display the room picture using the correct image path -->
+        <img src="<?php echo $imagePath; ?>" alt="Room Picture" class="img-fluid rounded" style="max-width: 500px; height: auto;">
+    <?php else: ?>
+        <p>No room picture available.</p>
+    <?php endif; ?>
+
+  
+<?php else: ?>
+    <p class="card-text">You have not been assigned a room yet.</p>
+<?php endif; ?>
+
                 </div>
             </div>
         </div>

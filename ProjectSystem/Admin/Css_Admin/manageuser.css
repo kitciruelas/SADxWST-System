@@ -211,7 +211,6 @@ p a:hover {
     background-color: #f4f4f4;
     min-height: calc(100vh - 70px); /* Adjust height to exclude top bar */
     transition: all 0.3s ease;
-    display: flex; /* Use flexbox for alignment */
     flex-direction: column; /* Stack items vertically */
     align-items: center; /* Center align items */
 }
@@ -616,7 +615,7 @@ label {
 }
 
 input, select {
-    width: 80%; /* Full width */
+    width: 100%; /* Full width */
     padding: 8px; /* Padding for inputs */
     margin-bottom: 10px; /* Space below each input */
     border: 1px solid #ccc; /* Border style */
@@ -741,8 +740,6 @@ select:hover, select:focus {
 
     .addmodal-content, .editmodal-content {
         width: 60%; /* Adjust modal width for larger screens */
-        max-width: 500px; /* Increase max-width for large screens */
-        padding: 20px; /* Increase padding */
     }
 
     button, .btn-delete {
@@ -1222,3 +1219,5 @@ h5 {
     font-size: 14px;
     padding: 5px 10px;
 }
+
+

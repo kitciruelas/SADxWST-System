@@ -162,12 +162,10 @@ display: inline; /* Show text on hover */
 .centered-content h2{
 display: flex;
 justify-content: center; /* Center horizontally */
-align-items: center; /* Center vertically */
 gap: 10px; /* Adjust the space between the icon and the text */
 margin-bottom: 10px; /* Optional: space between header and the rest */
 font-size: 30px; /* Adjust heading size */
 display: flex;
-margin: 0;
 
 }
 

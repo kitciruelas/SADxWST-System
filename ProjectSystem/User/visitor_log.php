@@ -114,23 +114,39 @@ if (isset($_POST['delete_visitor_id'])) {  // Using delete trigger as archive ac
 
 
 
-// **Filter Logic**: Handle filter selection from the dropdown
-$filter = $_GET['filter'] ?? ''; // Get the selected filter (if any)
-$dateCondition = ''; // Initialize
+// Assuming you're using $_GET['filter'] to fetch the filter value
+$filter = isset($_GET['filter']) ? $_GET['filter'] : '';
+$sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
+        FROM visitors v 
+        LEFT JOIN users u ON v.visiting_user_id = u.id";
 
-if ($filter === 'today') {
-    $dateCondition = "AND DATE(check_in_time) = CURDATE()";
-} elseif ($filter === 'this_week') {
-    $dateCondition = "AND YEARWEEK(check_in_time, 1) = YEARWEEK(CURDATE(), 1)";
-} elseif ($filter === 'this_month') {
-    $dateCondition = "AND MONTH(check_in_time) = MONTH(CURDATE()) AND YEAR(check_in_time) = YEAR(CURDATE())";
+// Modify query based on selected filter
+if ($filter == 'today') {
+    $sql .= " WHERE DATE(v.check_in_time) = CURDATE()"; // Filter for today's visits
+} elseif ($filter == 'this_week') {
+    $sql .= " WHERE WEEK(v.check_in_time) = WEEK(CURDATE())"; // Filter for this week's visits
+} elseif ($filter == 'this_month') {
+    $sql .= " WHERE MONTH(v.check_in_time) = MONTH(CURDATE())"; // Filter for this month's visits
 }
 
-// **Fetch Visitors for the Logged-in User Only**
+$result = $conn->query($sql);
+// Assuming you're using $_GET['sort'] to get the sort parameter
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name'; // Default sort by name
+
 $sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
         FROM visitors v 
         LEFT JOIN users u ON v.visiting_user_id = u.id 
-        WHERE v.visiting_user_id = ?";
+        ORDER BY v.$sort"; // Sorting by the selected field (name, check_in_time, or check_out_time)
+
+$result = $conn->query($sql);
+
+
+$sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
+        FROM visitors v 
+        LEFT JOIN users u ON v.visiting_user_id = u.id 
+        WHERE v.visiting_user_id = ? 
+        ORDER BY v.check_in_time DESC";  // Assuming you want to order by check-in time, adjust the field as needed
+
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
@@ -195,71 +211,128 @@ $conn->close();
     </div>
     <div class="main-content">      
     <div class="container mt-1">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="input-group w-25">
-            <label class="input-group-text" for="filterSelect">Filter by</label>
-            <select class="form-select" id="filterSelect" name="filter" 
-                onchange="location = 'visitor_log.php?filter=' + this.value;">
-                <option value="">Choose...</option>
-                <option value="today" <?= $filter === 'today' ? 'selected' : '' ?>>Today</option>
-                <option value="this_week" <?= $filter === 'this_week' ? 'selected' : '' ?>>This Week</option>
-                <option value="this_month" <?= $filter === 'this_month' ? 'selected' : '' ?>>This Month</option>
-            </select>
-        </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#visitorModal">Log Visitor</button>
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+    <!-- Search Input -->
+    <div class="input-group w-50">
+        <input type="text" class="form-control" id="searchInput" placeholder="Search for visitors..." onkeyup="searchTable()">
     </div>
 
-    <!-- Visitor Log Table -->
-    <div class="table-responsive">
-        <table class="table table-bordered">
-            <thead class="table-light">
-                <tr>
-                    <th scope="col">No.</th>
-                    <th scope="col">Name</th>
-                    <th scope="col">Contact Info</th>
-                    <th scope="col">Purpose</th>
-                    <th scope="col">Visiting Person</th>
-                    <th scope="col">Check-In</th>
-                    <th scope="col">Check-Out</th>
-                    <th scope="col">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ($result->num_rows > 0): 
-                    $counter = 1;
-                    while ($row = $result->fetch_assoc()):
-                        $isCheckedOut = !empty($row['check_out_time']);
-                        $checkInTime = date("g:i A", strtotime($row['check_in_time']));
-                        $checkOutTime = $isCheckedOut ? date("g:i A", strtotime($row['check_out_time'])) : 'N/A';
-                ?>
-                    <tr>
-                        <td><?= $counter++ ?></td>
-                        <td><?= htmlspecialchars($row['name']) ?></td>
-                        <td><?= htmlspecialchars($row['contact_info']) ?></td>
-                        <td><?= htmlspecialchars($row['purpose']) ?></td>
-                        <td><?= htmlspecialchars($row['visiting_person']) ?></td>
-                        <td><?= $checkInTime ?></td>
-                        <td><?= $checkOutTime ?></td>
-                        <td>
-                            <form action="visitor_log.php" method="post" style="display:inline;">
-                                <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
-                                <button type="submit" class="btn btn-secondary btn-sm" 
-                                    <?= $isCheckedOut ? 'disabled' : '' ?>>Check-Out</button>
-                            </form>
-                            <form action="visitor_log.php" method="post" style="display:inline;">
-                                <input type="hidden" name="delete_visitor_id" value="<?= $row['id'] ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" 
-                                    onclick="return confirm('Are you sure?')">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endwhile; else: ?>
-                    <tr><td colspan="8" class="text-center">No visitors found</td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <!-- Filter Section -->
+  <!-- Filter by Dropdown -->
+<div class="d-flex align-items-center">
+    <label for="filterSelect" class="form-label me-2">Filter by:</label>
+    <select class="form-select w-auto" id="filterSelect" onchange="filterTable()">
+        <option value="">All</option>
+        <option value="today">Today</option>
+        <option value="this_week">This Week</option>
+        <option value="this_month">This Month</option>
+    </select>
 </div>
+
+
+    <!-- Sort by Dropdown -->
+    <div class="d-flex align-items-center">
+        <label for="sortSelect" class="form-label me-2">Sort by:</label>
+        <select class="form-select w-auto" id="sortSelect" onchange="sortTable()">
+            <option value="name" selected>Name</option>
+            <option value="check_in_time">Check-In Time</option>
+            <option value="check_out_time">Check-Out Time</option>
+        </select>
+    </div>
+
+    <!-- Log Visitor Button -->
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#visitorModal">Log Visitor</button>
+</div>
+
+<!-- Visitor Log Table -->
+<div class="table-responsive">
+    <table class="table table-bordered" id="visitorTable">
+        <thead class="table-light">
+            <tr>
+                <th scope="col">No.</th>
+                <th scope="col">Visiting Person</th>
+                <th scope="col">Contact Info</th>
+                <th scope="col">Purpose</th>
+                <th scope="col">Name</th>
+                <th scope="col">Check-In</th>
+                <th scope="col">Check-Out</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            date_default_timezone_set('Asia/Manila'); // Set timezone to Philippine Time
+
+            if ($result->num_rows > 0): 
+                $counter = 1;
+                while ($row = $result->fetch_assoc()):
+                    $isCheckedOut = !empty($row['check_out_time']);
+                    $checkInDateTime = date("Y-m-d g:i A", strtotime($row['check_in_time'])); // Date with AM/PM
+                    $checkOutDateTime = $isCheckedOut ? date("Y-m-d g:i A", strtotime($row['check_out_time'])) : 'N/A'; // Check-out date and time or 'N/A'
+            ?>
+                <tr>
+                    <td><?= $counter++ ?></td>
+                    <td><?= htmlspecialchars($row['name']) ?></td>
+                    <td><?= htmlspecialchars($row['contact_info']) ?></td>
+                    <td><?= htmlspecialchars($row['purpose']) ?></td>
+                    <td><?= htmlspecialchars($row['visiting_person']) ?></td>
+                    <td><?= $checkInDateTime ?></td>
+                    <td><?= $checkOutDateTime ?></td>
+                    <td>
+                        <form action="visitor_log.php" method="post" style="display:inline;">
+                            <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
+                            <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Are you sure you want to check out this visitor?')" <?= $isCheckedOut ? 'disabled' : '' ?>>Check-Out</button>
+                        </form>
+                        <form action="visitor_log.php" method="post" style="display:inline;">
+                            <input type="hidden" name="delete_visitor_id" value="<?= $row['id'] ?>">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endwhile; else: ?>
+                <tr>
+                    <td colspan="8" class="text-center">No visitors found.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
+<style>
+    /* Style for the entire table */
+    .table {
+        background-color: #f8f9fa; /* Light background for the table */
+        border-collapse: collapse; /* Ensures borders don't double up */
+    }
+
+    /* Style for table headers */
+    .table th {
+        background-color: #2B228A; /* Dark background */
+        color: #ffffff; /* White text */
+        font-weight: bold;
+        text-align: center;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6; /* Bottom border only */
+    }
+
+    /* Style for table rows */
+    .table td {
+        padding: 10px;
+        vertical-align: middle; /* Center content vertically */
+        border-bottom: 1px solid #dee2e6; /* Border only at the bottom of each row */
+    }
+
+    /* Optional hover effect for rows */
+    .table tbody tr:hover {
+        background-color: #e9ecef; /* Slightly darker background on hover */
+    }
+
+    /* Styling the action buttons */
+    .table .btn {
+        margin-right: 5px; /* Space between buttons */
+    }
+
+</style>
 
 <!-- Log Visitor Modal -->
 <div class="modal fade" id="visitorModal" tabindex="-1" aria-labelledby="visitorModalLabel" aria-hidden="true">
@@ -274,7 +347,7 @@ $conn->close();
             <div class="modal-body">
                 <form action="visitor_log.php" method="post" onsubmit="return validateForm()">
                     <div class="mb-3">
-                        <label for="visitorName" class="form-label">Name</label>
+                        <label for="visitorName" class="form-label">Visiting Person</label>
                         <input type="text" class="form-control" id="visitorName" name="visitor_name" required>
                     </div>
                     <div class="mb-3">
@@ -288,7 +361,7 @@ $conn->close();
                         <input type="text" class="form-control" id="purpose" name="purpose" required>
                     </div>
                     <div class="mb-3">
-                        <label for="visitingUser" class="form-label">Visiting Person</label>
+                        <label for="visitingUser" class="form-label">Name</label>
                         <input type="hidden" name="visiting_user_id" value="<?php echo $_SESSION['id']; ?>">
                         <input type="text" class="form-control" id="visitingUser" value="<?php echo htmlspecialchars($_SESSION['Fname'] . ' ' . $_SESSION['Lname']); ?>" readonly>
                     </div>
@@ -314,6 +387,107 @@ $conn->close();
     
     <!-- JavaScript -->
     <script>
+        // Function to filter the table based on the selected filter (Today, This Week, This Month)
+// Function to filter the table based on the selected filter (Today, This Week, This Month)
+function filterTable() {
+    const filterValue = document.getElementById("filterSelect").value;
+    const rows = document.querySelectorAll("#visitorTable tbody tr");
+
+    rows.forEach(row => {
+        const checkInTimeText = row.querySelector("td:nth-child(6)").textContent; // Check-In column
+        const checkOutTimeText = row.querySelector("td:nth-child(7)").textContent; // Check-Out column
+        const checkInDate = new Date(checkInTimeText);
+        const currentDate = new Date();
+
+        // Set flag to determine whether to display this row
+        let shouldDisplay = true;
+
+        if (filterValue === 'today') {
+            // Filter by today (compare date only)
+            if (checkInDate.toDateString() !== currentDate.toDateString()) {
+                shouldDisplay = false;
+            }
+        } else if (filterValue === 'this_week') {
+            // Filter by this week (compare week number)
+            const currentWeek = getWeekNumber(currentDate);
+            const checkInWeek = getWeekNumber(checkInDate);
+            if (currentWeek !== checkInWeek) {
+                shouldDisplay = false;
+            }
+        } else if (filterValue === 'this_month') {
+            // Filter by this month
+            if (checkInDate.getMonth() !== currentDate.getMonth()) {
+                shouldDisplay = false;
+            }
+        }
+
+        // Show or hide the row based on filter match
+        row.style.display = shouldDisplay ? '' : 'none';
+    });
+}
+
+// Function to get the week number of the year for a given date
+function getWeekNumber(date) {
+    const tempDate = new Date(date.getTime());
+    tempDate.setHours(0, 0, 0, 0);
+    tempDate.setDate(tempDate.getDate() + 3 - (tempDate.getDay() + 6) % 7);
+    const firstThursday = tempDate.getTime();
+    tempDate.setMonth(0, 1);
+    return Math.ceil((((firstThursday - tempDate) / 86400000) + 1) / 7);
+}
+
+// Function to sort the table based on selected sort criteria (Name, Check-In Time, Check-Out Time)
+function sortTable() {
+    const sortBy = document.getElementById("sortSelect").value;
+    const rows = Array.from(document.querySelectorAll("#visitorTable tbody tr"));
+    const compareFunc = (a, b) => {
+        let valueA, valueB;
+        if (sortBy === "name") {
+            valueA = a.querySelector("td:nth-child(5)").textContent.trim().toLowerCase();
+            valueB = b.querySelector("td:nth-child(5)").textContent.trim().toLowerCase();
+        } else if (sortBy === "check_in_time") {
+            valueA = new Date(a.querySelector("td:nth-child(6)").textContent);
+            valueB = new Date(b.querySelector("td:nth-child(6)").textContent);
+        } else if (sortBy === "check_out_time") {
+            valueA = new Date(a.querySelector("td:nth-child(7)").textContent);
+            valueB = new Date(b.querySelector("td:nth-child(7)").textContent);
+        }
+        
+        if (valueA < valueB) return -1;
+        if (valueA > valueB) return 1;
+        return 0;
+    };
+
+    // Sort the rows based on the selected option
+    rows.sort(compareFunc);
+
+    // Reattach the sorted rows to the table body
+    const tbody = document.querySelector("#visitorTable tbody");
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+    // JavaScript to filter table based on search input
+function searchTable() {
+    const searchInput = document.getElementById("searchInput").value.toLowerCase();
+    const table = document.getElementById("visitorTable");
+    const rows = table.getElementsByTagName("tr");
+
+    for (let i = 1; i < rows.length; i++) { // Start from 1 to skip the header row
+        const cells = rows[i].getElementsByTagName("td");
+        let found = false;
+        
+        // Loop through each cell in the row and check if it contains the search term
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j].textContent.toLowerCase().includes(searchInput)) {
+                found = true;
+                break;
+            }
+        }
+
+        // Show or hide row based on whether it matches the search input
+        rows[i].style.display = found ? "" : "none";
+    }
+}
 
 function validateForm() {
         const contactInfo = document.getElementById('contact_info').value;

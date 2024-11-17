@@ -42,7 +42,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
+    <link rel="stylesheet" href="Css_Admin/manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -95,7 +95,7 @@ $conn->close();
                             <div class="progress mt-2">
                                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($roomCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $roomCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            <a href="roomlist.php" class="btn btn-primary mt-3">View Details</a>
+                            <a href="roomlist.php" class="btn btn-primary mt-3">View Manage</a>
                         </div>
                     </div>
                 </div>
@@ -112,7 +112,7 @@ $conn->close();
                             <div class="progress mt-2">
                                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($assignedRooms / 100) * 100; ?>%;" aria-valuenow="<?php echo $assignedRooms; ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            <a href="room-assign.php" class="btn btn-primary mt-3">View Details</a>
+                            <a href="room-assign.php" class="btn btn-primary mt-3">View Manage</a>
                         </div>
                     </div>
                 </div>
@@ -127,7 +127,7 @@ $conn->close();
                             <div class="progress mt-2">
                                 <div class="progress-bar" role="progressbar" style="width: <?php echo ($pendingApplications / 100) * 100; ?>%;" aria-valuenow="<?php echo $pendingApplications; ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            <a href="application-room.php" class="btn btn-primary mt-3">View Details</a>
+                            <a href="application-room.php" class="btn btn-primary mt-3">View Manage</a>
                         </div>
                     </div>
                 </div>

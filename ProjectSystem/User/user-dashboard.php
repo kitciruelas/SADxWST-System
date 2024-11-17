@@ -402,7 +402,7 @@ if ($result === false) {
     data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent'] ?? ''); ?>"
     data-room-capacity="<?php echo htmlspecialchars($row['capacity'] ?? ''); ?>"
     data-room-status="<?php echo htmlspecialchars($row['status'] ?? ''); ?>">
-    Reassign Room
+    Request Reassigment
 </button>
 
 
@@ -419,7 +419,7 @@ if ($result === false) {
     echo "<p class='text-center'>No rooms available.</p>";
 }
 ?>
-
+ 
     </div>
 </div>
 

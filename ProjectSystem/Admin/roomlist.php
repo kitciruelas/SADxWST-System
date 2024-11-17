@@ -268,8 +268,36 @@ $conn->close();
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Bootstrap CSS (Ensure Bootstrap is included) -->
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Bootstrap CSS -->
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css">
+
+<!-- DataTables Buttons CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+
+<!-- jQuery (required by DataTables and Bootstrap) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+
+<!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+
+<!-- JSZip (for Excel export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+
+<!-- pdfMake (for PDF export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+
+<!-- vfs_fonts (for PDF export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+
+<!-- Bootstrap JS (Optional) -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
 </head>
 <body>
     <!-- Sidebar -->
@@ -322,29 +350,23 @@ $conn->close();
             <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
             
         </div>
-        <div class="col-6 col-md-2 mt-1 ms-auto">
-        <a href="View-roomassign.php" class="text-decoration-none">
-    <button type="button" class="custom-btns">View Assign</button>
-</a>
-        </div>
-
-    </div>
+        
+    </div> 
  <!-- Room Table -->
-<div class="table-responsive">
-    <table class="table table-bordered">
-        <thead class="table-light">
-            <tr>
-                <th>No</th>
-                <th>Room Number</th>
-                <th>Room Description</th>
-                <th>Capacity</th>
-                <th>Monthly Rent</th>
-                <th>Status</th>
-                <th>Room Picture</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="room-table-body">
+ <table id="room-table" class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>No</th>
+            <th>Room Number</th>
+            <th>Room Description</th>
+            <th>Capacity</th>
+            <th>Monthly Rent</th>
+            <th>Status</th>
+            <th>Room Picture</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="room-table-body">
         <?php
         if ($result->num_rows > 0) {
             $counter = 1;
@@ -383,9 +405,8 @@ $conn->close();
             echo "<tr><td colspan='8'>No rooms found</td></tr>";
         }
         ?>
-        </tbody>
-    </table>
-</div>
+    </tbody>
+</table>
 
 
 
@@ -556,7 +577,7 @@ $conn->close();
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">ADD</button>
+                    <button type="submit" class="btn btn-primary">Add Room</button>
                 </div>
             </form>
         </div>
@@ -572,8 +593,14 @@ $conn->close();
 
     <!-- Hamburger Menu Script -->
     <script>
-   
-
+$(document).ready(function() {
+    $('#room-table').DataTable({
+        dom: 'Bfrtip', // Defines the position of the buttons
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print' // Enables export buttons
+        ]
+    });
+});
          function openEditModal(roomId) {
         // Fetch room data using AJAX or populate it using server-side rendering
         fetch('get_room.php?room_id=' + roomId)

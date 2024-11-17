@@ -28,7 +28,7 @@
   <div class="form-group">
     <input type="password" name="password" id="password" required placeholder=" " />
     <label for="password">Password</label>
-    <i class="eye-icon fas fa-eye-slash" onclick="togglePasswordVisibility('password', this)"></i>
+    <i class="eye-icon fas fa-eye-slash" title="Show Password" onclick="togglePasswordVisibility('password', this)"></i>
     </div>
 
       <!-- Google reCAPTCHA widget -->
@@ -97,18 +97,22 @@ input:not(:placeholder-shown) + label {
   <script>
 
      
-    function togglePasswordVisibility(fieldId, icon) {
-      var field = document.getElementById(fieldId);
-      if (field.type === "password") {
-        field.type = "text";
-        icon.classList.remove("fa-eye-slash");
-        icon.classList.add("fa-eye"); // Change icon to eye when showing password
-      } else {
-        field.type = "password";
-        icon.classList.remove("fa-eye");
-        icon.classList.add("fa-eye-slash"); // Change icon back to eye-slash when hiding password
-      }
+     
+function togglePasswordVisibility(fieldId, icon) {
+    var field = document.getElementById(fieldId);
+    if (field.type === "password") {
+        field.type = "text"; // Show the password
+        icon.classList.remove("fa-eye-slash"); // Remove closed eye icon
+        icon.classList.add("fa-eye"); // Add open eye icon
+        icon.setAttribute("title", "Hide Password"); // Update tooltip text
+    } else {
+        field.type = "password"; // Hide the password
+        icon.classList.remove("fa-eye"); // Remove open eye icon
+        icon.classList.add("fa-eye-slash"); // Add closed eye icon
+        icon.setAttribute("title", "Show Password"); // Update tooltip text
     }
+}
+
   </script>
 </body>
 </html>

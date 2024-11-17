@@ -214,86 +214,75 @@ $conn->close();
 </div>
 </div>
 <div class="container mt-1">
-    <!-- Search and Filter Section -->
-    <div class="row mb-4">
-        <div class="col-12 col-md-8">
-            <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
-        </div>
-        <div class="col-6 col-md-2">
-            <select id="filterSelect" class="form-select">
-               
-            <option value="all" selected>Filter by</option>
-                <option value="resident">Resident</option>
-                <option value="current_room">Current Room</option>
-                <option value="new_room">New Room</option>
-                <option value="monthly_rent">Monthly Rent</option>
-        
-            </select>
-        </div>
+   <!-- Search and Filter Section -->
+<div class="row mb-4">
+    <div class="col-12 col-md-8">
+        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
+    <div class="col-6 col-md-2">
+        <select id="filterSelect" class="form-select">
+            <option value="all" selected>Filter by</option>
+            <option value="resident">Resident</option>
+            <option value="room">Room</option>
+            <option value="monthly_rent">Monthly Rent</option>
+        </select>
+    </div>
+</div>
 
+<?php if (!empty($assignmentsData)): ?>
+<table class="table table-bordered" id="assignmentTable">
+    <thead>
+        <tr>
+            <th>No.</th>
+            <th>Resident</th>
+            <th>Room</th>
+            <th>Monthly Rent</th>
+            <th>Assign Room</th>
+        </tr>
+    </thead>
+    <tbody id="room-table-body">
+        <?php 
+        $counter = 1;
+        foreach ($assignmentsData as $row):
+            if (isset($_SESSION['assigned_user_id']) && $_SESSION['assigned_user_id'] == $row['user_id']) {
+                continue;
+            }
 
-
-    <?php if (!empty($assignmentsData)): ?>
-    <table class="table table-bordered" id="assignmentTable">
-        <thead>
+            $hasAssignedRoom = !empty($row['assigned_room_number']);
+            $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
+            $showAssignForm = !$hasAssignedRoom || $isPending;
+        ?>
             <tr>
-                <th>No.</th>
-                <th>Resident</th>
-                <th>Room</th>
-                <th>Monthly Rent</th>
-                <th>Assign New Room</th>
+                <td><?php echo $counter++; ?></td>
+                <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
+                <td class="room"><?php echo htmlspecialchars($row['assigned_room_number'] ?? 'No Room Assigned'); ?></td>
+                <td class="monthly_rent"><?php echo isset($row['assigned_monthly_rent']) ? number_format($row['assigned_monthly_rent'], 2) : 'N/A'; ?></td>
+                <td>
+                    <?php if ($showAssignForm): ?>
+                        <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
+                            <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
+                            <select name="room_id" required>
+                                <option value="">Select Room</option>
+                                <?php foreach ($availableRooms as $room): ?>
+                                    <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
+                                        <?php echo htmlspecialchars($room['room_number']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Assign</button>
+                        </form>
+                    <?php else: ?>
+                        <span class="text-success">Room Assignment Active</span>
+                    <?php endif; ?>
+                </td>
             </tr>
-        </thead>
-        <tbody id="room-table-body">
-            <?php 
-            $counter = 1;
-            foreach ($assignmentsData as $row):
-                // Skip the row if the user was successfully assigned
-                if (isset($_SESSION['assigned_user_id']) && $_SESSION['assigned_user_id'] == $row['user_id']) {
-                    continue;
-                }
-
-                $hasAssignedRoom = !empty($row['assigned_room_number']);
-                $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
-                
-                // Show the form only if the room is not assigned or has a pending reassignment
-                $showAssignForm = !$hasAssignedRoom || $isPending;
-            ?>
-                <tr>
-                    <td><?php echo $counter++; ?></td>
-                    <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
-                    <td class="room"><?php echo htmlspecialchars($row['assigned_room_number'] ?? 'No Room Assigned'); ?></td>
-                    <td class="monthly_rent"><?php echo isset($row['assigned_monthly_rent']) ? number_format($row['assigned_monthly_rent'], 2) : 'N/A'; ?></td>
-                    <td>
-                        <?php if ($showAssignForm): ?>
-                            <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
-                                <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
-                                <select name="room_id" required>
-                                    <option value="">Select Room</option>
-                                    <?php foreach ($availableRooms as $room): ?>
-                                        <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
-                                            <?php echo htmlspecialchars($room['room_number']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button type="submit" class="btn btn-primary">Assign</button>
-                            </form>
-                        <?php else: ?>
-                            <span class="text-success">Room Assignment Active</span>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php unset($_SESSION['assigned_user_id']); // Clear the flag after display ?>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+<?php unset($_SESSION['assigned_user_id']); ?>
 <?php else: ?>
     <p>No room assignments found.</p>
 <?php endif; ?>
-
-
-
 
 
 <!-- Pagination Controls -->
@@ -380,7 +369,7 @@ function prevPage() {
     }
 }
 
-         document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() { 
         const filterSelect = document.getElementById('filterSelect');
         const searchInput = document.getElementById('searchInput');
         const table = document.getElementById('assignmentTable');
@@ -393,31 +382,24 @@ function prevPage() {
             Array.from(rows).forEach(row => {
                 let cellText = '';
 
-                // Get text based on selected filter
                 switch(filterBy) {
                     case 'resident':
-                        cellText = row.querySelector('.resident').textContent.toLowerCase();
+                        cellText = row.querySelector('.resident')?.textContent.toLowerCase() || '';
                         break;
-                    case 'current_room':
-                        cellText = row.querySelector('.current_room').textContent.toLowerCase();
-                        break;
-                    case 'new_room':
-                        cellText = row.querySelector('.new_room').textContent.toLowerCase();
+                    case 'room':
+                        cellText = row.querySelector('.room')?.textContent.toLowerCase() || '';
                         break;
                     case 'monthly_rent':
-                        cellText = row.querySelector('.monthly_rent').textContent.toLowerCase();
+                        cellText = row.querySelector('.monthly_rent')?.textContent.toLowerCase() || '';
                         break;
                     default:
-                        // Search across all columns if "all" is selected
                         cellText = row.textContent.toLowerCase();
                 }
 
-                // Show or hide row based on search match
                 row.style.display = cellText.includes(searchTerm) ? '' : 'none';
             });
         }
 
-        // Attach event listeners to filter and search input
         filterSelect.addEventListener('change', filterTable);
         searchInput.addEventListener('keyup', filterTable);
     });

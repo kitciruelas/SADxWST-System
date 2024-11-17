@@ -90,7 +90,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
+    <link rel="stylesheet" href="Css_Admin/manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
@@ -135,21 +135,24 @@ $conn->close();
     </div>
     <div class="main-content">      
     <div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="input-group w-25">
-            <label class="input-group-text" for="filterSelect">Filter by</label>
-            <select class="form-select" id="filterSelect" name="filter" 
-                onchange="location = 'admin-visitor_log.php?filter=' + this.value;">
-                <option value="">Choose...</option>
-                <option value="today" <?= $filter === 'today' ? 'selected' : '' ?>>Today</option>
-                <option value="this_week" <?= $filter === 'this_week' ? 'selected' : '' ?>>This Week</option>
-                <option value="this_month" <?= $filter === 'this_month' ? 'selected' : '' ?>>This Month</option>
-            </select>
-        </div>
+       <!-- Search and Filter Section -->
+       <div class="row mb-4">
+    <div class="col-12 col-md-8">
+        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
+    <div class="col-6 col-md-2">
+        <select id="filterSelect" class="form-select">
+            <option value="all" selected>Filter by</option>
+            <option value="name">Name</option>
+            <option value="contact_info">Contact Info</option>
+            <option value="purpose">Purpose</option>
+            <option value="visiting_person">Visiting Person</option>
+        </select>
+    </div>
+</div>
 
-    <div class="table-responsive">
-    <table class="table table-bordered">
+<div class="table-responsive">
+    <table class="table table-bordered" id="visitorTable">
         <thead class="table-light">
             <tr>
                 <th scope="col">No.</th>
@@ -172,10 +175,10 @@ $conn->close();
             ?>
                 <tr>
                     <td><?= $counter++ ?></td>
-                    <td><?= htmlspecialchars($row['name']) ?></td>
-                    <td><?= htmlspecialchars($row['contact_info']) ?></td>
-                    <td><?= htmlspecialchars($row['purpose']) ?></td>
-                    <td><?= htmlspecialchars($row['visiting_person']) ?></td>
+                    <td class="name"><?= htmlspecialchars($row['name']) ?></td>
+                    <td class="contact_info"><?= htmlspecialchars($row['contact_info']) ?></td>
+                    <td class="purpose"><?= htmlspecialchars($row['purpose']) ?></td>
+                    <td class="visiting_person"><?= htmlspecialchars($row['visiting_person']) ?></td>
                     <td><?= $checkInTime ?></td>
                     <td><?= $checkOutTime ?></td>
                     <td>
@@ -191,6 +194,7 @@ $conn->close();
             <?php endif; ?>
         </tbody>
     </table>
+</div>
 </div>
 <style>
     /* Style for the entire table */
@@ -249,6 +253,44 @@ $conn->close();
     
     <!-- JavaScript -->
     <script>
+
+document.addEventListener('DOMContentLoaded', function() { 
+        const filterSelect = document.getElementById('filterSelect');
+        const searchInput = document.getElementById('searchInput');
+        const table = document.getElementById('visitorTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        function filterTable() {
+            const filterBy = filterSelect.value;
+            const searchTerm = searchInput.value.toLowerCase();
+
+            Array.from(rows).forEach(row => {
+                let cellText = '';
+
+                switch(filterBy) {
+                    case 'name':
+                        cellText = row.querySelector('.name')?.textContent.toLowerCase() || '';
+                        break;
+                    case 'contact_info':
+                        cellText = row.querySelector('.contact_info')?.textContent.toLowerCase() || '';
+                        break;
+                    case 'purpose':
+                        cellText = row.querySelector('.purpose')?.textContent.toLowerCase() || '';
+                        break;
+                    case 'visiting_person':
+                        cellText = row.querySelector('.visiting_person')?.textContent.toLowerCase() || '';
+                        break;
+                    default:
+                        cellText = row.textContent.toLowerCase();
+                }
+
+                row.style.display = cellText.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        filterSelect.addEventListener('change', filterTable);
+        searchInput.addEventListener('keyup', filterTable);
+    });
 // JavaScript for client-side pagination
 const rowsPerPage = 10; // Display 10 rows per page
 let currentPage = 1;

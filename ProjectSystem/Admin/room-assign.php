@@ -13,28 +13,33 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 
 }
+
 // Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $userId = $_POST['user_id'];
     $roomId = $_POST['room_id'];
 
+ 
+
     // Get the room's capacity
     $roomCapacityQuery = "SELECT capacity FROM rooms WHERE room_id = ?";
-    $capacityStmt = $conn->prepare($roomCapacityQuery);
-    $capacityStmt->bind_param('i', $roomId);
-    $capacityStmt->execute();
-    $capacityResult = $capacityStmt->get_result();
-    $roomData = $capacityResult->fetch_assoc();
-    $roomCapacity = $roomData['capacity'];
+    if ($stmt = mysqli_prepare($conn, $roomCapacityQuery)) {
+        mysqli_stmt_bind_param($stmt, 'i', $roomId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $roomCapacity);
+        mysqli_stmt_fetch($stmt);
+        mysqli_stmt_close($stmt);
+    }
 
     // Count current assignments in the room
     $currentAssignmentsQuery = "SELECT COUNT(*) as current_count FROM roomassignments WHERE room_id = ?";
-    $currentAssignmentsStmt = $conn->prepare($currentAssignmentsQuery);
-    $currentAssignmentsStmt->bind_param('i', $roomId);
-    $currentAssignmentsStmt->execute();
-    $currentAssignmentsResult = $currentAssignmentsStmt->get_result();
-    $currentAssignmentsData = $currentAssignmentsResult->fetch_assoc();
-    $currentCount = $currentAssignmentsData['current_count'];
+    if ($stmt = mysqli_prepare($conn, $currentAssignmentsQuery)) {
+        mysqli_stmt_bind_param($stmt, 'i', $roomId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $currentCount);
+        mysqli_stmt_fetch($stmt);
+        mysqli_stmt_close($stmt);
+    }
 
     // Check if the room is at capacity
     if ($currentCount >= $roomCapacity) {
@@ -43,42 +48,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         // Check if the user already has a room assigned
         $checkAssignmentQuery = "SELECT assignment_id FROM roomassignments WHERE user_id = ?";
-        $assignmentStmt = $conn->prepare($checkAssignmentQuery);
-        $assignmentStmt->bind_param('i', $userId);
-        $assignmentStmt->execute();
-        $assignmentStmt->store_result();
+        if ($stmt = mysqli_prepare($conn, $checkAssignmentQuery)) {
+            mysqli_stmt_bind_param($stmt, 'i', $userId);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_store_result($stmt);
 
-        if ($assignmentStmt->num_rows > 0) {
-            // Update existing room assignment
-            $updateRoomQuery = "UPDATE roomassignments SET room_id = ?, assignment_date = CURRENT_DATE WHERE user_id = ?";
-            $updateRoomStmt = $conn->prepare($updateRoomQuery);
-            $updateRoomStmt->bind_param('ii', $roomId, $userId);
-            
-            if ($updateRoomStmt->execute()) {
-                echo "<script>alert('Room assignment updated successfully.');</script>";
+            if (mysqli_stmt_num_rows($stmt) > 0) {
+                // Update existing room assignment
+                $updateRoomQuery = "UPDATE roomassignments SET room_id = ?, assignment_date = CURRENT_DATE WHERE user_id = ?";
+                if ($updateRoomStmt = mysqli_prepare($conn, $updateRoomQuery)) {
+                    mysqli_stmt_bind_param($updateRoomStmt, 'ii', $roomId, $userId);
+                    if (mysqli_stmt_execute($updateRoomStmt)) {
+                        echo "<script>alert('Room assignment updated successfully.');</script>";
+                    } else {
+                        echo "<script>alert('Error updating room assignment.');</script>";
+                    }
+                    mysqli_stmt_close($updateRoomStmt);
+                }
             } else {
-                echo "<script>alert('Error updating room assignment.');</script>";
+                // Insert new room assignment
+                $insertRoomQuery = "INSERT INTO roomassignments (user_id, room_id, assignment_date) VALUES (?, ?, CURRENT_DATE)";
+                if ($insertRoomStmt = mysqli_prepare($conn, $insertRoomQuery)) {
+                    mysqli_stmt_bind_param($insertRoomStmt, 'ii', $userId, $roomId);
+                    if (mysqli_stmt_execute($insertRoomStmt)) {
+                        echo "<script>alert('Room assigned successfully.');</script>";
+                    } else {
+                        echo "<script>alert('Error assigning room.');</script>";
+                    }
+                    mysqli_stmt_close($insertRoomStmt);
+                }
             }
-            $updateRoomStmt->close();
-        } else {
-            // Insert new room assignment
-            $insertRoomQuery = "INSERT INTO roomassignments (user_id, room_id, assignment_date) VALUES (?, ?, CURRENT_DATE)";
-            $insertRoomStmt = $conn->prepare($insertRoomQuery);
-            $insertRoomStmt->bind_param('ii', $userId, $roomId);
-            
-            if ($insertRoomStmt->execute()) {
-                echo "<script>alert('Room assigned successfully.');</script>";
-            } else {
-                echo "<script>alert('Error assigning room.');</script>";
-            }
-            $insertRoomStmt->close();
+
+            mysqli_stmt_close($stmt);
         }
-        $assignmentStmt->close();
     }
-    // Close the capacity check statement
-    $capacityStmt->close();
-    // Close the current assignments check statement
-    $currentAssignmentsStmt->close();
+
+    // Close the connection
 }
 
 // Fetch room assignments for all users
@@ -144,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ro
     $roomId = $_POST['room_id'];
 
     // Perform the room assignment in the database
-    $query = "UPDATE room_assignments SET room_id = ? WHERE user_id = ?";
+    $query = "UPDATE roomassignments SET room_id = ? WHERE user_id = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("ii", $roomId, $userId);
     $success = $stmt->execute();
@@ -166,7 +171,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -185,8 +190,12 @@ $conn->close();
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
 
         </div>
         <div class="logout">
@@ -216,10 +225,10 @@ $conn->close();
 <div class="container mt-1">
    <!-- Search and Filter Section -->
 <div class="row mb-4">
-    <div class="col-12 col-md-8">
+    <div class="col-12 col-md-8 mt-1">
         <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-2 mt-1">
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
             <option value="resident">Resident</option>
@@ -227,9 +236,26 @@ $conn->close();
             <option value="monthly_rent">Monthly Rent</option>
         </select>
     </div>
+    <!-- Sort Dropdown -->
+<div class="col-6 col-md-2">
+
+<form method="GET" action="" class="form-select">
+    <select name="sort" id="sort" onchange="this.form.submit()">
+        <option value="" selected>Select Sort</option>
+        <option value="resident_asc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'resident_asc' ? 'selected' : ''; ?>>Resident (A to Z)</option>
+        <option value="resident_desc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'resident_desc' ? 'selected' : ''; ?>>Resident (Z to A)</option>
+        <option value="room_asc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'room_asc' ? 'selected' : ''; ?>>Room (A to Z)</option>
+        <option value="room_desc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'room_desc' ? 'selected' : ''; ?>>Room (Z to A)</option>
+        <option value="rent_asc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'rent_asc' ? 'selected' : ''; ?>>Monthly Rent (Low to High)</option>
+        <option value="rent_desc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'rent_desc' ? 'selected' : ''; ?>>Monthly Rent (High to Low)</option>
+    </select>
+</form>
+</div>
+
 </div>
 
 <?php if (!empty($assignmentsData)): ?>
+<!-- Room Assignment Table -->
 <table class="table table-bordered" id="assignmentTable">
     <thead>
         <tr>
@@ -241,7 +267,31 @@ $conn->close();
         </tr>
     </thead>
     <tbody id="room-table-body">
-        <?php 
+        <?php
+        // Sort the $assignmentsData array based on the selected sort option
+        if (isset($_GET['sort'])) {
+            switch ($_GET['sort']) {
+                case 'resident_asc':
+                    usort($assignmentsData, fn($a, $b) => strcmp($a['resident'], $b['resident']));
+                    break;
+                case 'resident_desc':
+                    usort($assignmentsData, fn($a, $b) => strcmp($b['resident'], $a['resident']));
+                    break;
+                case 'room_asc':
+                    usort($assignmentsData, fn($a, $b) => strcmp($a['assigned_room_number'], $b['assigned_room_number']));
+                    break;
+                case 'room_desc':
+                    usort($assignmentsData, fn($a, $b) => strcmp($b['assigned_room_number'], $a['assigned_room_number']));
+                    break;
+                case 'rent_asc':
+                    usort($assignmentsData, fn($a, $b) => $a['assigned_monthly_rent'] - $b['assigned_monthly_rent']);
+                    break;
+                case 'rent_desc':
+                    usort($assignmentsData, fn($a, $b) => $b['assigned_monthly_rent'] - $a['assigned_monthly_rent']);
+                    break;
+            }
+        }
+        
         $counter = 1;
         foreach ($assignmentsData as $row):
             if (isset($_SESSION['assigned_user_id']) && $_SESSION['assigned_user_id'] == $row['user_id']) {
@@ -250,7 +300,6 @@ $conn->close();
 
             $hasAssignedRoom = !empty($row['assigned_room_number']);
             $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
-            $showAssignForm = !$hasAssignedRoom || $isPending;
         ?>
             <tr>
                 <td><?php echo $counter++; ?></td>
@@ -258,20 +307,19 @@ $conn->close();
                 <td class="room"><?php echo htmlspecialchars($row['assigned_room_number'] ?? 'No Room Assigned'); ?></td>
                 <td class="monthly_rent"><?php echo isset($row['assigned_monthly_rent']) ? number_format($row['assigned_monthly_rent'], 2) : 'N/A'; ?></td>
                 <td>
-                    <?php if ($showAssignForm): ?>
-                        <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
-                            <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
-                            <select name="room_id" required>
-                                <option value="">Select Room</option>
-                                <?php foreach ($availableRooms as $room): ?>
-                                    <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
-                                        <?php echo htmlspecialchars($room['room_number']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit" class="btn btn-primary">Assign</button>
-                        </form>
-                    <?php else: ?>
+                    <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
+                        <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
+                        <select name="room_id" required>
+                            <option value="">Select Room</option>
+                            <?php foreach ($availableRooms as $room): ?>
+                                <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
+                                    <?php echo htmlspecialchars($room['room_number']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Assign</button>
+                    </form>
+                    <?php if ($hasAssignedRoom && !$isPending): ?>
                         <span class="text-success">Room Assignment Active</span>
                     <?php endif; ?>
                 </td>
@@ -279,6 +327,7 @@ $conn->close();
         <?php endforeach; ?>
     </tbody>
 </table>
+
 <?php unset($_SESSION['assigned_user_id']); ?>
 <?php else: ?>
     <p>No room assignments found.</p>

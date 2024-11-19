@@ -106,7 +106,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
@@ -125,7 +125,9 @@ $conn->close();
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
 
         </div>
         <div class="logout">
@@ -161,6 +163,18 @@ $conn->close();
             <option value="check_out_time">Check-Out Time</option>
         </select>
     </div>
+    <div class="col-6 col-md-2">
+    <select id="sortSelect" class="form-select" onchange="applySort()" style="width: 100%;">
+        <option value="" selected>Sort by</option>
+        <option value="room_number_asc">Room Number (Low to High)</option>
+        <option value="room_number_desc">Room Number (High to Low)</option>
+        <option value="check_in_time_asc">Check-In Time (Earliest to Latest)</option>
+        <option value="check_in_time_desc">Check-In Time (Latest to Earliest)</option>
+        <option value="check_out_time_asc">Check-Out Time (Earliest to Latest)</option>
+        <option value="check_out_time_desc">Check-Out Time (Latest to Earliest)</option>
+    </select>
+</div>
+
 </div>
 
 <!-- Room Table -->
@@ -253,6 +267,53 @@ $conn->close();
 
     <!-- Hamburger Menu Script -->
     <script>
+function applySort() {
+    const sortValue = document.getElementById('sortSelect').value;
+    const table = document.querySelector('.table');
+    const rows = Array.from(table.querySelector('tbody').rows);
+
+    rows.sort((a, b) => {
+        let cellA, cellB;
+
+        switch (sortValue) {
+            case 'room_number_asc':
+                cellA = a.querySelector('td:nth-child(3)').textContent.trim(); // Room Number Column
+                cellB = b.querySelector('td:nth-child(3)').textContent.trim();
+                return cellA.localeCompare(cellB);
+
+            case 'room_number_desc':
+                cellA = a.querySelector('td:nth-child(3)').textContent.trim();
+                cellB = b.querySelector('td:nth-child(3)').textContent.trim();
+                return cellB.localeCompare(cellA);
+
+            case 'check_in_time_asc':
+                cellA = new Date(a.querySelector('td:nth-child(4)').textContent.trim()); // Check-In Time Column
+                cellB = new Date(b.querySelector('td:nth-child(4)').textContent.trim());
+                return cellA - cellB;
+
+            case 'check_in_time_desc':
+                cellA = new Date(a.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(b.querySelector('td:nth-child(4)').textContent.trim());
+                return cellB - cellA;
+
+            case 'check_out_time_asc':
+                cellA = new Date(a.querySelector('td:nth-child(5)').textContent.trim()); // Check-Out Time Column
+                cellB = new Date(b.querySelector('td:nth-child(5)').textContent.trim());
+                return cellA - cellB;
+
+            case 'check_out_time_desc':
+                cellA = new Date(a.querySelector('td:nth-child(5)').textContent.trim());
+                cellB = new Date(b.querySelector('td:nth-child(5)').textContent.trim());
+                return cellB - cellA;
+
+            default:
+                return 0; // No sorting
+        }
+    });
+
+    // Re-attach the rows to the table after sorting
+    rows.forEach(row => table.querySelector('tbody').appendChild(row));
+}
 
           // Get the elements
     const searchInput = document.getElementById('searchInput');

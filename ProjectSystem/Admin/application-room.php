@@ -107,7 +107,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
@@ -126,8 +126,12 @@ $conn->close();
             <a href="admin-room.php" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
 
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
 
        
 
@@ -153,22 +157,37 @@ $conn->close();
 </div>
 </div>
 <div class="container mt-1">
-    <!-- Search and Filter Section -->
-    <div class="row mb-4">
-        <div class="col-12 col-md-8">
-            <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
-        </div>
-        <div class="col-6 col-md-2">
-            <select id="filterSelect" class="form-select">
-                <option value="all" selected>Filter by</option>
-                <option value="resident">Resident</option>
-                <option value="old_room_number">Old Room Number</option>
-                <option value="new_room">Reassign Room</option>
-                <option value="monthly_rent">Monthly Rent</option>
-                <option value="status">Status</option>
-            </select>
-        </div>
+<!-- Search and Filter Section -->
+<div class="row mb-4">
+    <div class="col-12 col-md-8">
+        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
+    <div class="col-6 col-md-2">
+        <select id="filterSelect" class="form-select">
+            <option value="all" selected>Filter by</option>
+            <option value="resident">Resident</option>
+            <option value="old_room_number">Old Room Number</option>
+            <option value="new_room">Reassign Room</option>
+            <option value="monthly_rent">Monthly Rent</option>
+            <option value="status">Status</option>
+        </select>
+    </div>
+    <div class="col-5 col-md-2">
+    <!-- Sort Dropdown -->
+    <select id="sortSelect" class="form-select" style="width: 100%;">
+    <option value="all" selected>Sort by</option>
+        <option value="resident_asc">Resident (A to Z)</option>
+        <option value="resident_desc">Resident (Z to A)</option>
+        <option value="old_room_asc">Old Room (Low to High)</option>
+        <option value="old_room_desc">Old Room (High to Low)</option>
+        <option value="new_room_asc">Reassign Room (Low to High)</option>
+        <option value="new_room_desc">Reassign Room (High to Low)</option>
+        <option value="status_asc">Status (A to Z)</option>
+        <option value="status_desc">Status (Z to A)</option>
+    </select>
+</div>
+
+</div>
 
    <!-- Table Section -->
 <div>
@@ -283,6 +302,43 @@ $conn->close();
 
     <!-- Hamburgermenu Script -->
     <script>
+        // Function to sort the table based on the selected sorting criteria
+    document.getElementById('sortSelect').addEventListener('change', function() {
+        var table = document.getElementById('assignmentTable');
+        var rows = Array.from(table.rows).slice(1); // Get rows except the header
+        var sortOption = this.value;
+
+        rows.sort(function(rowA, rowB) {
+            var cellA, cellB;
+
+            // Get the cell content based on the selected sort option
+            if (sortOption === 'resident_asc' || sortOption === 'resident_desc') {
+                cellA = rowA.querySelector('.resident').innerText.toLowerCase();
+                cellB = rowB.querySelector('.resident').innerText.toLowerCase();
+            } else if (sortOption === 'old_room_asc' || sortOption === 'old_room_desc') {
+                cellA = rowA.querySelector('.old_room_number').innerText;
+                cellB = rowB.querySelector('.old_room_number').innerText;
+            } else if (sortOption === 'new_room_asc' || sortOption === 'new_room_desc') {
+                cellA = rowA.querySelector('.new_room').innerText;
+                cellB = rowB.querySelector('.new_room').innerText;
+            } else if (sortOption === 'status_asc' || sortOption === 'status_desc') {
+                cellA = rowA.querySelector('.status').innerText.toLowerCase();
+                cellB = rowB.querySelector('.status').innerText.toLowerCase();
+            }
+
+            // Compare the values
+            if (sortOption.includes('asc')) {
+                return cellA > cellB ? 1 : -1; // Ascending order
+            } else {
+                return cellA < cellB ? 1 : -1; // Descending order
+            }
+        });
+
+        // Reorder the rows in the table based on the sorting result
+        rows.forEach(function(row) {
+            table.querySelector('tbody').appendChild(row);
+        });
+    });
 // JavaScript for client-side pagination
 const rowsPerPage = 10; // Display 10 rows per page
 let currentPage = 1;

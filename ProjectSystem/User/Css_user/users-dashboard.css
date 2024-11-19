@@ -297,7 +297,7 @@ button {
     color: 2B228A; /* White text */
     border: none; /* No border */
     border: 2px solid #2B228A; /* Green border */
-    border-radius: 30px; /* Rounded corners */    
+    border-radius: 20px; /* Rounded corners */    
     cursor: pointer; /* Pointer cursor on hover */
     font-size: 12px; /* Smaller font size for button */
     width: auto; /* Adjusted button width */

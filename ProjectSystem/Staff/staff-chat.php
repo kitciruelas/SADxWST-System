@@ -299,7 +299,7 @@ function getStaffRole($conn, $staffId) {
     font-size: 1rem;
     line-height: 1.5;
     outline: none; /* Remove outline on focus */
-}
+} 
 
 .input-group textarea:focus {
     box-shadow: none;

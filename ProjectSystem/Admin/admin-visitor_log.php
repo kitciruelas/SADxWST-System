@@ -90,7 +90,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/manageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
@@ -120,7 +120,9 @@ $conn->close();
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="#" class="nav-link active"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         
         <div class="logout">
@@ -135,8 +137,8 @@ $conn->close();
     </div>
     <div class="main-content">      
     <div class="container mt-5">
-       <!-- Search and Filter Section -->
-       <div class="row mb-4">
+     <!-- Search and Filter Section -->
+<div class="row mb-4">
     <div class="col-12 col-md-8">
         <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
@@ -149,6 +151,19 @@ $conn->close();
             <option value="visiting_person">Visiting Person</option>
         </select>
     </div>
+    <div class="col-6 col-md-2">
+
+    <!-- Sort by Dropdown -->
+    <select id="sortSelect" class="form-select" style="width: 100%;" onchange="sortTable()">
+        <option value="all" selected>Sort by</option>
+        <option value="resident_asc">Resident (A to Z)</option>
+        <option value="resident_desc">Resident (Z to A)</option>
+        <option value="check_in_asc">Check-In Time (Earliest)</option>
+        <option value="check_in_desc">Check-In Time (Latest)</option>
+        <option value="check_out_asc">Check-Out Time (Earliest)</option>
+        <option value="check_out_desc">Check-Out Time (Latest)</option>
+    </select>
+    </div>
 </div>
 
 <div class="table-responsive">
@@ -156,12 +171,12 @@ $conn->close();
         <thead class="table-light">
             <tr>
                 <th scope="col">No.</th>
-                <th scope="col">Name</th>
-                <th scope="col">Contact Info</th>
-                <th scope="col">Purpose</th>
-                <th scope="col">Visiting Person</th>
-                <th scope="col">Check-In</th>
-                <th scope="col">Check-Out</th>
+                <th scope="col" onclick="sortTable(1)">Visiting Person</th>
+                <th scope="col" onclick="sortTable(2)">Contact Info</th>
+                <th scope="col" onclick="sortTable(3)">Purpose</th>
+                <th scope="col" onclick="sortTable(4)">Resident Name</th>
+                <th scope="col" onclick="sortTable(5)">Check-In</th>
+                <th scope="col" onclick="sortTable(6)">Check-Out</th>
                 <th scope="col">Actions</th>
             </tr>
         </thead>
@@ -195,6 +210,7 @@ $conn->close();
         </tbody>
     </table>
 </div>
+
 </div>
 <style>
     /* Style for the entire table */
@@ -253,6 +269,57 @@ $conn->close();
     
     <!-- JavaScript -->
     <script>
+function sortTable() {
+    const table = document.getElementById("visitorTable");
+    const tbody = table.querySelector("tbody");
+    const rows = Array.from(tbody.rows);
+    const sortBy = document.getElementById('sortSelect').value;
+
+    // Determine the sorting order (ascending or descending)
+    const isDescending = sortBy.includes('desc');
+
+    rows.sort((rowA, rowB) => {
+        let valueA, valueB;
+        
+        switch (sortBy) {
+            case 'resident_asc':
+            case 'resident_desc':
+                valueA = rowA.cells[1].textContent.trim().toLowerCase(); // Name column
+                valueB = rowB.cells[1].textContent.trim().toLowerCase();
+                break;
+            case 'check_in_asc':
+            case 'check_in_desc':
+                valueA = parseTime(rowA.cells[5].textContent.trim());
+                valueB = parseTime(rowB.cells[5].textContent.trim());
+                break;
+            case 'check_out_asc':
+            case 'check_out_desc':
+                valueA = parseTime(rowA.cells[6].textContent.trim());
+                valueB = parseTime(rowB.cells[6].textContent.trim());
+                break;
+            default:
+                return 0; // No sorting
+        }
+
+        // Handle sorting direction
+        if (isDescending) {
+            return valueA < valueB ? 1 : (valueA > valueB ? -1 : 0);
+        } else {
+            return valueA < valueB ? -1 : (valueA > valueB ? 1 : 0);
+        }
+    });
+
+    // Re-append sorted rows to the table
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Helper function to parse time values
+function parseTime(timeStr) {
+    if (timeStr === 'N/A') return new Date(0); // Handle 'N/A' as earliest time
+    const [hours, minutes, period] = timeStr.split(/[:\s]/);
+    const hour = (period.toLowerCase() === 'pm' && hours !== '12') ? parseInt(hours) + 12 : parseInt(hours);
+    return new Date(1970, 0, 1, hour, minutes); // Use a fixed date for comparison
+}
 
 document.addEventListener('DOMContentLoaded', function() { 
         const filterSelect = document.getElementById('filterSelect');

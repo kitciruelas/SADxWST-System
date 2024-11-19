@@ -134,9 +134,10 @@ $total_revenue = [1200, 1500, 1800, 2200, 2500];  // Sample total revenue for ea
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-            <a href="admin-chat.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         
 
         </div>
@@ -361,10 +362,13 @@ var rentStatusChart = new Chart(rentStatusCtx, {
     </div>
 </div>
 
-</div>
+<div class="row mb-4">
+    
 
 </div>
 
+</div>
+</div>
 
 
 

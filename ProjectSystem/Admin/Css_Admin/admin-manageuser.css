@@ -246,13 +246,13 @@ p a:hover {
 
 /* Search input styling */
 .search-container #searchInput {
-    padding: 8px 16px 10px 40px;
+    padding: 8px 14px 10px 20px;
     font-size: 16px;
-    border: 2px solid #2B228A;
+    border: 1px solid #2B228A;
     border-radius: 20px;
     margin-right: 10px;
     width: 100%;
-    max-width: 400px; /* Default max width */
+    max-width: 300px; /* Default max width */
 }
 .button button {
     padding: 8px 16px;
@@ -404,138 +404,6 @@ tr:hover {
     background-color: #f5f5f5;
 }
 
-
-/* Media query for tablets (max-width: 768px) */
-@media (max-width: 768px) {
-    .table-container {
-        max-width: 60%;
-        margin: 5px;
-        border-radius: 6px;
-    }
-
-    .table-wrapper {
-        max-height: 300px;
-        overflow-y: auto;
-        overflow-x: auto; /* Ensure table scrolls horizontally on smaller screens */
-        padding: 0;
-    }
-
-    table, tr, td, th {
-        display: block;
-        width: 100%;
-    }
-
-    /* Keep table headers visible */
-    thead {
-        display: none; /* Hide thead since we're using data-labels for mobile */
-    }
-
-    /* Each table row becomes a block */
-    tr {
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-
-    /* Display data-label above each table cell's content */
-    td {
-        padding: 10px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-        position: relative;
-    }
-
-    td:last-child {
-        border-bottom: none;
-    }
-
-    /* Display the data-label for each td on mobile */
-    td:before {
-        content: attr(data-label);
-        font-weight: bold;
-        color: #333;
-        text-transform: capitalize;
-        margin-right: 10px;
-        display: inline-block;
-        width: 100px; /* Adjust width to fit your label length */
-    }
-
-    /* Special handling for the "Actions" column */
-    td[data-label="Actions"] {
-        text-align: center;
-    }
-}
-/* Mobile responsive design */
-/* Mobile responsive design */
-@media (max-width: 480px) {
-    .table-container {
-        max-width: 100%;
-        margin: 5px;
-        border-radius: 6px;
-    }
-
-    .table-wrapper {
-        max-height: 300px;
-        overflow-y: auto;
-        overflow-x: auto; /* Ensure table scrolls horizontally on smaller screens */
-        padding: 0;
-    }
-
-    table, tr, td, th {
-        display: block;
-        width: 100%;
-    }
-
-    /* Keep table headers visible */
-    thead {
-        display: none; /* Hide thead since we're using data-labels for mobile */
-    }
-
-    /* Each table row becomes a block */
-    tr {
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-
-    /* Display data-label above each table cell's content */
-    td {
-        padding: 10px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-        position: relative;
-    }
-
-    td:last-child {
-        border-bottom: none;
-    }
-
-    /* Display the data-label for each td on mobile */
-    td:before {
-        content: attr(data-label);
-        font-weight: bold;
-        color: #333;
-        text-transform: capitalize;
-        margin-right: 10px;
-        display: inline-block;
-        width: 100px; /* Adjust width to fit your label length */
-    }
-
-    /* Special handling for the "Actions" column */
-    td[data-label="Actions"] {
-        text-align: center;
-    }
-    .button button {
-        width: 100px; /* Full width button on tablets */
-        padding: 10px; /* Increase padding for better touch targets */
-    }
-}
 
 
 .modal {

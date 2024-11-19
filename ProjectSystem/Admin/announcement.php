@@ -128,6 +128,21 @@ mysqli_close($conn);
     <link rel="stylesheet" href="Css_Admin/admin-announce.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+   <!-- DataTables CSS -->
+   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
 
     <title>Announcements</title>
    
@@ -146,7 +161,9 @@ mysqli_close($conn);
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
         <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-
+        <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+        <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
 
     <div class="logout">
@@ -194,42 +211,43 @@ mysqli_close($conn);
 <div class="announcements">
     <?php if (!empty($announcements)): ?>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="announcementTable">
-                <thead class="thead-dark">
-                    <tr>
-                        <th scope="col">No.</th>
-                        <th scope="col">Title</th>
-                        <th scope="col">Content</th>
-                        <th scope="col">Date</th>
-                        <th scope="col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $counter = 1; 
-                    foreach ($announcements as $announcement): ?>
-                        <tr>
-                            <td><?= $counter++ ?></td>
-                            <td class="title"><?= htmlspecialchars($announcement['title']) ?></td>
-                            <td class="content"><?= htmlspecialchars($announcement['content']) ?></td>
-                            <td class="date_published"><?= htmlspecialchars($announcement['date_published']) ?></td>
-                            <td>
-                                <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
-                                    <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
-                                    <button type="submit" name="toggle-display" class="btn btn-sm <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
-                                        <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
-                                    </button>
-                                </form>
-                                <button class="btn btn-sm btn-primary update-button" data-id="<?= $announcement['announcementId'] ?>">
-                                    <i class="far fa-edit"></i> Edit
-                                </button>
-                                <button class="btn btn-sm btn-danger delete-button" data-id="<?= $announcement['announcementId'] ?>">Delete</button>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+    <table class="table table-bordered table-striped" id="announcementTable">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">No.</th>
+                <th scope="col">Title</th>
+                <th scope="col">Content</th>
+                <th scope="col">Date</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php 
+            $counter = 1; 
+            foreach ($announcements as $announcement): ?>
+                <tr>
+                    <td><?= $counter++ ?></td>
+                    <td class="title"><?= htmlspecialchars($announcement['title']) ?></td>
+                    <td class="content"><?= htmlspecialchars($announcement['content']) ?></td>
+                    <td class="date_published"><?= htmlspecialchars($announcement['date_published']) ?></td>
+                    <td>
+                        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
+                            <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
+                            <button type="submit" name="toggle-display" class="btn btn-sm <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
+                                <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
+                            </button>
+                        </form>
+                        <button class="btn btn-sm btn-primary update-button" data-id="<?= $announcement['announcementId'] ?>">
+                            <i class="far fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-button" data-id="<?= $announcement['announcementId'] ?>">Delete</button>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+
     <?php else: ?>
         <p class="alert alert-info text-center">No announcements yet.</p>
     <?php endif; ?>
@@ -309,6 +327,109 @@ mysqli_close($conn);
 <!-- JScript -->
 
 <script>
+    $(document).ready(function () {
+    $('#announcementTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'copy',
+                text: 'Copy',
+                className: 'btn btn-primary'
+            },
+            {
+                extend: 'csv',
+                text: 'Export CSV',
+                className: 'btn btn-success',
+                exportOptions: {
+                    columns: ':not(:last-child)' // Exclude the last column (if any)
+                }
+            },
+            {
+                extend: 'excel',
+                text: 'Export Excel',
+                className: 'btn btn-info',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
+            },
+            {
+                extend: 'pdf',
+                text: 'Export PDF',
+                className: 'btn btn-danger',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                customize: function (doc) {
+                    // Apply the same styles as in print for PDF
+                    doc.content[1].table.widths = ['10%', '30%', '40%', '20%'];
+
+                    doc.content[1].table.body[0].forEach(function (header) {
+                        header.alignment = 'center';
+                        header.bold = true;
+                        header.fillColor = '#4CAF50'; // Set background color for headers
+                        header.color = 'white'; // Set text color for headers
+                    });
+
+                    doc.content[1].table.body.slice(1).forEach(function (row) {
+                        row.forEach(function (cell) {
+                            cell.alignment = 'center';
+                        });
+                    });
+
+                    doc.content.unshift({
+                        text: 'Announcements Table',
+                        style: 'header',
+                        alignment: 'center',
+                        margin: [0, 0, 0, 10]
+                    });
+
+                    doc.styles = {
+                        header: {
+                            fontSize: 18,
+                            bold: true
+                        },
+                        tableHeader: {
+                            bold: true,
+                            fontSize: 12,
+                            color: 'black'
+                        }
+                    };
+
+                    doc.pageMargins = [20, 20, 20, 20];
+                }
+            },
+            {
+                extend: 'print',
+                text: 'Print',
+                className: 'btn btn-warning',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                customize: function (win) {
+                    // Apply the same styles as in PDF for print
+                    $(win.document.body).find('th').css({
+                        'background-color': '#4CAF50', // Set background color for headers
+                        'color': 'white',               // Set text color for headers
+                        'font-weight': 'bold',          // Set bold text for headers
+                        'text-align': 'center'         // Align text to the center for headers
+                    });
+
+                    $(win.document.body).find('td').css({
+                        'text-align': 'center' // Align text to the center for table cells
+                    });
+                }
+            }
+        ],
+        responsive: false,
+        searching: false,
+        paging: false,
+        info: false,
+        autoWidth: false
+    });
+});
+
+
+
     // Function to search announcements
     function searchAnnouncements() {
         var query = document.getElementById('announcement-search').value.toLowerCase();

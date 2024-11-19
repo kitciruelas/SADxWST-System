@@ -80,8 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateAccount'])) {
     if (!$email) {
         $errors[] = "Invalid email address.";
     }
-    if ($newPassword && $newPassword !== $confirmPassword) {
-        $errors[] = "Passwords do not match.";
+    if ($newPassword) {
+        if (strlen($newPassword) < 6) {
+            $errors[] = "Password must be at least 6 characters long.";
+        }
+        if ($newPassword !== $confirmPassword) {
+            $errors[] = "Passwords do not match.";
+        }
     }
   
     if (empty($errors)) {
@@ -121,13 +126,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateAccount'])) {
         }
     }
 
-    // Display errors if any
+    // Display errors as an alert
     if (!empty($errors)) {
+        echo "<script>";
         foreach ($errors as $error) {
-            echo "<p>$error</p>";
+            echo "alert('" . addslashes($error) . "');";
         }
+        echo "</script>";
     }
 }
+
 
 $conn->close();
 ?>
@@ -169,7 +177,9 @@ $conn->close();
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         
         <div class="logout">
@@ -221,13 +231,13 @@ $conn->close();
                 <!-- Other personal info fields go here -->
                 <div class="col-md-9">
                     <div class="container">
-                        <div class="row mb-3">
+                        <div class="row mb-4">
                             <div class="col-md-4">
-                                <label class="form-label">First Name</label>
+                                <label class="form-label">Firstname</label>
                                 <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin['fname']); ?>" readonly />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Last Name</label>
+                                <label class="form-label">Lastname</label>
                                 <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin['lname']); ?>" readonly />
                             </div>
                             <div class="col-md-4">
@@ -235,15 +245,10 @@ $conn->close();
                                 <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin['username']); ?>" readonly />
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" value="<?php echo htmlspecialchars($admin['email']); ?>" readonly />
-                            </div>
-                        </div>
+                      
                         <div class="text-end mt-3">
 <!-- Button to trigger Edit Profile Modal -->
-<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+<button type="button" class="btn btn-primary mt-5" data-bs-toggle="modal" data-bs-target="#editProfileModal">
     Edit Profile
 </button>
                         </div>
@@ -336,10 +341,7 @@ $conn->close();
                             <label for="username" class="form-label">Username</label>
                             <input type="text" class="form-control" name="username" value="<?php echo htmlspecialchars($admin['username']); ?>" required />
                         </div>
-                        <div class="col-md-6">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($admin['email']); ?>" readonly />
-                        </div>
+                       
                     </div>
 
                     <!-- Submit Button -->

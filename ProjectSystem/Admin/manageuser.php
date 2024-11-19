@@ -377,7 +377,7 @@ $sql = "SELECT * FROM users ORDER BY $order";
     <title>Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="Css_Admin/manageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -403,7 +403,9 @@ $sql = "SELECT * FROM users ORDER BY $order";
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
             <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
@@ -442,7 +444,6 @@ $sql = "SELECT * FROM users ORDER BY $order";
 <!-- Sort Form -->
 <!-- Sort Form -->
 <form id="sortForm" class="filter-form mt-5" style="margin-left: 10px;">
-    <label for="sort">Sort by:</label>
     <select name="sort" id="sort">
         <option value="" selected>Select Sort</option>
         <option value="name_asc">Name (A to Z)</option>
@@ -531,6 +532,7 @@ $sql = "SELECT * FROM users ORDER BY $order";
 
 
 <style>
+
     /* Style for the entire table */
     .table {
         background-color: #f8f9fa; /* Light background for the table */
@@ -686,6 +688,7 @@ $sql = "SELECT * FROM users ORDER BY $order";
 
 
 <style>
+    
     /* Password Container to position icon correctly */
     .password-container {
     position: relative;
@@ -796,7 +799,7 @@ $sql = "SELECT * FROM users ORDER BY $order";
 
         <!-- JavaScript for modal functionality -->
         <script>
- $(document).ready(function () {
+$(document).ready(function () {
     $('#userTable').DataTable({
         dom: 'Bfrtip',
         buttons: [
@@ -825,7 +828,6 @@ $sql = "SELECT * FROM users ORDER BY $order";
                 extend: 'pdf',
                 className: 'btn btn-danger',
                 customize: function (doc) {
-                    // Modify the header for PDF output
                     doc.content[1].table.widths = ['10%', '30%', '30%', '30%']; // Adjust column widths
                     doc.content[1].table.body[0] = [
                         { text: 'No.', bold: true },
@@ -842,7 +844,10 @@ $sql = "SELECT * FROM users ORDER BY $order";
                 extend: 'print',
                 className: 'btn btn-warning',
                 customize: function (win) {
-                    // Modify the print layout for better styling
+                    // Set the page orientation to portrait
+                    $(win.document.body).find('style').append('@page { size: portrait; }');
+
+                    // Apply custom styles to the print layout
                     $(win.document.body).find('th').css({
                         'background-color': '#4CAF50',  // Header background color
                         'color': 'white',  // Header text color
@@ -850,9 +855,13 @@ $sql = "SELECT * FROM users ORDER BY $order";
                         'text-align': 'center'  // Center align the header text
                     });
 
-                    // Optionally, you can also style the body of the table or add other customizations
+                    // Optionally hide unwanted elements (like card and container)
+                    $(win.document.body).find('.card').css('display', 'none');
+                    $(win.document.body).find('.container').css('display', 'none');
+
+                    // Adjust table styling for print
                     $(win.document.body).find('td').css({
-                        'font-size': '14px',  // Example: Change font size for table data
+                        'font-size': '14px',  // Change font size for table data
                     });
                 },
                 exportOptions: {

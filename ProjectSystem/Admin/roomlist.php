@@ -259,44 +259,39 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/adminmanageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Bootstrap CSS (Ensure Bootstrap is included) -->
-<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-
 <!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
 
-<!-- DataTables Buttons CSS -->
+<!-- DataTables Buttons Plugin CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
 
-<!-- jQuery (required by DataTables and Bootstrap) -->
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+
+<!-- DataTables Buttons Plugin CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+
+<!-- jQuery (required by DataTables) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 
-<!-- DataTables Buttons JS -->
+<!-- DataTables Buttons Plugin JS -->
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
 
-<!-- JSZip (for Excel export) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-
-<!-- pdfMake (for PDF export) -->
+<!-- Buttons JS (for exporting functionalities) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vfs_fonts/2.0.1/vfs_fonts.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
-<!-- vfs_fonts (for PDF export) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-
-<!-- Bootstrap JS (Optional) -->
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 
 </head>
 <body>
@@ -309,10 +304,12 @@ $conn->close();
             <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
-              
-
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
             <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
@@ -333,27 +330,35 @@ $conn->close();
     <i class="fas fa-arrow-left fa-2x me-2"></i></button>
 </div>        
     <div class="container mt-1">
-    <!-- Search and Filter Section -->
-    <div class="row mb-4">
-        <div class="col-12 col-md-8">
-            <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
-        </div>
+   <!-- Search and Filter Section -->
+<div class="row mb-4">
+    <div class="col-12 col-md-6">
+        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+    </div>
+    
+    <div class="col-6 col-md-2">
+        <select id="filterSelect" class="form-select">
+            <option value="all" selected>Filter by</option>
+            <option value="room_number">Room Number</option>
+            <option value="capacity">Capacity</option>
+            <option value="status">Monthly Rent</option>
+        </select>
+    </div>
         <div class="col-6 col-md-2">
-            <select id="filterSelect" class="form-select">
-                <option value="all" selected>Filter by</option>
-                <option value="room_number">Room Number</option>
-                <option value="capacity">Capacity</option>
-                <option value="status">Monthly Rent</option>
+            <select name="sort" class="form-select" id="sort" onchange="applySort()">
+                <option value="" selected>Select Sort</option>
+                <option value="capacity_asc">Capacity (Low to High)</option>
+                <option value="capacity_desc">Capacity (High to Low)</option>
+                <option value="rent_asc">Monthly Rent (Low to High)</option>
+                <option value="rent_desc">Monthly Rent (High to Low)</option>
             </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
-            
-        </div>
-        
-    </div> 
- <!-- Room Table -->
- <table id="room-table" class="table table-bordered">
+    </div>
+    <div class="col-6 col-md-2">
+        <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
+    </div>
+</div>
+<!-- Room Table -->
+<table id="room-table" class="table table-bordered">
     <thead class="table-light">
         <tr>
             <th>No</th>
@@ -379,7 +384,7 @@ $conn->close();
                 echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
                 echo "<td>" . htmlspecialchars($row["status"]) . "</td>";
                 echo "<td>";
-                
+
                 if (!empty($row["room_pic"])) {
                     $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
                     if (file_exists($imagePath)) {
@@ -390,13 +395,13 @@ $conn->close();
                 } else {
                     echo "No Image";
                 }
-                
+
                 echo "</td>";
                 echo "<td>";
                 echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
                 echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
                         <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                        <button type='submit' class='custom-btn delete-btn'>Delete</button>
+                        <button type='button' class='custom-btn'>Delete</button>
                       </form>";
                 echo "</td>";
                 echo "</tr>";
@@ -410,6 +415,7 @@ $conn->close();
 
 
 
+
 <!-- Pagination Controls -->
 <div id="pagination">
     <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
@@ -417,6 +423,7 @@ $conn->close();
     <button id="nextPage" onclick="nextPage()">Next</button>
 </div>
 <style>
+        
     /* Style for the entire table */
     .table {
         background-color: #f8f9fa; /* Light background for the table */
@@ -593,15 +600,62 @@ $conn->close();
 
     <!-- Hamburger Menu Script -->
     <script>
-$(document).ready(function() {
-    $('#room-table').DataTable({
-        dom: 'Bfrtip', // Defines the position of the buttons
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print' // Enables export buttons
-        ]
-    });
-});
-         function openEditModal(roomId) {
+
+function applySort() {
+    const sortValue = document.getElementById("sort").value;
+    const table = document.getElementById("room-table");
+    const rows = Array.from(table.rows).slice(1); // Exclude the header row
+    let sortedRows;
+
+    switch (sortValue) {
+        case "name_asc":
+            sortedRows = rows.sort((a, b) => {
+                const nameA = a.cells[1].textContent.trim();
+                const nameB = b.cells[1].textContent.trim();
+                return nameA.localeCompare(nameB);
+            });
+            break;
+        case "name_desc":
+            sortedRows = rows.sort((a, b) => {
+                const nameA = a.cells[1].textContent.trim();
+                const nameB = b.cells[1].textContent.trim();
+                return nameB.localeCompare(nameA);
+            });
+            break;
+        case "capacity_asc":
+            sortedRows = rows.sort((a, b) => {
+                const capacityA = parseInt(a.cells[3].textContent.trim());
+                const capacityB = parseInt(b.cells[3].textContent.trim());
+                return capacityA - capacityB;
+            });
+            break;
+        case "capacity_desc":
+            sortedRows = rows.sort((a, b) => {
+                const capacityA = parseInt(a.cells[3].textContent.trim());
+                const capacityB = parseInt(b.cells[3].textContent.trim());
+                return capacityB - capacityA;
+            });
+            break;
+        case "rent_asc":
+            sortedRows = rows.sort((a, b) => {
+                const rentA = parseFloat(a.cells[4].textContent.trim().replace(/[^\d.-]/g, ""));
+                const rentB = parseFloat(b.cells[4].textContent.trim().replace(/[^\d.-]/g, ""));
+                return rentA - rentB;
+            });
+            break;
+        case "rent_desc":
+            sortedRows = rows.sort((a, b) => {
+                const rentA = parseFloat(a.cells[4].textContent.trim().replace(/[^\d.-]/g, ""));
+                const rentB = parseFloat(b.cells[4].textContent.trim().replace(/[^\d.-]/g, ""));
+                return rentB - rentA;
+            });
+            break;
+        default:
+            sortedRows = rows; // No sorting applied if no selection is made
+    }
+
+    sortedRows.forEach(row => table.appendChild(row)); // Reorder rows in the table
+}     function openEditModal(roomId) {
         // Fetch room data using AJAX or populate it using server-side rendering
         fetch('get_room.php?room_id=' + roomId)
             .then(response => response.json())

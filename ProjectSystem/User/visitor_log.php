@@ -114,6 +114,45 @@ if (isset($_POST['delete_visitor_id'])) {  // Using delete trigger as archive ac
 
 
 
+// Check if form data is submitted via POST
+if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
+    // Retrieve visitor ID and the data from the form
+    $visitor_id = $_POST['edit_id'];
+    $name = mysqli_real_escape_string($conn, $_POST['edit_msg']['name']);
+    $contact_info = mysqli_real_escape_string($conn, $_POST['edit_msg']['contact_info']);
+    $purpose = mysqli_real_escape_string($conn, $_POST['edit_msg']['purpose']);
+
+    // Check if any required fields are empty
+    if (empty($name) || empty($contact_info) || empty($purpose)) {
+        // If any field is empty, show an alert and stop execution
+        echo "<script>
+                alert('All fields are required!');
+                window.location.href = 'visitors_list.php';
+              </script>";
+        exit();
+    }
+
+    // Prepare the SQL query to update the visitor details
+    $sql = "UPDATE visitors 
+            SET name = '$name', contact_info = '$contact_info', purpose = '$purpose'
+            WHERE id = '$visitor_id'";
+
+    // Execute the query and check if the update was successful
+    if (mysqli_query($conn, $sql)) {
+        // Success alert and redirect
+        echo "<script>
+                alert('Visitor updated successfully');
+                window.location.href = 'visitor_log.php';
+              </script>";
+    } else {
+        // Error alert and redirect
+        echo "<script>
+                alert('Failed to update visitor');
+                window.location.href = 'visitor_log.php';
+              </script>";
+    }
+} 
+
 // Assuming you're using $_GET['filter'] to fetch the filter value
 $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
 $sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
@@ -246,56 +285,94 @@ $conn->close();
 
 <!-- Visitor Log Table -->
 <div class="table-responsive">
-    <table class="table table-bordered" id="visitorTable">
-        <thead class="table-light">
-            <tr>
-                <th scope="col">No.</th>
-                <th scope="col">Visiting Person</th>
-                <th scope="col">Contact Info</th>
-                <th scope="col">Purpose</th>
-                <th scope="col">Name</th>
-                <th scope="col">Check-In</th>
-                <th scope="col">Check-Out</th>
-                <th scope="col">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            date_default_timezone_set('Asia/Manila'); // Set timezone to Philippine Time
+<table class="table table-bordered" id="visitorTable">
+    <thead class="table-light">
+        <tr>
+            <th scope="col">No.</th>
+            <th scope="col">Visiting Person</th>
+            <th scope="col">Contact Info</th>
+            <th scope="col">Purpose</th>
+           <!--  <th scope="col">Name</th>-->
+            <th scope="col">Check-In</th>
+            <th scope="col">Check-Out</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        date_default_timezone_set('Asia/Manila'); // Set timezone to Philippine Time
 
-            if ($result->num_rows > 0): 
-                $counter = 1;
-                while ($row = $result->fetch_assoc()):
-                    $isCheckedOut = !empty($row['check_out_time']);
-                    $checkInDateTime = date("Y-m-d g:i A", strtotime($row['check_in_time'])); // Date with AM/PM
-                    $checkOutDateTime = $isCheckedOut ? date("Y-m-d g:i A", strtotime($row['check_out_time'])) : 'N/A'; // Check-out date and time or 'N/A'
-            ?>
-                <tr>
-                    <td><?= $counter++ ?></td>
-                    <td><?= htmlspecialchars($row['name']) ?></td>
-                    <td><?= htmlspecialchars($row['contact_info']) ?></td>
-                    <td><?= htmlspecialchars($row['purpose']) ?></td>
-                    <td><?= htmlspecialchars($row['visiting_person']) ?></td>
-                    <td><?= $checkInDateTime ?></td>
-                    <td><?= $checkOutDateTime ?></td>
-                    <td>
-                        <form action="visitor_log.php" method="post" style="display:inline;">
-                            <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
-                            <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Are you sure you want to check out this visitor?')" <?= $isCheckedOut ? 'disabled' : '' ?>>Check-Out</button>
-                        </form>
-                        <form action="visitor_log.php" method="post" style="display:inline;">
-                            <input type="hidden" name="delete_visitor_id" value="<?= $row['id'] ?>">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endwhile; else: ?>
-                <tr>
-                    <td colspan="8" class="text-center">No visitors found.</td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+        if ($result->num_rows > 0): 
+            $counter = 1;
+            while ($row = $result->fetch_assoc()):
+                $isCheckedOut = !empty($row['check_out_time']);
+                $checkInDateTime = date("Y-m-d g:i A", strtotime($row['check_in_time'])); // Date with AM/PM
+                $checkOutDateTime = $isCheckedOut ? date("Y-m-d g:i A", strtotime($row['check_out_time'])) : 'N/A'; // Check-out date and time or 'N/A'
+        ?>
+            <tr>
+                <td><?= $counter++ ?></td>
+                <td><?= htmlspecialchars($row['name']) ?></td>
+                <td><?= htmlspecialchars($row['contact_info']) ?></td>
+                <td><?= htmlspecialchars($row['purpose']) ?></td>
+               <!--  <td><?= htmlspecialchars($row['visiting_person']) ?></td>-->
+                <td><?= $checkInDateTime ?></td>
+                <td><?= $checkOutDateTime ?></td>
+                <td>
+                    
+                    <form action="visitor_log.php" method="post" style="display:inline;">
+                        <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
+                        <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Are you sure you want to check out this visitor?')" <?= $isCheckedOut ? 'disabled' : '' ?>>Check-Out</button>
+                    </form>
+                    <button type="submit" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editVisitorModal<?= $row['id'] ?>">Edit</button>
+
+                    <form action="visitor_log.php" method="post" style="display:inline;">
+                        <input type="hidden" name="delete_visitor_id" value="<?= $row['id'] ?>">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+
+      <!-- Edit Modal -->
+<div class="modal fade" id="editVisitorModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editVisitorModalLabel<?= $row['id'] ?>" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editVisitorModalLabel<?= $row['id'] ?>">Edit Visitor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="visitor_log.php" method="post">
+                    <input type="hidden" name="edit_id" value="<?= $row['id'] ?>">
+                    <div class="mb-3">
+                        <label for="editVisitorName<?= $row['id'] ?>" class="form-label">Visitor's Name</label>
+                        <input type="text" class="form-control" id="editVisitorName<?= $row['id'] ?>" name="edit_msg[name]" value="<?= htmlspecialchars($row['name']) ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editContactInfo<?= $row['id'] ?>" class="form-label">Contact Info</label>
+                        <input type="text" class="form-control" id="editContactInfo<?= $row['id'] ?>" name="edit_msg[contact_info]" value="<?= htmlspecialchars($row['contact_info']) ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPurpose<?= $row['id'] ?>" class="form-label">Purpose</label>
+                        <input type="text" class="form-control" id="editPurpose<?= $row['id'] ?>" name="edit_msg[purpose]" value="<?= htmlspecialchars($row['purpose']) ?>" required>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-success">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        <?php endwhile; else: ?>
+            <tr>
+                <td colspan="8" class="text-center">No visitors found.</td>
+            </tr>
+        <?php endif; ?>
+    </tbody>
+</table>
+
 </div>
 
 <style>
@@ -329,7 +406,7 @@ $conn->close();
 
     /* Styling the action buttons */
     .table .btn {
-        margin-right: 5px; /* Space between buttons */
+        margin-right: 2px; /* Space between buttons */
     }
 
 </style>

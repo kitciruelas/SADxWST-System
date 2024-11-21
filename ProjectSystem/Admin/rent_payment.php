@@ -173,7 +173,7 @@ if (isset($_GET['delete_payment_id'])) {
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
+            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -192,7 +192,7 @@ if (isset($_GET['delete_payment_id'])) {
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Rent Payment History</h2>
+        <h2>Rent Payment</h2>
     </div>
 
     <!-- Main content -->
@@ -204,13 +204,12 @@ if (isset($_GET['delete_payment_id'])) {
     <div class="container mt-1">
     <div class="row mb-4">
     <div class="col-12 col-md-6">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details..." onkeyup="filterTable()">
+        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for payment details..." onkeyup="filterTable()">
     </div>
     
     <div class="col-6 col-md-2">
         <select id="filterSelect" class="form-select" onchange="filterTable()">
             <option value="all" selected>Filter by</option>
-            <option value="room_number">Room Number</option>
             <option value="amount">Amount</option>
             <option value="status">Status</option>
         </select>
@@ -219,8 +218,7 @@ if (isset($_GET['delete_payment_id'])) {
     <div class="col-6 col-md-2">
     <select name="sort" class="form-select" id="sort" onchange="applySort()">
             <option value="" selected>Select Sort</option>
-        <option value="room_number_asc">Room Number (Low to High)</option>
-        <option value="room_number_desc">Room Number (High to Low)</option>
+   
         <option value="amount_asc">Amount (Low to High)</option>
         <option value="amount_desc">Amount (High to Low)</option>
         <option value="payment_date_asc">Payment Date (Oldest to Newest)</option>
@@ -243,7 +241,6 @@ if (isset($_GET['delete_payment_id'])) {
         <tr>
             <th>No</th>
             <th>Resident Name</th>
-            <th>Room Number</th>
             <th>Amount</th>
             <th>Payment Date</th>
             <th>Status</th>
@@ -273,7 +270,6 @@ if (isset($_GET['delete_payment_id'])) {
                 echo "<tr>";
                 echo "<td>" . $no++ . "</td>";
                 echo "<td>" . htmlspecialchars($row['fname']) . " " . htmlspecialchars($row['lname']) . "</td>";
-                echo "<td>" . htmlspecialchars($row['room_number']) . "</td>";
                 echo "<td>" . number_format($row['amount'], 2) . "</td>";
                 echo "<td>" . $row['payment_date'] . "</td>";
                 echo "<td>" . ucfirst($row['status']) . "</td>";
@@ -393,7 +389,7 @@ if (isset($_GET['delete_payment_id'])) {
           <div class="mb-3">
             <label for="status" class="form-label">Status</label>
             <select name="status" id="status" class="form-control" required>
-              <option value="pending">Pending</option>
+              <option value="">Select status</option>
               <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
             </select>
@@ -448,7 +444,6 @@ if (isset($_GET['delete_payment_id'])) {
                         <label for="edit_status" class="form-label">Status</label>
                         <select class="form-select" id="edit_status" name="status" required>
                             <option value="paid">Paid</option>
-                            <option value="pending">Pending</option>
                             <option value="overdue">Overdue</option>
                         </select>
                     </div>

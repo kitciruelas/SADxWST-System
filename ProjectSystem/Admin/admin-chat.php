@@ -125,6 +125,7 @@ function getMessages($conn, $receiverId = 0) {
     return $messages;
 }
 
+
 ?>
 
 <!DOCTYPE html>
@@ -145,7 +146,7 @@ function getMessages($conn, $receiverId = 0) {
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-    <title>Pansol Group Chat</title>
+    <title>Dormio - Group Chat</title>
 
     <style>
         body {
@@ -360,7 +361,7 @@ function getMessages($conn, $receiverId = 0) {
         </div>
 
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link" ><i class="fas fa-user-cog"></i> <span>Admin</span></a>
+            <a href="dashboard.php" class="nav-link" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -455,7 +456,7 @@ function getMessages($conn, $receiverId = 0) {
     
     <div class="container">
         
-        <h4 class="text-center mb-4">User Roles Info</h4>
+        <h4 class="text-center mb-4">List of User Roles</h4>
 
         <div class="list-group">
             <?php
@@ -517,29 +518,6 @@ function getMessages($conn, $receiverId = 0) {
 </div>
 
 </div>
-<!-- Modal Structure -->
-<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="userModalLabel">User Details</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Modal content will be populated here using data from the clicked button -->
-                <p><strong>ID:</strong> <span id="userId"></span></p>
-                <p><strong>Name:</strong> <span id="userName"></span></p>
-                <p><strong>Role:</strong> <span id="userRole"></span></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 
 <!-- jQuery and Bootstrap JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -550,24 +528,7 @@ function getMessages($conn, $receiverId = 0) {
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script>
-// JavaScript to populate the modal with user data from the clicked button
-$('#userModal').on('show.bs.modal', function (event) {
-    // Get the button that triggered the modal
-    var button = $(event.relatedTarget);
 
-    // Extract the data from the button's data-* attributes
-    var userId = button.data('id');
-    var userFname = button.data('fname');
-    var userLname = button.data('lname');
-    var userRole = button.data('role');
-
-    // Populate the modal with the data
-    var modal = $(this);
-    modal.find('#userId').text(userId);
-    modal.find('#userName').text(userFname + ' ' + userLname);
-    modal.find('#userRole').text(userRole);
-});
-    
 
     function applyFilters() {
     var selectedRole = document.getElementById('roleSelect').value; // Get selected role

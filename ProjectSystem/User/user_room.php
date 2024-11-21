@@ -27,35 +27,58 @@ $result = $stmt->get_result();
 
 // Check if the user has an assigned room
 $roomAssignment = $result->num_rows > 0 ? $result->fetch_assoc() : null;
-
 // Handle feedback submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if feedback is provided
     if (isset($_POST['feedback']) && !empty($_POST['feedback'])) {
+        // Sanitize and escape input
         $feedback = $conn->real_escape_string($_POST['feedback']);
+        $userId = $_SESSION['id'];  // Assuming the user ID is stored in the session
 
-        // Insert feedback into the database, including the user ID
-        $sql = "INSERT INTO feedback (user_id, feedback) VALUES (?, ?)";
-        $stmt = $conn->prepare($sql);
+        // Check if assignment_id is set and valid
+        if (isset($_POST['assignment_id']) && !empty($_POST['assignment_id'])) {
+            $assignment_id = $_POST['assignment_id']; // Get assignment ID from POST data
 
-        if ($stmt) {
-            $stmt->bind_param('is', $userId, $feedback);
+            // Insert feedback into the database
+            $sql = "INSERT INTO roomfeedback (user_id, assignment_id, feedback) VALUES (?, ?, ?)";
+            $stmt = $conn->prepare($sql);
 
-            if ($stmt->execute()) {
-                echo "<script>alert('Feedback submitted successfully.');</script>";
+            if ($stmt) {
+                // Bind parameters: 'i' for integer (user_id, assignment_id), 's' for string (feedback)
+                $stmt->bind_param('iis', $userId, $assignment_id, $feedback);
+
+                // Execute and check if successful
+                if ($stmt->execute()) {
+                    echo "<script>alert('Feedback submitted successfully.');</script>";
+                } else {
+                    echo "<script>alert('Error submitting feedback: " . $stmt->error . "');</script>";
+                }
+
+                // Close the prepared statement
+                $stmt->close();
             } else {
-                echo "<script>alert('Error submitting feedback: " . $stmt->error . "');</script>";
+                echo "<script>alert('Error preparing feedback statement: " . $conn->error . "');</script>";
             }
-
-            $stmt->close();
         } else {
-            echo "<script>alert('Error preparing feedback statement: " . $conn->error . "');</script>";
+            echo "<script>alert('Invalid or missing assignment ID.');</script>";
         }
-    } else {
     }
 }
+// Query to get the current assignment_id (adjust query as necessary)
+$query = "SELECT assignment_id FROM roomassignments WHERE user_id = '$userId' ORDER BY assignment_date DESC ";
+$result = mysqli_query($conn, $query);
+
+// Check if assignment exists and fetch the assignment_id
+if ($result && mysqli_num_rows($result) > 0) {
+    $row = mysqli_fetch_assoc($result);
+    $assignment_id = $row['assignment_id'];
+} else {
+    $assignment_id = null; // Handle the case where no assignment is found
+}
+
 
 // Fetch the previous feedback for the logged-in user
-$query = "SELECT feedback FROM feedback WHERE user_id = ?";
+$query = "SELECT feedback FROM roomfeedback WHERE user_id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param('i', $userId);
 $stmt->execute();
@@ -68,7 +91,7 @@ if ($result->num_rows > 0) {
 
 // Fetch all feedback from the database, but only for the logged-in user
 $query = "SELECT f.id, f.feedback, f.submitted_at 
-          FROM feedback f 
+          FROM roomfeedback f 
           WHERE f.user_id = ? 
           ORDER BY f.submitted_at DESC";
 $stmt = $conn->prepare($query);
@@ -86,7 +109,7 @@ if (isset($_GET['delete_id'])) {
     $feedbackIdToDelete = $_GET['delete_id'];
 
     // Ensure that the feedback belongs to the logged-in user before deleting it
-    $deleteQuery = "SELECT user_id FROM feedback WHERE id = ?";
+    $deleteQuery = "SELECT user_id FROM roomfeedback WHERE id = ?";
     $stmt = $conn->prepare($deleteQuery);
     $stmt->bind_param('i', $feedbackIdToDelete);
     $stmt->execute();
@@ -97,7 +120,7 @@ if (isset($_GET['delete_id'])) {
         
         if ($feedbackOwner == $userId) {
             // Prepare DELETE query to remove feedback from the database
-            $deleteQuery = "DELETE FROM feedback WHERE id = ?";
+            $deleteQuery = "DELETE FROM roomfeedback WHERE id = ?";
             $stmt = $conn->prepare($deleteQuery);
             
             if ($stmt) {
@@ -131,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
     // Ensure feedback is not empty
     if (!empty($feedbackText)) {
         // Update the feedback in the database
-        $sql = "UPDATE feedback SET feedback = ? WHERE id = ? AND user_id = ?";
+        $sql = "UPDATE roomfeedback SET feedback = ? WHERE id = ? AND user_id = ?";
         $stmt = $conn->prepare($sql);
 
         if ($stmt) {
@@ -199,11 +222,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
     <div class="main-content">      
 
     <div class="container h-100">
-    <div class="row d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="row d-flex justify-content-center align-items-stretch" style="min-height: 100vh;">
         <!-- Room Assignment Column -->
-        <div class="col-12 col-md-6 mb-3">
-            <div class="card shadow-sm w-100">
-                <div class="card-body text-center">
+        <div class="col-12 col-md-6 mb-3 d-flex">
+            <div class="card shadow-sm w-100 h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-between">
                     <?php if ($roomAssignment): ?>
                         <h5 class="card-title"><strong>Room:</strong> <?php echo htmlspecialchars($roomAssignment['room_number']); ?></h5>
                         <p class="card-text"><strong>Monthly Rent:</strong> <?php echo htmlspecialchars($roomAssignment['room_monthlyrent']); ?></p>
@@ -223,39 +246,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
                 </div>
             </div>
         </div>
-        
-<!-- Feedback Column -->
-<div class="col-12 col-md-6">
 
-    <div class="card shadow-sm w-100">
-        
-        <div class="card-body">
-            
+       <!-- Feedback Column -->
+<div class="col-12 col-md-6 d-flex">
+    <div class="card shadow-sm w-100 h-90">
+        <div class="card-body d-flex flex-column justify-content-between">
             <h5 class="card-title text-center"><strong>Feedback</strong></h5>
-         
+            
             <!-- Feedback Form -->
-            <form action="user_room.php" method="POST" class="mt-3">
-                <div class="form-group mb-3">
-                    <label for="feedback" class="form-label">Your Feedback</label>
-                    <textarea id="feedback" name="feedback" class="form-control" rows="5" required placeholder="Write Feedback In"></textarea>
-                    </div>
-                    <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#allFeedbackModal" style="text-decoration: underline;">
-            My Feedback</button>
-
-                <div class="text-center">
-                    <button type="submit" class="btn btn-primary">Submit Feedback</button>
+            <form action="user_room.php" method="POST" class="d-flex flex-column flex-grow-1">
+                <div class="form-group mb-4">
+                    <label for="feedback" class="form-label mt-5"></label>
+                    <textarea id="feedback" name="feedback" class="form-control" rows="5" required placeholder="Write your feedback here" style="resize: none; height: 200px;"></textarea>
+                    <!-- My Feedback button (this just opens the modal) -->
+                <div class=" mt-2">
+                    <button type="button" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#allFeedbackModal" style="text-decoration: underline;">
+                        My Feedback
+                    </button>
                 </div>
-                
+                 <!-- Automatically set the assignment_id -->
+                 <input type="hidden" name="assignment_id" value="<?php echo htmlspecialchars($assignment_id); ?>">
+
+<div class="text-center mt-5 mb-2">
+    <button type="submit" class="btn btn-primary">Submit Feedback</button>
+</div>
+                    </div>
+
             </form>
         </div>
-        
     </div>
-    
+</div>
+                        
+    </div>
 </div>
 
-
-</div>
-    </div>
 </div>
 
 
@@ -308,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
 <?php
 // Assuming $userId is already set from the session
 // Fetch the current feedback for the logged-in user
-$query = "SELECT id, feedback FROM feedback WHERE user_id = ? ORDER BY submitted_at DESC";
+$query = "SELECT id, feedback FROM roomfeedback WHERE user_id = ? ORDER BY submitted_at DESC";
 $stmt = $conn->prepare($query);
 $stmt->bind_param('i', $userId);
 $stmt->execute();

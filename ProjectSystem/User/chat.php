@@ -12,26 +12,44 @@ if (!isset($_SESSION['id'])) {
 
 $user_id = $_SESSION['id']; // Set user_id from session
 
-// Verify user_id exists in staff table
+// Verify user_id exists in users table
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id); // Use $user_id to verify the logged-in user
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    // user_id does not exist in staff table; return an error
+    // user_id does not exist in users table; return an error
     die(json_encode(["error" => "User ID not found in database."]));
-}
-
-while ($row = $result->fetch_assoc()) {
-    // Process the result (if necessary, e.g., to get staff details)
 }
 
 $stmt->close();
 
+// Function to log activity
+function logActivity($conn, $user_id, $activity_type, $activity_details) {
+    $created_at = date('Y-m-d H:i:s');
+    $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details, activity_timestamp) VALUES (?, ?, ?, ?)");
+
+    if ($stmt === false) {
+        error_log("Error preparing activity log statement: " . $conn->error);
+        return false; // If statement preparation fails
+    }
+
+    $stmt->bind_param("isss", $user_id, $activity_type, $activity_details, $created_at);
+
+    if (!$stmt->execute()) {
+        error_log("Error logging activity: " . $stmt->error);
+        $stmt->close();
+        return false; // If execution fails
+    }
+
+    $stmt->close();
+    return true; // If activity is successfully logged
+}
+
 // Handle message insertion
 if (isset($_POST['msg'])) {
-    $msg = htmlspecialchars($_POST['msg']);
+    $msg = htmlspecialchars(trim($_POST['msg']));
     $created_at = date('Y-m-d H:i:s');
     
     // Default to broadcast to all users if no receiver_id is provided
@@ -46,23 +64,27 @@ if (isset($_POST['msg'])) {
     $stmt->bind_param("iiss", $user_id, $receiver_id, $msg, $created_at);
 
     if ($stmt->execute()) {
+        // Log the activity
+        $activity_details = "Sent a message: '$msg'";
+        logActivity($conn, $user_id, "Send Message", $activity_details);
+        
         echo json_encode(getMessages($conn));  // Return messages after successful insert
     } else {
         echo json_encode(["error" => "Message insertion failed"]);
     }
     $stmt->close();
-
     exit;
 }
+
 // Handle received message insertion
 if (isset($_POST['received_msg'])) {
-    $received_msg = htmlspecialchars($_POST['received_msg']);
-    $user_id = '2'; // Replace with the actual sender's user_id for received messages
+    $received_msg = htmlspecialchars(trim($_POST['received_msg']));
+    $sender_id = 2; // Example: replace this with the actual sender's user_id for received messages
     $created_at = date('Y-m-d H:i:s');
 
     $stmt = $conn->prepare("INSERT INTO messages (content, user_id, type, created_at) VALUES (?, ?, 'received', ?)");
     if ($stmt) {
-        $stmt->bind_param("sis", $received_msg, $user_id, $created_at);
+        $stmt->bind_param("sis", $received_msg, $sender_id, $created_at);
         $stmt->execute();
         $stmt->close();
         echo json_encode(getMessages($conn));
@@ -76,18 +98,37 @@ if (isset($_POST['received_msg'])) {
 // Handle message editing
 if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
     $edit_id = intval($_POST['edit_id']);
-    $edit_msg = htmlspecialchars($_POST['edit_msg']);
+    $edit_msg = htmlspecialchars(trim($_POST['edit_msg']));
 
-    // Update statement for editing messages in the 'chat_messages' table
-    $stmt = $conn->prepare("UPDATE chat_messages SET message = ? WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("si", $edit_msg, $edit_id);
-        $stmt->execute();
+    // First, fetch the original message before updating it
+    $stmt = $conn->prepare("SELECT message FROM chat_messages WHERE id = ?");
+    $stmt->bind_param("i", $edit_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $original_msg = $result->fetch_assoc()['message'];
         $stmt->close();
-        echo json_encode(getMessages($conn));  // Return the updated messages
+
+        // Now, update the message with the new content
+        $stmt = $conn->prepare("UPDATE chat_messages SET message = ? WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("si", $edit_msg, $edit_id);
+            $stmt->execute();
+            
+            // Log the activity, including the old message
+            $activity_details = "Edited message: '$original_msg' to '$edit_msg'";
+            logActivity($conn, $user_id, "Edit Message", $activity_details);
+
+            $stmt->close();
+            echo json_encode(getMessages($conn));  // Return the updated messages
+        } else {
+            error_log("Error in SQL statement: " . $conn->error);
+            echo json_encode(["error" => "Message update failed"]);
+        }
     } else {
-        error_log("Error in SQL statement: " . $conn->error);
-        echo json_encode(["error" => "Message update failed"]);
+        error_log("Message not found for edit ID: $edit_id");
+        echo json_encode(["error" => "Message not found"]);
     }
     exit;
 }
@@ -96,47 +137,69 @@ if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
 if (isset($_POST['delete_id'])) {
     $delete_id = intval($_POST['delete_id']);
 
-    // Delete statement for removing messages from the 'chat_messages' table
-    $stmt = $conn->prepare("DELETE FROM chat_messages WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("i", $delete_id);
-        $stmt->execute();
+    // First, fetch the message content before deleting it
+    $stmt = $conn->prepare("SELECT message FROM chat_messages WHERE id = ?");
+    $stmt->bind_param("i", $delete_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $message_to_delete = $result->fetch_assoc()['message'];
         $stmt->close();
-        echo json_encode(getMessages($conn));  // Return the updated messages list
+
+        // Now, delete the message
+        $stmt = $conn->prepare("DELETE FROM chat_messages WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $delete_id);
+            $stmt->execute();
+
+            // Log the activity without including the message ID
+            $activity_details = "Deleted message: '$message_to_delete'";
+            logActivity($conn, $user_id, "Delete Message", $activity_details);
+
+            $stmt->close();
+            echo json_encode(getMessages($conn));  // Return the updated messages list
+        } else {
+            error_log("Error in SQL statement: " . $conn->error);
+            echo json_encode(["error" => "Message deletion failed"]);
+        }
     } else {
-        error_log("Error in SQL statement: " . $conn->error);
-        echo json_encode(["error" => "Message deletion failed"]);
+        error_log("Message not found for delete ID: $delete_id");
+        echo json_encode(["error" => "Message not found"]);
     }
     exit;
 }
 
-// Function to fetch messages from the database
-// Function to fetch messages with user names from the database
 function getMessages($conn) {
     $query = "SELECT cm.id, cm.message, cm.sender_id, cm.receiver_id, cm.timestamp, 
-                     COALESCE(CONCAT(s.fname), u.fname) AS sender_name, 
-                     COALESCE(u.role, 'Staff') AS role
-              FROM chat_messages cm
-              LEFT JOIN staff s ON cm.sender_id = s.id
-              LEFT JOIN users u ON cm.sender_id = u.id
-              WHERE cm.receiver_id = 0 OR cm.receiver_id = ?  -- 0 is for broadcast messages
-              ORDER BY cm.timestamp ASC";
+    COALESCE(s.fname, u.fname, a.fname) AS sender_name, 
+    CASE 
+        WHEN s.id IS NOT NULL THEN 'Staff' 
+        WHEN u.id IS NOT NULL THEN 'User' 
+    END AS role
+FROM chat_messages cm
+LEFT JOIN staff s ON cm.sender_id = s.id
+LEFT JOIN users u ON cm.sender_id = u.id
+LEFT JOIN admin a ON cm.sender_id = a.id
+WHERE cm.receiver_id = 0 OR cm.receiver_id = ? -- 0 is for broadcast messages
+ORDER BY cm.timestamp ASC";
+
+
 
     $stmt = $conn->prepare($query);
-    if ($stmt === false) {
-        // Handle error
-        return [];
-    }
-
-    $stmt->bind_param("i", $_SESSION['id']);  // Use the current user ID for filtering messages
+    $stmt->bind_param('i', $_SESSION['id']); // Assuming receiver_id is the logged-in user ID
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Fetch all results as an associative array
-    $messages = $result->fetch_all(MYSQLI_ASSOC);
-    
+    $messages = [];
+    while ($row = $result->fetch_assoc()) {
+        $messages[] = $row;
+    }
+
+    $stmt->close();
     return $messages;
 }
+
 function getStaffRole($conn, $staffId) {
     $query = "SELECT role FROM users WHERE id = ?";
     
@@ -158,6 +221,8 @@ function getStaffRole($conn, $staffId) {
     }
 }
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -209,6 +274,7 @@ function getStaffRole($conn, $staffId) {
 
     </div>
 
+    
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -230,7 +296,7 @@ function getStaffRole($conn, $staffId) {
             border-radius: 10px;
             padding: 10px;
             flex-grow: 1;
-            height: 60vh; /* 70% of the viewport height */
+            height: 100vh; /* 70% of the viewport height */
             overflow-y: auto; /* Allow scrolling if content exceeds height */
             margin-bottom: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -321,7 +387,7 @@ function getStaffRole($conn, $staffId) {
     font-size: 1rem;
     line-height: 1.5;
     outline: none; /* Remove outline on focus */
-}
+} 
 
 .input-group textarea:focus {
     box-shadow: none;
@@ -391,6 +457,24 @@ function getStaffRole($conn, $staffId) {
 .message-menu .fas.fa-ellipsis-v {
     cursor: pointer;
 }
+/* Scrollbar styling for message details */
+#messageDetails::-webkit-scrollbar {
+    width: 8px;
+}
+
+#messageDetails::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+}
+
+#messageDetails::-webkit-scrollbar-thumb {
+    background-color: #ced4da;
+    border-radius: 10px;
+}
+
+#messageDetails::-webkit-scrollbar-thumb:hover {
+    background-color: #adb5bd;
+}
 
 
 
@@ -398,40 +482,32 @@ function getStaffRole($conn, $staffId) {
 </head>
 <body>
 <div class="main-content">
-
-
-<div id="container" class="container-fluid d-flex flex-column h-100"style="width: 900px;">
-      
-        
+    <div id="container" class="container-fluid d-flex flex-column h-10" style="width: 1000px;">
         <div class="main flex-grow-1 d-flex flex-column" style="padding: 10px;">
-        <div class="search-card">
-    <!-- Search Input -->
-    <div class="input-group search-bar">
-        <input type="text" id="search" class="form-control" placeholder="Search messages..." aria-label="Search messages">
-        <label for="roleSelect">Filter by Role:</label>
-        <select id="roleSelect" class="form-control" onchange="applyFilters()">
-            <option value="all">All</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-            <option value="user">User</option>
-        </select>
-    </div>
-    </div>
+            <div class="search-card">
+                <!-- Search Input -->
+                <div class="input-group search-bar mb-3">
+                    <input type="text" id="search" class="form-control" placeholder="Search messages..." aria-label="Search messages">
+                    
+                </div>
+                
+            </div>
 
+            <div class="d-flex">
 
-
-    <div id="chatlogs" class="d-flex flex-column">
+<!-- Chatlogs Section (Left) -->
+<div id="chatlogs" class="d-flex flex-column" style="flex: 1; overflow-y: auto; margin-right: 20px; padding-right: 10px;">
     <?php 
     // Display messages
     foreach (getMessages($conn) as $message): 
         // Check if the message was sent by the current user
         $message_type = ($message['sender_id'] === $_SESSION['id']) ? 'sent' : 'received';
     ?>
-    <div class="message-container <?= htmlspecialchars($message_type) ?>">
+    <div class="message-container <?= htmlspecialchars($message_type) ?>" onclick="showDetails(<?= htmlspecialchars($message['id']) ?>)">
         <?php if ($message_type === 'received' && isset($message['profile_pic'])): ?>
             <img src="<?= htmlspecialchars($message['profile_pic']) ?>" alt="Profile Picture" class="profile-pic">
         <?php endif; ?>
-        
+
         <div class="message <?= htmlspecialchars($message_type) ?>" data-id="<?= htmlspecialchars($message['id']) ?>">
             <?php if ($message_type === 'sent'): ?>
                 <div class="message-menu">
@@ -453,22 +529,85 @@ function getStaffRole($conn, $staffId) {
         </div>
     </div>
     <?php endforeach; ?>
+    
+    <!-- Sticky Message Form -->
+    <form name="form1" id="messageForm" onsubmit="return submitchat()" action="staff-chat.php" method="POST" class="mt-5" style="position: sticky; bottom: 0; background-color: white; z-index: 10; padding: 10px; border-top: 1px solid #ddd;">
+        <div class="input-group mt-2">
+            <textarea name="msg" class="form-control" placeholder="Your message here..." required></textarea>
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane fa-2x"></i>
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
 
-            <form name="form1" id="messageForm" onsubmit="return submitchat()" class="mt-1">
-                <div class="input-group mt-2">
-                    <textarea name="msg" class="form-control" placeholder="Your message here..." required></textarea>
-                    <div class="input-group-append">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane fa-2x"></i>
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
+<!-- Details Section (Right) -->
+<div id="messageDetails" class="d-flex flex-column" style="width: 300px; padding-left: 20px; height: 100vh; overflow-y: auto;">
+    
+    <div class="container">
+        
+        <h4 class="text-center mb-4">List of User Roles</h4>
 
-       
+        <div class="list-group">
+            <?php
+            // Query to fetch user details
+            $query = "SELECT id, fname, lname, role FROM users
+            UNION
+            SELECT id, fname, lname, role FROM staff";
+              $result = mysqli_query($conn, $query);
+
+            // Check if there are results
+            if (mysqli_num_rows($result) > 0) {
+                // Loop through each row and display the role and name
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $fullName = $row['fname'] . ' ' . $row['lname']; // Concatenate first and last name
+                    $role = $row['role']; // Get the user's role
+            ?>
+                    <!-- Button that triggers the modal -->
+                    <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2"
+        data-toggle="modal" data-target="#userModal" 
+        data-id="<?= $row['id'] ?>" 
+        data-fname="<?= $row['fname'] ?>" 
+        data-lname="<?= $row['lname'] ?>" 
+        data-role="<?= $row['role'] ?>">
+    <div>
+        <strong><?= htmlspecialchars($fullName) ?></strong>
+        <div>
+            <?php
+            // Display role as badge
+            if ($role == 'Admin') {
+                echo '<span class="badge badge-primary">Admin</span>';
+            } elseif ($role == 'Staff') {
+                echo '<span class="badge badge-success">Staff</span>';
+            } else {
+                echo '<span class="badge badge-info">User</span>';
+            }
+            ?>
+        </div>
     </div>
+</button>
+
+            <?php
+                }
+            } else {
+                echo "<p>No users found.</p>";
+            }
+
+            // Close the database connection
+            mysqli_close($conn);
+            ?>
+        </div>
+    </div>
+</div>
+
+
+</div>
+</div>
+
+
+</div>
 
 </div>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>

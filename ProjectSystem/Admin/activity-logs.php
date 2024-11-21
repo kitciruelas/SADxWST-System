@@ -173,7 +173,7 @@ if (isset($_GET['delete_payment_id'])) {
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
+            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -227,75 +227,52 @@ if (isset($_GET['delete_payment_id'])) {
     </select>
 </div>
 
-    <div class="col-6 col-md-2">
-        <!-- Button to trigger modal -->
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
-            Add Rent Payment
-        </button>
-    </div>
+  
 </div>
 
 
-<!-- Rent Payment Table -->
-<table class="table table-bordered" id="paymentTable">
+<!-- Activity Logs Table -->
+<table class="table table-bordered" id="activityLogTable">
     <thead class="table-light">
         <tr>
             <th>No</th>
-            <th>Resident Name</th>
-            <th>Room Number</th>
-            <th>Amount</th>
-            <th>Payment Date</th>
-            <th>Status</th>
-            <th>Payment Method</th>
-            <th>Reference Number (if online)</th>
-            <th>Action</th>
+            <th>Name</th>
+            <th>Activity Type</th>
+            <th>Activity Details</th>
+            <th>Activity Timestamp</th>
         </tr>
     </thead>
     <tbody>
         <?php
-        // Fetch rent payment data
-        $sql = "SELECT rp.payment_id, u.fname, u.lname, r.room_number, rp.amount, rp.payment_date, rp.status, rp.payment_method, rp.reference_number
-                FROM rentpayment rp
-                INNER JOIN users u ON rp.user_id = u.id
-                INNER JOIN roomassignments ra ON rp.user_id = ra.user_id
-                INNER JOIN rooms r ON ra.room_id = r.room_id"; 
+      $sql = "SELECT al.log_id, 
+                IFNULL(s.fname, u.fname) AS fname,
+                IFNULL(s.lname, u.lname) AS lname,
+                al.activity_type, 
+                al.activity_details, 
+                al.activity_timestamp,
+                IF(s.id IS NOT NULL, 'Staff', 'User') AS role
+        FROM activity_logs al
+        LEFT JOIN staff s ON al.user_id = s.id
+        LEFT JOIN users u ON al.user_id = u.id
+        ORDER BY al.activity_timestamp DESC";
+
 
         $result = mysqli_query($conn, $sql);
-        $payments = [];
 
         if (mysqli_num_rows($result) > 0) {
             $no = 1; // Row number counter
             while ($row = mysqli_fetch_assoc($result)) {
-                $payments[] = $row; // Store the data in an array for easier processing in JS
                 echo "<tr>";
                 echo "<td>" . $no++ . "</td>";
                 echo "<td>" . htmlspecialchars($row['fname']) . " " . htmlspecialchars($row['lname']) . "</td>";
-                echo "<td>" . htmlspecialchars($row['room_number']) . "</td>";
-                echo "<td>" . number_format($row['amount'], 2) . "</td>";
-                echo "<td>" . $row['payment_date'] . "</td>";
-                echo "<td>" . ucfirst($row['status']) . "</td>";
-                echo "<td>" . ucfirst($row['payment_method']) . "</td>";
-                echo $row['payment_method'] == 'online banking' ? "<td>" . htmlspecialchars($row['reference_number']) . "</td>" : "<td>-</td>";
-                echo "<td>
-                        <button type='button' class='btn btn-primary btn-sm edit-btn mb-1' 
-                            data-bs-toggle='modal' 
-                            data-bs-target='#editPaymentModal' 
-                            data-id='" . htmlspecialchars($row['payment_id']) . "' 
-                            data-amount='" . htmlspecialchars($row['amount']) . "' 
-                            data-status='" . htmlspecialchars($row['status']) . "' 
-                            data-method='" . htmlspecialchars($row['payment_method']) . "' 
-                            data-reference='" . htmlspecialchars($row['reference_number']) . "'>
-                            Edit
-                        </button>
-                        <form method='GET' action='rent_payment.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                            <input type='hidden' name='delete_payment_id' value='" . htmlspecialchars($row['payment_id']) . "' />
-                            <button type='submit' class='btn btn-danger btn-sm'>Delete</button>
-                        </form>
-                    </td>";
+                echo "<td>" . htmlspecialchars($row['activity_type']) . "</td>";
+                echo "<td>" . htmlspecialchars($row['activity_details']) . "</td>";
+                echo "<td>" . $row['activity_timestamp'] . "</td>";
+             
                 echo "</tr>";
             }
         } else {
-            echo "<tr><td colspan='9'>No payments found.</td></tr>";
+            echo "<tr><td colspan='6'>No activity logs found.</td></tr>";
         }
         ?>
     </tbody>
@@ -304,11 +281,9 @@ if (isset($_GET['delete_payment_id'])) {
 <script>
     // Confirmation before deletion
     function confirmDelete() {
-        return confirm("Are you sure you want to delete this payment?");
+        return confirm("Are you sure you want to delete this activity log?");
     }
 </script>
-
-
 
 
 <!-- Pagination Controls -->

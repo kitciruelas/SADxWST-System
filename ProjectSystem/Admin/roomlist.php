@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
     if ($count > 0) {
         // If room number exists, show an error
-        echo "<script>alert('Error: Room number already exists!'); window.location.href = 'roomlist.php';</script>";
+        echo "<script>alert('Error: Room already exists!'); window.location.href = 'roomlist.php';</script>";
     } else {
         // Insert room data using prepared statement
         $sql = "INSERT INTO Rooms (room_number, room_desc, room_pic, room_monthlyrent, capacity, status) VALUES (?, ?, ?, ?, ?, ?)";
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $stmt_check->close();
 
     if ($count > 0) {
-        echo "<script>alert('Error: Room number already exists for another room!'); window.location.href = 'roomlist.php';</script>";
+        echo "<script>alert('Error: Room already exists for another room!'); window.location.href = 'roomlist.php';</script>";
     } else {
         // Prepare the base SQL update statement
         $sql = "UPDATE rooms SET room_number = ?, capacity = ?, room_monthlyrent = ?, room_desc = ?, status = ?";
@@ -241,15 +241,29 @@ if (isset($_GET['edit_room_id'])) {
     $stmt->close();
 }
 
-$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic 
-        FROM rooms 
-        ORDER BY room_id DESC";
-$result = $conn->query($sql);
+// Query to get rooms, capacities, and current occupants
+$query = "
+    SELECT 
+        r.room_id,
+        r.room_number,
+        r.room_desc,
+        r.capacity AS totalCapacity,
+        r.room_monthlyrent,
+        r.status,
+        r.room_pic,
+        COUNT(ra.assignment_id) AS currentOccupants
+    FROM 
+        rooms r
+    LEFT JOIN 
+        roomassignments ra ON r.room_id = ra.room_id
+    GROUP BY 
+        r.room_id
+";
+$result = $conn->query($query);
 
 
 
 
-$conn->close();
 ?>
 
 
@@ -301,7 +315,7 @@ $conn->close();
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
+            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -339,7 +353,7 @@ $conn->close();
     <div class="col-6 col-md-2">
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
-            <option value="room_number">Room Number</option>
+            <option value="room_number">Room</option>
             <option value="capacity">Capacity</option>
             <option value="status">Monthly Rent</option>
         </select>
@@ -357,12 +371,11 @@ $conn->close();
         <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
     </div>
 </div>
-<!-- Room Table -->
 <table id="room-table" class="table table-bordered">
     <thead class="table-light">
         <tr>
             <th>No</th>
-            <th>Room Number</th>
+            <th>Room</th>
             <th>Room Description</th>
             <th>Capacity</th>
             <th>Monthly Rent</th>
@@ -373,16 +386,48 @@ $conn->close();
     </thead>
     <tbody id="room-table-body">
         <?php
+        // Query to get rooms, capacities, and current occupants
+        $query = "
+            SELECT 
+                r.room_id,
+                r.room_number,
+                r.room_desc,
+                r.capacity AS totalCapacity,
+                r.room_monthlyrent,
+                r.status,
+                r.room_pic,
+                COUNT(ra.assignment_id) AS currentOccupants
+            FROM 
+                rooms r
+            LEFT JOIN 
+                roomassignments ra ON r.room_id = ra.room_id
+            GROUP BY 
+                r.room_id
+        ";
+
+        $result = $conn->query($query);
+
         if ($result->num_rows > 0) {
             $counter = 1;
             while ($row = $result->fetch_assoc()) {
+                // Check if the room is fully occupied and update status
+                $currentOccupants = $row["currentOccupants"];
+                $totalCapacity = $row["totalCapacity"];
+                $status = ($currentOccupants >= $totalCapacity) ? 'Occupied' : 'Available';
+
+                // Only update status if it's different from current status
+                if ($status != $row["status"]) {
+                    $updateStatusQuery = "UPDATE rooms SET status = '$status' WHERE room_id = " . $row["room_id"];
+                    $conn->query($updateStatusQuery); // Execute update query
+                }
+
                 echo "<tr>";
                 echo "<td>" . $counter++ . "</td>";
                 echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
                 echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
-                echo "<td>" . htmlspecialchars($row["capacity"]) . "</td>";
+                echo "<td>" . htmlspecialchars($row["currentOccupants"]) . "/" . htmlspecialchars($row["totalCapacity"]) . " people</td>";
                 echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
-                echo "<td>" . htmlspecialchars($row["status"]) . "</td>";
+                echo "<td>" . $status . "</td>"; // Display updated status in the table
                 echo "<td>";
 
                 if (!empty($row["room_pic"])) {
@@ -401,7 +446,7 @@ $conn->close();
                 echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
                 echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
                         <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                        <button type='button' class='custom-btn'>Delete</button>
+                        <button type='submit' class='custom-btn'>Delete</button>
                       </form>";
                 echo "</td>";
                 echo "</tr>";
@@ -412,6 +457,7 @@ $conn->close();
         ?>
     </tbody>
 </table>
+
 
 
 
@@ -474,7 +520,7 @@ $conn->close();
 
                         <!-- Room Number -->
                         <div class="mb-3">
-                            <label for="edit_room_number" class="form-label">Room Number</label>
+                            <label for="edit_room_number" class="form-label">Room</label>
                             <input type="text" class="form-control" id="edit_room_number" name="room_number" value="<?php echo htmlspecialchars($editRoom['room_number'] ?? ''); ?>" required>
                         </div>
 
@@ -547,7 +593,7 @@ $conn->close();
                 <div class="modal-body">
                     <!-- Form Fields -->
                     <div class="mb-3">
-                        <label for="room_number" class="form-label">Room Number</label>
+                        <label for="room_number" class="form-label">Room</label>
                         <input type="text" class="form-control" id="room_number" name="room_number" placeholder="Room Number" required>
                     </div>
 

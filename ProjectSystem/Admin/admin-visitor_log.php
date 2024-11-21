@@ -115,7 +115,7 @@ $conn->close();
         </div>
 
         <div class="sidebar-nav">
-             <a href="dashboard.php" class="nav-link" ><i class="fas fa-user-cog"></i> <span>Admin</span></a>
+             <a href="dashboard.php" class="nav-link" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="#" class="nav-link active"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -145,10 +145,10 @@ $conn->close();
     <div class="col-6 col-md-2">
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
-            <option value="name">Name</option>
+            <option value="name">Visiting Person</option>
             <option value="contact_info">Contact Info</option>
             <option value="purpose">Purpose</option>
-            <option value="visiting_person">Visiting Person</option>
+            <option value="visiting_person">Resident Name</option>
         </select>
     </div>
     <div class="col-6 col-md-2">
@@ -166,9 +166,9 @@ $conn->close();
     </div>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-bordered" id="visitorTable">
-        <thead class="table-light">
+    <div class="table-responsive">
+        <table class="table table-bordered" id="visitorTable">
+            <thead class="table-light">
             <tr>
                 <th scope="col">No.</th>
                 <th scope="col" onclick="sortTable(1)">Visiting Person</th>
@@ -181,32 +181,33 @@ $conn->close();
             </tr>
         </thead>
         <tbody id="visitor-table-body">
-            <?php if ($result->num_rows > 0): 
-                $counter = 1;
-                while ($row = $result->fetch_assoc()):
-                    $isCheckedOut = !empty($row['check_out_time']);
-                    $checkInTime = date("g:i A", strtotime($row['check_in_time']));
-                    $checkOutTime = $isCheckedOut ? date("g:i A", strtotime($row['check_out_time'])) : 'N/A';
-            ?>
-                <tr>
-                    <td><?= $counter++ ?></td>
-                    <td class="name"><?= htmlspecialchars($row['name']) ?></td>
-                    <td class="contact_info"><?= htmlspecialchars($row['contact_info']) ?></td>
-                    <td class="purpose"><?= htmlspecialchars($row['purpose']) ?></td>
-                    <td class="visiting_person"><?= htmlspecialchars($row['visiting_person']) ?></td>
-                    <td><?= $checkInTime ?></td>
-                    <td><?= $checkOutTime ?></td>
-                    <td>
-                        <form action="admin-visitor_log.php" method="post" style="display:inline;">
-                            <input type="hidden" name="visitor_id" value="<?= $row['id']; ?>">
-                            <button type="submit" class="btn btn-danger btn-sm" 
-                                onclick="return confirm('Are you sure you want to delete this visitor?')">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endwhile; else: ?>
-                <tr><td colspan="8" class="text-center">No visitors found</td></tr>
-            <?php endif; ?>
+        <?php if ($result->num_rows > 0): 
+    $counter = 1;
+    while ($row = $result->fetch_assoc()):
+        $isCheckedOut = !empty($row['check_out_time']);
+        $checkInTime = date("M d, Y g:i A", strtotime($row['check_in_time'])); // Includes date
+        $checkOutTime = $isCheckedOut ? date("M d, Y g:i A", strtotime($row['check_out_time'])) : 'N/A'; // Includes date
+?>
+    <tr>
+        <td><?= $counter++ ?></td>
+        <td class="name"><?= htmlspecialchars($row['name']) ?></td>
+        <td class="contact_info"><?= htmlspecialchars($row['contact_info']) ?></td>
+        <td class="purpose"><?= htmlspecialchars($row['purpose']) ?></td>
+        <td class="visiting_person"><?= htmlspecialchars($row['visiting_person']) ?></td>
+        <td><?= $checkInTime ?></td>
+        <td><?= $checkOutTime ?></td>
+        <td>
+            <form action="admin-visitor_log.php" method="post" style="display:inline;">
+                <input type="hidden" name="visitor_id" value="<?= $row['id']; ?>">
+                <button type="submit" class="btn btn-danger btn-sm" 
+                    onclick="return confirm('Are you sure you want to delete this visitor?')">Delete</button>
+            </form>
+        </td>
+    </tr>
+<?php endwhile; else: ?>
+    <tr><td colspan="8" class="text-center">No visitors found</td></tr>
+<?php endif; ?>
+
         </tbody>
     </table>
 </div>

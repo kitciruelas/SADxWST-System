@@ -92,7 +92,7 @@ $sql = "
     JOIN users u ON rr.user_id = u.id
     LEFT JOIN rooms ro ON rr.old_room_id = ro.room_id
     JOIN rooms rn ON rr.new_room_id = rn.room_id
-    ORDER BY rr.reassignment_id ASC
+    ORDER BY rr.reassignment_id DESC
 ";
 
 $result = $conn->query($sql);
@@ -121,12 +121,11 @@ $conn->close();
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
+            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
 
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
@@ -166,7 +165,7 @@ $conn->close();
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
             <option value="resident">Resident</option>
-            <option value="old_room_number">Old Room Number</option>
+            <option value="old_room_number">Old Room</option>
             <option value="new_room">Reassign Room</option>
             <option value="monthly_rent">Monthly Rent</option>
             <option value="status">Status</option>
@@ -195,7 +194,7 @@ $conn->close();
         <thead>
             <tr>
                 <th>No.</th>
-                <th>Old Room Number</th>
+                <th>Old Room</th>
                 <th>Resident</th>
                 <th>Reassign Room</th>
                 <th>Comment</th>

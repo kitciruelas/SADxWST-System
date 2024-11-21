@@ -156,7 +156,7 @@ mysqli_close($conn);
     </div>
 
     <div class="sidebar-nav">
-        <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i><span>Admin</span></a>
+        <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
         <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
         <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>

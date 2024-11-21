@@ -51,11 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateProfile'])) {
         echo "First name, last name, and username are required.";
     } else {
         // Prepare the update query for profile info, including username
-        $updateQuery = "UPDATE admin SET fname = ?, lname = ?, username = ?, email = ?, profile_pic = ? WHERE id = ?";
+        $updateQuery = "UPDATE admin SET fname = ?, lname = ?, username = ?, profile_pic = ? WHERE id = ?";
         $stmt = $conn->prepare($updateQuery);
 
         if ($stmt) {
-            $stmt->bind_param("sssssi", $firstName, $lastName, $username, $email, $profilePic, $adminId);
+            $stmt->bind_param("ssssi", $firstName, $lastName, $username,  $profilePic, $adminId);
             if ($stmt->execute()) {
                 echo "<script>alert('Profile updated successfully!'); window.location.href = 'admin-profile.php';</script>";
                 exit();
@@ -171,12 +171,11 @@ $conn->close();
         </div>
 
         <div class="sidebar-nav">
-        <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i> <span>Admin</span></a>
+        <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-            <a href="admin-chat.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
@@ -207,7 +206,7 @@ $conn->close();
   <!-- Personal Information -->
 <div class="accordion-item">
     <h2 class="accordion-header">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#personalInfo" aria-expanded="true">
+        <button class="accordion-button" type="button" data-bs-toggle="" data-bs-target="#personalInfo" aria-expanded="true">
             Personal Information
         </button>
     </h2>

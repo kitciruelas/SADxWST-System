@@ -95,10 +95,31 @@ while ($row = mysqli_fetch_assoc($result)) {
         $maintenance_rooms = $row['room_count'];
     }
 }
-$months = ['January', 'February', 'March', 'April', 'May'];  // Sample months
-$total_revenue = [1200, 1500, 1800, 2200, 2500];  // Sample total revenue for each month (in USD)
+
+// Initialize arrays for months and total revenue
+$months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+$total_revenue = array_fill(0, 12, 0);  // Default all months to 0 revenue
+
+// Query to get the total revenue for each month (Paid and Overdue)
+$query = "SELECT YEAR(payment_date) AS year, MONTH(payment_date) AS month, SUM(amount) AS total_revenue
+          FROM rentpayment
+          WHERE status  
+          GROUP BY YEAR(payment_date), MONTH(payment_date)
+          ORDER BY YEAR(payment_date), MONTH(payment_date)";
+
+// Execute query and fetch results
+$result = mysqli_query($conn, $query);
+
+// Fill the revenue array with actual data
+while ($row = mysqli_fetch_assoc($result)) {
+    $month = $row['month'] - 1;  // Convert to 0-based index (January = 0)
+    $total_revenue[$month] = $row['total_revenue'];  // Set the revenue for that month
+}
+
 
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -130,7 +151,7 @@ $total_revenue = [1200, 1500, 1800, 2200, 2500];  // Sample total revenue for ea
         </div>
 
         <div class="sidebar-nav">
-            <a href="#" class="nav-link active" ><i class="fas fa-user-cog"></i> <span>Admin</span></a>
+            <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -143,7 +164,15 @@ $total_revenue = [1200, 1500, 1800, 2200, 2500];  // Sample total revenue for ea
         </div>
         
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -210,15 +239,15 @@ $total_revenue = [1200, 1500, 1800, 2200, 2500];  // Sample total revenue for ea
 </div>
 
 <script>
-// Data for the Total Revenue chart (Bar chart)
-var months = <?php echo json_encode($months); ?>;  // Array of months
+// Assuming months and total_revenue are populated correctly in PHP
+var months = <?php echo json_encode($months); ?>;  // Array of months (e.g., ['January', 'February', ...])
 var totalRevenue = <?php echo json_encode($total_revenue); ?>;  // Array of total revenue per month
 
 var totalRevenueData = {
-    labels: months,  // Month names as labels
+    labels: months,  // Use months as x-axis labels
     datasets: [{
-        label: 'Total Revenue (USD)',  // Label for the dataset
-        data: totalRevenue,  // Array of total revenue per month
+        label: 'Total Revenue (₱)',  // Label for the dataset
+        data: totalRevenue,  // Array of total revenue values for each month
         backgroundColor: 'rgba(75, 192, 192, 0.2)',  // Bar color
         borderColor: 'rgba(75, 192, 192, 1)',  // Border color
         borderWidth: 1
@@ -237,12 +266,13 @@ var totalRevenueChart = new Chart(totalRevenueCtx, {
                 beginAtZero: true,  // Start the Y-axis at 0
                 title: {
                     display: true,
-                    text: 'Total Revenue (USD)'  // Label for the Y-axis
+                    text: 'Total Revenue (₱)'  // Y-axis label
                 }
             }
         }
     }
 });
+
 </script>
 
 
@@ -314,6 +344,8 @@ var rentStatusChart = new Chart(rentStatusCtx, {
 </div>
 </div>
 
+
+
 <!-- Row 1: Total Users, Active Staff, Visitor Log -->
 <div class="row mb-4">
     <!-- Total Users Card -->
@@ -362,10 +394,60 @@ var rentStatusChart = new Chart(rentStatusCtx, {
     </div>
 </div>
 
-<div class="row mb-4">
-    
 
+<div class="row mb-4">
+<div class="col-12">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2><i class="fas fa-comment-dots"></i> Feedback</h2>
+        </div>
+        <div class="card-body">
+        <?php
+// SQL query to select the first 6 feedback entries, ordered by submission date
+$sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
+                f.feedback, f.submitted_at
+        FROM rooms r
+        LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
+        LEFT JOIN users u ON ra.user_id = u.id
+        INNER JOIN roomfeedback f ON u.id = f.user_id
+        ORDER BY f.submitted_at DESC
+        LIMIT 6"; // Limit to 6 feedback entries
+
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    // Start row for layout
+    echo "<div class='row'>";
+    // Loop through and display each feedback entry
+    while ($row = $result->fetch_assoc()) {
+        echo "<div class='col-12 col-md-6 col-lg-4 mb-4'>"; // Use col-md-6 for 2-in-1 layout, col-lg-4 for 3 items on large screens
+        echo "<div class='card' style='border: 1px solid #e0e0e0; border-radius: 8px;'>";
+        echo "<div class='card-body'>";
+        echo "<h5 class='card-title'>" . htmlspecialchars($row['resident_name']) . "</h5>"; // Resident Name
+        echo "<p class='card-text'><strong>Room:</strong> " . htmlspecialchars($row['room_number']) . "</p>"; // Room Number
+        echo "<p class='card-text'><strong>Feedback:</strong> " . htmlspecialchars($row['feedback']) . "</p>"; // Feedback Text
+        echo "<p class='card-text'><small class='text-muted'>Submitted on: " . htmlspecialchars($row['submitted_at']) . "</small></p>"; // Submission Date
+        echo "</div>"; // End of card-body
+        echo "</div>"; // End of card
+        
+        echo "</div>"; // End of col
+    }
+    // End row for layout
+    echo "</div>";
+} else {
+    echo "<p>No feedback available.</p>";
+}
+
+?>
+<a href="view-feedback.php" class="nav-link mt-3"><i class="fas fa-comment-dots"></i> <span>See All Feedback</span></a>
+
+        </div>
+        
+    </div>
 </div>
+
+
+
 
 </div>
 </div>
@@ -379,6 +461,8 @@ var rentStatusChart = new Chart(rentStatusCtx, {
     <!-- Script -->
 
     <script>
+
+        
         // JavaScript to render the graph
 
         // Data for the chart

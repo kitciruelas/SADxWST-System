@@ -13,12 +13,43 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if feedback_id is set in POST data
+    if (isset($_POST['feedback_id'])) {
+        // Sanitize input
+        $feedback_id = intval($_POST['feedback_id']);
+
+        // Delete feedback query
+        $sql = "DELETE FROM roomfeedback WHERE id = ?";
+
+        // Prepare and execute the query
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $feedback_id);
+
+        if ($stmt->execute()) {
+            // Directly set JavaScript alert and redirect to view-feedback.php
+            echo "<script>alert('Feedback deleted successfully!'); window.location.href = 'view-feedback.php';</script>";
+        } else {
+            // Directly set JavaScript alert for error and redirect to view-feedback.php
+            echo "<script>alert('Error deleting feedback: " . $stmt->error . "'); window.location.href = 'view-feedback.php';</script>";
+        }
+
+        // Close the statement
+        $stmt->close();
+    } else {
+        // Directly set JavaScript alert for missing feedback ID and redirect to view-feedback.php
+        echo "<script>alert('Invalid request: Feedback ID missing.'); window.location.href = 'view-feedback.php';</script>";
+    }
+}
+
 $sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
                 f.feedback, f.submitted_at
         FROM rooms r
         LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
         LEFT JOIN users u ON ra.user_id = u.id
-        INNER JOIN feedback f ON u.id = f.user_id";
+        INNER JOIN roomfeedback f ON u.id = f.user_id";
+
 
 
 
@@ -30,34 +61,8 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Check if feedback_id is set in POST data
-    if (isset($_POST['feedback_id'])) {
-        // Sanitize input
-        $feedback_id = intval($_POST['feedback_id']);
 
-        // Delete feedback query
-        $sql = "DELETE FROM feedback WHERE id = ?";
 
-        // Prepare and execute the query
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $feedback_id);
-
-        if ($stmt->execute()) {
-            // Set success message
-            $_SESSION['message'] = "Feedback deleted successfully!";
-        } else {
-            // Set error message
-            $_SESSION['message'] = "Error deleting feedback: " . $stmt->error;
-        }
-
-        // Close the statement
-        $stmt->close();
-    } else {
-        // Set error message for missing feedback ID
-        $_SESSION['message'] = "Invalid request: Feedback ID missing.";
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -83,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-user-cog"></i> <span>Profile</span></a>
+            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -113,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container">
 
     <div class="d-flex justify-content-start">
-    <a href="admin-room.php" class="btn " onclick="window.location.reload();">
+    <a href="dashboard.php" class="btn " onclick="window.location.reload();">
     <i class="fas fa-arrow-left fa-2x me-1"></i></a>
 </div>
 <!-- HTML Form with Search and Filter -->

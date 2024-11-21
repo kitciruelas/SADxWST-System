@@ -94,26 +94,34 @@ if (isset($_POST['delete_id'])) {
 // Function to retrieve messages
 function getMessages($conn) {
     $query = "SELECT cm.id, cm.message, cm.sender_id, cm.receiver_id, cm.timestamp, 
-                     COALESCE(CONCAT(s.fname), u.fname) AS sender_name, 
-                     COALESCE(s.role, 'User') AS role
+                     COALESCE(CONCAT(s.fname), CONCAT(u.fname), CONCAT(a.fname)) AS sender_name, 
+                     CASE 
+                         WHEN a.id IS NOT NULL THEN 'Admin'  -- If sender is admin, assign Admin role
+                         WHEN s.id IS NOT NULL THEN 'Staff'  -- If sender is staff, assign Staff role
+                         WHEN u.id IS NOT NULL THEN 'General User'  -- If sender is user, assign General User role
+                         ELSE 'Unknown'  -- Fallback if no sender is found
+                     END AS role
               FROM chat_messages cm
               LEFT JOIN staff s ON cm.sender_id = s.id
               LEFT JOIN users u ON cm.sender_id = u.id
+              LEFT JOIN admin a ON cm.sender_id = a.id
               WHERE cm.receiver_id = 0 OR cm.receiver_id = ?  -- 0 is for broadcast messages
               ORDER BY cm.timestamp ASC";
 
     $stmt = $conn->prepare($query);
-  
-
-    $stmt->bind_param("i", $_SESSION['id']);  // Use the current user ID for filtering messages
+    $stmt->bind_param('i', $_SESSION['id']); // Assuming receiver_id is the logged-in user ID
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Fetch all results as an associative array
-    $messages = $result->fetch_all(MYSQLI_ASSOC);
-    
+    $messages = [];
+    while ($row = $result->fetch_assoc()) {
+        $messages[] = $row;
+    }
+
+    $stmt->close();
     return $messages;
 }
+
 function getStaffRole($conn, $staffId) {
     $query = "SELECT role FROM users WHERE id = ?";
     
@@ -143,7 +151,7 @@ function getStaffRole($conn, $staffId) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Group Chat</title>
     <link rel="stylesheet" href="../User/Css_user/visitor-logs.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -187,6 +195,7 @@ function getStaffRole($conn, $staffId) {
 
     </div>
 
+   
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -208,7 +217,7 @@ function getStaffRole($conn, $staffId) {
             border-radius: 10px;
             padding: 10px;
             flex-grow: 1;
-            height: 60vh; /* 70% of the viewport height */
+            height: 100vh; /* 70% of the viewport height */
             overflow-y: auto; /* Allow scrolling if content exceeds height */
             margin-bottom: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -369,6 +378,24 @@ function getStaffRole($conn, $staffId) {
 .message-menu .fas.fa-ellipsis-v {
     cursor: pointer;
 }
+/* Scrollbar styling for message details */
+#messageDetails::-webkit-scrollbar {
+    width: 8px;
+}
+
+#messageDetails::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+}
+
+#messageDetails::-webkit-scrollbar-thumb {
+    background-color: #ced4da;
+    border-radius: 10px;
+}
+
+#messageDetails::-webkit-scrollbar-thumb:hover {
+    background-color: #adb5bd;
+}
 
 
 
@@ -376,38 +403,32 @@ function getStaffRole($conn, $staffId) {
 </head>
 <body>
 <div class="main-content">
-
-
-<div id="container" class="container-fluid d-flex flex-column h-100"style="width: 900px;">
-      
-        
+    <div id="container" class="container-fluid d-flex flex-column h-10" style="width: 1000px;">
         <div class="main flex-grow-1 d-flex flex-column" style="padding: 10px;">
-        <div class="search-card">
-    <!-- Search Input -->
-    <div class="input-group search-bar">
-        <input type="text" id="search" class="form-control" placeholder="Search messages..." aria-label="Search messages">
-        <label for="roleSelect">Filter by Role:</label>
-        <select id="roleSelect" class="form-control" onchange="applyFilters()">
-            <option value="all">All</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-            <option value="user">User</option>
-        </select>
-    </div>
-    </div>
+            <div class="search-card">
+                <!-- Search Input -->
+                <div class="input-group search-bar mb-3">
+                    <input type="text" id="search" class="form-control" placeholder="Search messages..." aria-label="Search messages">
+                    
+                </div>
+                
+            </div>
 
-    <div id="chatlogs" class="d-flex flex-column">
+            <div class="d-flex">
+
+<!-- Chatlogs Section (Left) -->
+<div id="chatlogs" class="d-flex flex-column" style="flex: 1; overflow-y: auto; margin-right: 20px; padding-right: 10px;">
     <?php 
     // Display messages
     foreach (getMessages($conn) as $message): 
         // Check if the message was sent by the current user
         $message_type = ($message['sender_id'] === $_SESSION['id']) ? 'sent' : 'received';
     ?>
-    <div class="message-container <?= htmlspecialchars($message_type) ?>">
+    <div class="message-container <?= htmlspecialchars($message_type) ?>" onclick="showDetails(<?= htmlspecialchars($message['id']) ?>)">
         <?php if ($message_type === 'received' && isset($message['profile_pic'])): ?>
             <img src="<?= htmlspecialchars($message['profile_pic']) ?>" alt="Profile Picture" class="profile-pic">
         <?php endif; ?>
-        
+
         <div class="message <?= htmlspecialchars($message_type) ?>" data-id="<?= htmlspecialchars($message['id']) ?>">
             <?php if ($message_type === 'sent'): ?>
                 <div class="message-menu">
@@ -429,25 +450,85 @@ function getStaffRole($conn, $staffId) {
         </div>
     </div>
     <?php endforeach; ?>
+    
+    <!-- Sticky Message Form -->
+    <form name="form1" id="messageForm" onsubmit="return submitchat()" action="staff-chat.php" method="POST" class="mt-5" style="position: sticky; bottom: 0; background-color: white; z-index: 10; padding: 10px; border-top: 1px solid #ddd;">
+        <div class="input-group mt-2">
+            <textarea name="msg" class="form-control" placeholder="Your message here..." required></textarea>
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane fa-2x"></i>
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
 
-                        
-            </div>
+<!-- Details Section (Right) -->
+<div id="messageDetails" class="d-flex flex-column" style="width: 300px; padding-left: 20px; height: 100vh; overflow-y: auto;">
+    
+    <div class="container">
+        
+        <h4 class="text-center mb-4">List of User Roles</h4>
 
-            <form name="form1" id="messageForm" onsubmit="return submitchat()" action="staff-chat.php" method="POST" class="mt-1">
-            <div class="input-group mt-2">
-                    <textarea name="msg" class="form-control" placeholder="Your message here..." required></textarea>
-                    <div class="input-group-append">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane fa-2x"></i>
-                        </button>
-                    </div>
-                </div>
-            </form>
+        <div class="list-group">
+            <?php
+            // Query to fetch user details
+            $query = "SELECT id, fname, lname, role FROM users
+            UNION
+            SELECT id, fname, lname, role FROM staff";
+              $result = mysqli_query($conn, $query);
+
+            // Check if there are results
+            if (mysqli_num_rows($result) > 0) {
+                // Loop through each row and display the role and name
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $fullName = $row['fname'] . ' ' . $row['lname']; // Concatenate first and last name
+                    $role = $row['role']; // Get the user's role
+            ?>
+                    <!-- Button that triggers the modal -->
+                    <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2"
+        data-toggle="modal" data-target="#userModal" 
+        data-id="<?= $row['id'] ?>" 
+        data-fname="<?= $row['fname'] ?>" 
+        data-lname="<?= $row['lname'] ?>" 
+        data-role="<?= $row['role'] ?>">
+    <div>
+        <strong><?= htmlspecialchars($fullName) ?></strong>
+        <div>
+            <?php
+            // Display role as badge
+            if ($role == 'Admin') {
+                echo '<span class="badge badge-primary">Admin</span>';
+            } elseif ($role == 'Staff') {
+                echo '<span class="badge badge-success">Staff</span>';
+            } else {
+                echo '<span class="badge badge-info">User</span>';
+            }
+            ?>
         </div>
-
-       
     </div>
+</button>
+
+            <?php
+                }
+            } else {
+                echo "<p>No users found.</p>";
+            }
+
+            // Close the database connection
+            mysqli_close($conn);
+            ?>
+        </div>
+    </div>
+</div>
+
+
+</div>
+</div>
+
+
+</div>
 
 </div>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>

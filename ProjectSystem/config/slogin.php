@@ -16,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
     if (empty($captcha)) {
-        echo "<script>alert('Please complete the CAPTCHA.'); window.history.back();</script>";
+        echo "<script>alert('Please complete the CAPTCHA.');  window.location.href = '../User/user-login.php';</script>";
         exit();
     }
 
@@ -26,9 +26,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $responseData = json_decode($verifyResponse);
 
     if (!$responseData->success) {
-        echo "<script>alert('CAPTCHA verification failed. Please try again.'); window.history.back();</script>";
+        echo "<script>
+        alert('CAPTCHA verification failed. Please try again.');
+        window.location.href = '../User/user-login.php';
+      </script>";
         exit();
     }
+
+    // Initialize variables for activity log
+    $activity_type = "Login Attempt";
+    $activity_status = "Failed";
+    $role = "Unknown";
 
     // Step 1: Try finding the user in the 'users' table first
     $sql = "SELECT id, fname, password, 'General User' as role FROM users WHERE email = ?";
@@ -43,17 +51,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->fetch();
 
             if (password_verify($password, $hashed_password)) {
+                // Successful login
                 session_regenerate_id(true);
                 $_SESSION["loggedin"] = true;
                 $_SESSION["id"] = $id;
                 $_SESSION["username"] = $fname;
                 $_SESSION["role"] = $role;
 
+                // Update activity log details
+                $activity_type = "Login";
+                $activity_status = "Successful";
+
                 echo "<script>alert('Login successful! Redirecting to user dashboard...'); window.location.href = '../User/user-dashboard.php';</script>";
-                exit();
             } else {
-                echo "<script>alert('Invalid email or password. Please try again.'); window.history.back();</script>";
-                exit();
+                echo "<script>alert('Invalid email or password. Please try again.'); window.location.href = '../User/user-login.php';</script>";
             }
         }
         $stmt->close();
@@ -72,25 +83,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->fetch();
 
             if (password_verify($password, $hashed_password)) {
+                // Successful login
                 session_regenerate_id(true);
                 $_SESSION["loggedin"] = true;
                 $_SESSION["id"] = $id;
                 $_SESSION["username"] = $fname;
                 $_SESSION["role"] = $role;
 
+                // Update activity log details
+                $activity_type = "Login";
+                $activity_status = "Successful";
+
                 echo "<script>alert('Login successful! Redirecting to staff dashboard...'); window.location.href = '../Staff/user-dashboard.php';</script>";
-                exit();
             } else {
-                echo "<script>alert('Invalid email or password. Please try again.'); window.history.back();</script>";
-                exit();
+                echo "<script>alert('Invalid email or password. Please try again.');  window.location.href = '../User/user-login.php';</script>";
             }
         } else {
-            echo "<script>alert('Invalid email or password. Please try again.'); window.history.back();</script>";
+            echo "<script>alert('Invalid email or password. Please try again.');  window.location.href = '../User/user-login.php';</script>";
         }
         $stmt->close();
     }
-
-    $conn->close();
+// Log activity
+$activity_type = "Login";
+$activity_details = "$role $fname with email $username logged in."; // Role dynamically added
+$log_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+if ($log_stmt = $conn->prepare($log_sql)) {
+    $log_stmt->bind_param("iss", $id, $activity_type, $activity_details);
+    $log_stmt->execute();
+    $log_stmt->close();
 }
 
+
+    $conn->close();
+    exit();
+}
 ?>

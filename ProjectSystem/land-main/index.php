@@ -142,16 +142,13 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dormitory Space Landing Page</title>
+    <title>Dormio Landing Page</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="land-img/stylesland.css">
+    <link rel="stylesheet" href="land-img/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-
-
 </head>
 <body>
     <!-- Header and Navbar -->
@@ -159,7 +156,7 @@ $conn->close();
         <nav class="navbar navbar-expand-lg navbar-light">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
-                    <img src="logo.png" alt="Company Logo" class="img-fluid" style="max-height: 50px;">
+                    <img src="logo.png" alt="Dormio Logo" class="img-fluid" style="max-height: 50px;">
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -178,6 +175,7 @@ $conn->close();
                         <li class="nav-item">
                             <a class="nav-link" href="#footer">About Us</a>
                         </li>
+                     
                        
                         <li class="nav-item">
                             <a class="nav-link btn btn-primary text-white" href="../User/user-login.php">Log in</a>
@@ -188,17 +186,17 @@ $conn->close();
         </nav>
     </header>
     
-    
     <!-- Hero Section -->
-    <section class="hero-section" style="color: #fdfdfd; text-shadow: 5px 5px 15px rgba(0, 0, 0, 0.7);">
-        <div class="container">
-            <h1 class="display-4">Welcome to Your Dormitory Space!</h1>
-            <p class="lead">Manage your stay, track attendance, and stay connected—all in one place.</p>
-        </div>
-    </section>
+    <section class="hero-section" style="color: #fdfdfd; background: url('image.png') center/cover no-repeat; height: 100vh; display: flex; justify-content: center; align-items: center; text-align: center; padding: 0 20px;">
+    <div class="container-fluid">
+        <h1 class="display-4 mb-4" style="font-size: 4rem;">Welcome to Dormio!</h1>
+        <p class="lead" style="font-size: 2rem;">Manage your stay, track attendance, and stay connected - all in one place.</p>
+    </div>
+</section>
 
-    <!-- Room List Section -->
-    <section id="room-list" class="room-list py-5">
+
+  <!-- Room List Section -->
+<section id="room-list" class="room-list py-5">
 
     
     <h1 class="text-center">Rooms</h1>
@@ -206,24 +204,11 @@ $conn->close();
 
 <!-- Room List -->
 <div class="container">
-<!-- Filter Dropdown -->
-<div class="filter-dropdown mb-4 text-start">
-    <label for="statusFilter" class="me-2">Filter by Status:</label>
-    <select id="statusFilter" class="form-select d-inline-block w-auto" onchange="filterRooms()">
-        <option value="">All</option>
-        <?php 
-        $statuses = ['Available', 'Occupied', 'Maintenance']; 
-        foreach ($statuses as $status): ?>
-            <option value="<?php echo htmlspecialchars($status); ?>">
-                <?php echo htmlspecialchars($status); ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</div>
+
 
 <!-- Room List -->
 <!-- Room List -->
-<div class="container">
+<div class="container-fluid">
     <div class="row justify-content-center">
     <?php
     if ($result === false) {
@@ -262,28 +247,10 @@ $conn->close();
                         <p class="room-price">
                             Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly
                         </p>
-                        <p>Capacity: 
-                            <?php echo htmlspecialchars($currentOccupants) . '/' . htmlspecialchars($totalCapacity); ?> people
-                        </p>
+                        
                         <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
-                        <p>Status: <?php echo htmlspecialchars($status); ?></p>
 
-                        <div class="mt-auto">
-                            <?php if ($status === 'Maintenance'): ?>
-                                <button class="btn btn-warning" disabled aria-disabled="true">Under Maintenance</button>
-                            <?php elseif ($currentOccupants < $totalCapacity): ?>
-                                <button type="button" class="btn btn-primary apply-btn" data-bs-toggle="modal" data-bs-target="#applyModal"
-                                    data-room-id="<?php echo htmlspecialchars($row['room_id'] ?? ''); ?>"
-                                    data-room-number="<?php echo htmlspecialchars($row['room_number'] ?? ''); ?>"
-                                    data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent'] ?? ''); ?>"
-                                    data-room-capacity="<?php echo htmlspecialchars($row['capacity'] ?? ''); ?>"
-                                    data-room-status="<?php echo htmlspecialchars($row['status'] ?? ''); ?>">
-                                    Reassign Room
-                                </button>
-                            <?php else: ?>
-                                <button class="btn btn-danger" disabled aria-disabled="true">Fully Occupied</button>
-                            <?php endif; ?>
-                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -299,21 +266,28 @@ $conn->close();
 <!-- Custom CSS -->
 <style>
     .custom-card {
-        width: 300px; /* Increased width */
+        background-color: white; /* Set a light gray background color */
+        border-radius: 8px; /* Rounded corners for a smoother look */
     }
 
     .custom-card-img {
         height: 200px; /* Adjusted image height */
         object-fit: cover; /* Maintain aspect ratio and fill the image area */
+        border-top-left-radius: 8px; /* Rounded top-left corner for consistency */
+        border-top-right-radius: 8px; /* Rounded top-right corner for consistency */
+    }
+
+    .custom-card-text {
+        padding: 15px; /* Add padding inside the card for content */
+        color: #333; /* Dark text color for readability */
     }
 </style>
 
 
 
 
-    <!-- Pagination Links -->
-    <div class="pagination">
-         <!-- Pagination Links -->
+<!-- Pagination Links -->
+<div class="pagination">
     <div id="pagination">
         <!-- Previous Page Button -->
         <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
@@ -330,140 +304,227 @@ $conn->close();
     </div>
 </div>
 
+<!-- Custom CSS -->
+<style>
+    .pagination {
+        display: flex;
+        justify-content: center; /* Center the content horizontally */
+        align-items: center; /* Center the content vertically if needed */
+        margin-top: 20px; /* Add some space from other elements */
+    }
+
+    #pagination {
+        display: flex;
+        align-items: center;
+        gap: 10px; /* Add space between buttons and text */
+    }
+
+    button {
+        padding: 8px 16px; /* Add padding to buttons for better clickability */
+        font-size: 16px; /* Set a readable font size */
+        cursor: pointer;
+        border: 1px solid #ccc;
+        border-radius: 5px; /* Round the corners of buttons */
+    }
+
+    button[disabled] {
+        background-color: #f0f0f0;
+        cursor: not-allowed; /* Change cursor when disabled */
+    }
+
+    #pageIndicator {
+        font-size: 16px; /* Same font size for the indicator */
+    }
+</style>
+
+
 </div>
     </section>
 
     <!-- Features Section -->
-    <section class="features-section py-5 bg-light">
-        <div class="container">
-            <h2 class="text-center mb-4">Dorm Life Made Simple</h2>
-            <div class="row g-4">
-                <div class="col-lg-4 col-md-6">
-                    <div class="card animate__animated animate__fadeInLeft">
-                        <img src="room.jpg" alt="Apply for a Room" class="card-img-top img-fluid">
-                        <div class="card-body">
-                            <h3 class="card-title">APPLY FOR A ROOM</h3>
-                            <p class="card-text">Submit your room application online, choosing from available rooms. Our system will guide you through the process, from application to approval.</p>
-                        </div>
+<!-- Features Section -->
+<section class="features-section custom-padding-bottom py-5 bg-light" style="padding-top: 5rem; padding-bottom: 8rem;">
+    <div class="container-fluid"> <!-- Changed to container for more side space -->
+        <h2 class="text-center mb-4"><strong>Dorm Life Made Simple</strong></h2> <!-- Made the title bold -->
+        <div class="row justify-content-center g-6"> <!-- Center the row content -->
+            <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                <div class="card animate__animated animate__fadeInLeft h-100">
+                    <img src="room1.jpg" alt="Apply for a Room" class="card-img-top img-fluid" style="object-fit: cover; transform: scale(1);">
+                    <div class="card-body">
+                        <h3 class="card-title">APPLY FOR A ROOM</h3>
+                        <p class="card-text">Submit your room application online, choosing from available rooms. Our system will guide you through the process, from application to approval.</p>
                     </div>
                 </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="card animate__animated animate__fadeInUp">
-                        <img src="room1.jpg" alt="Manage Your Stay" class="card-img-top img-fluid">
-                        <div class="card-body">
-                            <h3 class="card-title">MANAGE YOUR STAY</h3>
-                            <p class="card-text">Access your room details, make maintenance requests, and check your rent payment history—all in one place. Tailor your stay to suit your needs.</p>
-                        </div>
+            </div>
+            <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                <div class="card animate__animated animate__fadeInUp h-100">
+                    <img src="room2.jpg" alt="Apply for a Room" class="card-img-top img-fluid" style="object-fit: cover; transform: scale(1);">
+                    <div class="card-body">
+                        <h3 class="card-title">MANAGE YOUR STAY</h3>
+                        <p class="card-text">Access your room details, make maintenance requests, and check your rent payment history—all in one place. Tailor your stay to suit your needs.</p>
                     </div>
                 </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="card animate__animated animate__fadeInRight">
-                        <img src="room2.jpg" alt="Check In/Out" class="card-img-top img-fluid">
-                        <div class="card-body">
-                            <h3 class="card-title">CHECK IN/OUT MADE EASY</h3>
-                            <p class="card-text">Seamlessly check in and out of the dormitory with our presence monitoring feature. Staff will ensure your records are updated and secure.</p>
-                        </div>
+            </div>
+            <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                <div class="card animate__animated animate__fadeInRight h-100">
+                    <img src="room.jpg" alt="Apply for a Room" class="card-img-top img-fluid" style="object-fit: cover; transform: scale(1);">
+                    <div class="card-body">
+                        <h3 class="card-title">CHECK IN/OUT MADE EASY</h3>
+                        <p class="card-text">Seamlessly check in and out of the dormitory with our presence monitoring feature. Staff will ensure your records are updated and secure.</p>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Contact Us Section -->
-    <section id="contact-us" class="py-5">
-        <div class="container">
-            <h2 class="text-center mb-4">Contact Us</h2>
-            <div class="row">
-                <div class="col-lg-6 mb-4">
-                    <h4>Get in Touch</h4>
-                    <form>
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="message" class="form-label">Message</label>
-                            <textarea class="form-control" id="message" rows="4" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
-                </div>
-                <div class="col-lg-6 mb-4">
-                    <h4>Our Location</h4>
-                    <p>123 Dormitory Street, City, Country</p>
-                    <p>Phone: +123 456 7890</p>
-                    <p>Email: info@dormitoryspace.com</p>
+<!-- Additional Styles for Centering -->
+<style>
+    .features-section .row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Custom Bottom Padding */
+    .custom-padding-bottom {
+        padding-bottom: 11rem !important;  /* Increased the padding-bottom to add more space */
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Add custom padding for more left and right spacing */
+    .features-section {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+</style>
+
+
+
+ <!-- Contact Us Section -->
+<section id="contact-us" style="background-color: #e3e7fa; padding: 40px 0;">
+    <div class="container-fluid" style="max-width: 1200px; margin: 0 auto;">
+        <h2 class="text-center" style="font-weight: bold; margin-bottom: 30px;">CONTACT US</h2>
+        <div class="row">
+           <!-- Get in Touch Form -->
+<div class="col-md-6" style="border: 1px solid #ccc; padding: 20px; border-radius: 5px;">
+    <h4 style="margin-bottom: 20px;">Get in Touch</h4>
+    <form>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="name">Name</label>
+            <input type="text" class="form-control" id="name" placeholder="Enter your name" style="padding: 10px; width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="email">Email</label>
+            <input type="email" class="form-control" id="email" placeholder="Enter your email" style="padding: 10px; width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="subject">Subject</label>
+            <input type="text" class="form-control" id="subject" placeholder="Enter subject" style="padding: 10px; width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="message">Message</label>
+            <textarea class="form-control" id="message" rows="4" placeholder="Write your message here" style="padding: 10px; width: 100%;"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="background-color: #0056b3; border: none; padding: 10px 20px;">Send Message</button>
+    </form>
+</div>
+
+            <!-- Location Information -->
+            <div class="col-md-6">
+                <h4 style="margin-bottom: 20px;">Our Location</h4>
+                <p><strong>Address:</strong> Purok 2, Inosluban Lipa City</p>
+                <p><strong>Phone:</strong> +123 456 7890</p>
+                <p><strong>Email:</strong> <a href="mailto:dormio@gmail.com" style="color: #0056b3;">dormio@gmail.com</a></p>
+
+                <!-- Google Maps Embed -->
+                <div class="map-container" style="margin-top: 20px;">
                     <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2655.0932999911765!2d121.16177851555618!3d13.949289190451044!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bdf0ab88a6792b%3A0x9cd5ff0283e6a428!2sLipa%2C%20Batangas%2C%20Philippines!5e0!3m2!1sen!2sus!4v1633678988671!5m2!1sen!2sus"
-                    width="100%"
-                    height="250"
-                    style="border:0;"
-                    allowfullscreen=""
-                    loading="lazy"></iframe>
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31347.122208155236!2d121.1572098!3d13.9422049!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd6e6f73b6eb6f%3A0x60c5d72722509f56!2sInosluban%2C%20Lipa%2C%20Batangas%2C%20Philippines!5e0!3m2!1sen!2sph!4v1691743080705!5m2!1sen!2sph"
+                        width="100%"
+                        height="300"
+                        style="border:0; border-radius: 10px;"
+                        allowfullscreen=""
+                        loading="lazy"></iframe>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
+
+<!-- Additional CSS for Styling -->
+<style>
+    .form-control {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .btn-primary:hover {
+        background-color: #004494;
+    }
+</style>
+
+
+
 
     <!-- Footer -->
     
-    <footer id="footer" class="bg-dark text-white text-center py-4">
-        <div class="container">
-            <p>Welcome to Dormitory Space, your home away from home. We provide a comfortable and safe living environment with modern amenities, including:</p>
-    
-            <div class="row">
-                <div class="col-md-4 footer-section">
-                    <h5>Our Services</h5>
-                    <ul class="list-unstyled mb-0">
-                        <li>24/7 Security</li>
-                        <li>Free Wi-Fi</li>
-                        <li>Laundry Facilities</li>
-                        <li>Study Rooms</li>
-                        <li>Common Areas</li>
-                    </ul>
-                </div>
-            
-                <div class="col-md-4 footer-section">
-                    <h5>Quick Links</h5>
-                    <div class="footer-links mt-3">
-                        <p class="mb-1"><a href="#about" class="text-white">About Us</a></p>
-                        <p class="mb-1"><a href="#offers" class="text-white">Offers</a></p>
-                        <p class="mb-0"><a href="#contact" class="text-white">Contact Us</a></p>
-                    </div>
-                </div>
-            
-                <div class="col-md-4 footer-section">
-                    <h5>Contact Us</h5>
-                    <p class="mb-1">123 Dormitory St., City, State, ZIP</p>
-                    <p class="mb-1">Email: <a href="mailto:info@dormitoryspace.com" class="text-white">info@dormitoryspace.com</a></p>
-                    <p class="mb-0">Phone: (123) 456-7890</p>
-                    
-                    <div class="social-icons mt-2">
-                        <p class="mb-0">
-                            <a href="#" class="text-white me-2" aria-label="Facebook">
-                                <i class="fab fa-facebook"></i>
-                            </a>
-                            <a href="#" class="text-white me-2" aria-label="Twitter">
-                                <i class="fab fa-twitter"></i>
-                            </a>
-                            <a href="#" class="text-white" aria-label="Instagram">
-                                <i class="fab fa-instagram"></i>
-                            </a>
-                        </p>
-                    </div>
+    <footer id="footer" class="bg-dark text-white text-center py-3">
+    <div class="container-fluid">
+        <p class="small">Welcome to Dormitory Space, your home away from home. We provide a comfortable and safe living environment with modern amenities, including:</p>
+
+        <div class="row">
+            <div class="col-md-4 footer-section">
+                <h5 class="h6">Our Services</h5>
+                <ul class="list-unstyled mb-0">
+                    <li>24/7 Security</li>
+                    <li>Free Wi-Fi</li>
+                    <li>Laundry Facilities</li>
+                    <li>Study Rooms</li>
+                    <li>Common Areas</li>
+                </ul>
+            </div>
+
+            <div class="col-md-4 footer-section">
+                <h5 class="h6">Quick Links</h5>
+                <div class="footer-links mt-3">
+                    <p class="mb-1"><a href="#about" class="text-white">About Us</a></p>
+                    <p class="mb-1"><a href="#offers" class="text-white">Offers</a></p>
+                    <p class="mb-0"><a href="#contact" class="text-white">Contact Us</a></p>
                 </div>
             </div>
-    
-            <p class="mt-4">&copy; 2024 Dormitory Space. All Rights Reserved.</p>
+
+            <div class="col-md-4 footer-section">
+                <h5 class="h6">Contact Us</h5>
+                <p class="mb-1">123 Dormitory St., City, State, ZIP</p>
+                <p class="mb-1">Email: <a href="mailto:info@dormitoryspace.com" class="text-white">info@dormitoryspace.com</a></p>
+                <p class="mb-0">Phone: (123) 456-7890</p>
+
+                <div class="social-icons mt-2">
+                    <p class="mb-0">
+                        <a href="#" class="text-white me-2" aria-label="Facebook">
+                            <i class="fab fa-facebook" style="font-size: 1.2rem;"></i>
+                        </a>
+                        <a href="#" class="text-white me-2" aria-label="Twitter">
+                            <i class="fab fa-twitter" style="font-size: 1.2rem;"></i>
+                        </a>
+                        <a href="#" class="text-white" aria-label="Instagram">
+                            <i class="fab fa-instagram" style="font-size: 1.2rem;"></i>
+                        </a>
+                    </p>
+                </div>
+            </div>
         </div>
-    </footer>
-    
-    
-    
+
+        
+
+        <p class="mt-4 small">&copy; 2024 Dormitory Space. All Rights Reserved.</p>
+    </div>
+</footer>
+
     
 
     <!-- Bootstrap JS and FontAwesome -->

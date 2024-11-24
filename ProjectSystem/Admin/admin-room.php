@@ -41,8 +41,10 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <title>Room Manage</title>
+    <link rel="icon" href="img-icon/room.png" type="image/png">
+
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -72,7 +74,15 @@ $conn->close();
 
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 

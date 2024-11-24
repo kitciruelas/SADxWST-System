@@ -166,9 +166,17 @@ mysqli_close($conn);
         <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
 
-    <div class="logout">
-        <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-    </div>
+        <div class="logout">
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
+        </div>
 </div>
 <!-- Back button -->
 
@@ -199,12 +207,72 @@ mysqli_close($conn);
 
 </div>
 
-<!-- Search Container -->
-<div class="search-container mb-4">
-    <input type="text" id="announcement-search" class="form-control custom-input-small" placeholder="Search announcements...">
-    <i class="fas fa-search search-icon"></i>
+<!-- Search and Filter Container -->
+<div class="row mb-4 align-items-center">
+    <!-- Search Container -->
+    <div class="col-12 col-md-8">
+        <div class="search-container">
+            <input type="text" id="announcement-search" class="form-control custom-input-small" placeholder="Search announcements...">
+            <i class="fas fa-search search-icon"></i>
+            
+        </div>
+    </div>
+
+    <!-- Filter Select -->
+  <!-- Filter Select -->
+<div class="col-12 col-md-4">
+    <select id="filterSelect" class="form-select" onchange="filterTable()">
+        <option value="all" selected>Filter by</option>
+        <option value="title">Title</option>
+        <option value="content">Content</option>
+        <option value="date">Date</option>
+    </select>
 </div>
 
+</div>
+<style>
+/* Filter Select Styles */
+#filterSelect {
+    font-size: 1rem;
+    padding: 0.375rem 1.5rem 0.375rem 1rem; /* Adjust padding for a balanced look */
+    border-radius: 0.375rem; /* Rounded corners */
+    border: 1px solid #ced4da; /* Border color */
+    background-color: #fff; /* White background */
+    appearance: none; /* Remove default arrow */
+    -webkit-appearance: none; /* Safari support */
+    -moz-appearance: none; /* Firefox support */
+}
+
+#filterSelect:focus {
+    border-color: #80bdff; /* Blue border on focus */
+    outline: none; /* Remove outline */
+}
+
+/* Adding a custom arrow icon for select dropdown */
+#filterSelect::after {
+    content: "▼";
+    font-size: 0.8rem;
+    color: #666;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Align the filter select to the left */
+.col-12.col-md-4 {
+    display: flex;
+    justify-content: flex-start; /* Align the select to the left */
+    margin-bottom: 20px; /* Adjust bottom margin */
+}
+
+@media (max-width: 767px) {
+    /* Ensuring the filter select is full-width on smaller screens */
+    #filterSelect {
+        width: 100%;
+    }
+}
+
+</style>
 
 
 <!-- Announcements Table -->
@@ -327,7 +395,54 @@ mysqli_close($conn);
 <!-- JScript -->
 
 <script>
-    $(document).ready(function () {
+
+ 
+// Function to filter the table based on search and filter selection
+function filterTable() {
+    var filterValue = document.getElementById("filterSelect").value.toLowerCase(); // Get selected filter option
+    var searchValue = document.getElementById("announcement-search").value.toLowerCase(); // Get search input value
+
+    // Get all rows in the table
+    var rows = document.querySelectorAll("#announcementTable tbody tr");
+
+    // Loop through each row
+    rows.forEach(function(row) {
+        // Get text content for each column (Title, Content, Date)
+        var title = row.querySelector(".title").textContent.toLowerCase();
+        var content = row.querySelector(".content").textContent.toLowerCase();
+        var date = row.querySelector(".date_published").textContent.toLowerCase();
+
+        var showRow = false;
+
+        // Apply the filter based on selected filter option
+        if (filterValue === "all" || (filterValue === "title" && title.includes(searchValue)) || 
+            (filterValue === "content" && content.includes(searchValue)) || 
+            (filterValue === "date" && date.includes(searchValue))) {
+            showRow = true;
+        }
+
+        // Show or hide the row based on the filter and search criteria
+        if (showRow) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+
+// Add event listener for search input to trigger filtering on typing
+document.getElementById("announcement-search").addEventListener("input", filterTable);
+
+// Add event listener for the filter select to trigger filtering on change
+document.getElementById("filterSelect").addEventListener("change", filterTable);
+
+// Add event listener for search input to trigger filtering on typing
+document.getElementById("announcement-search").addEventListener("input", filterTable);
+
+// Add event listener for the filter select to trigger filtering on change
+document.getElementById("filterSelect").addEventListener("change", filterTable);
+
+  $(document).ready(function () {
     $('#announcementTable').DataTable({
         dom: 'Bfrtip',
         buttons: [
@@ -359,10 +474,12 @@ mysqli_close($conn);
                 exportOptions: {
                     columns: ':not(:last-child)'
                 },
-                customize: function (doc) {
-                    // Apply the same styles as in print for PDF
+                title: '',  // Empty title to remove it
+                customize: function(doc) {
+                    // Remove title and customize the PDF appearance
                     doc.content[1].table.widths = ['10%', '30%', '40%', '20%'];
 
+                    // Style the table header
                     doc.content[1].table.body[0].forEach(function (header) {
                         header.alignment = 'center';
                         header.bold = true;
@@ -370,24 +487,14 @@ mysqli_close($conn);
                         header.color = 'white'; // Set text color for headers
                     });
 
+                    // Align table cells to the center
                     doc.content[1].table.body.slice(1).forEach(function (row) {
                         row.forEach(function (cell) {
                             cell.alignment = 'center';
                         });
                     });
 
-                    doc.content.unshift({
-                        text: 'Announcements Table',
-                        style: 'header',
-                        alignment: 'center',
-                        margin: [0, 0, 0, 10]
-                    });
-
                     doc.styles = {
-                        header: {
-                            fontSize: 18,
-                            bold: true
-                        },
                         tableHeader: {
                             bold: true,
                             fontSize: 12,
@@ -405,8 +512,9 @@ mysqli_close($conn);
                 exportOptions: {
                     columns: ':not(:last-child)'
                 },
-                customize: function (win) {
-                    // Apply the same styles as in PDF for print
+                title: '',  // Empty title to remove it
+                customize: function(win) {
+                    // Customize print layout (no title)
                     $(win.document.body).find('th').css({
                         'background-color': '#4CAF50', // Set background color for headers
                         'color': 'white',               // Set text color for headers

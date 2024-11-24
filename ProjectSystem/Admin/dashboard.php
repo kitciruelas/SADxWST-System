@@ -126,7 +126,9 @@ while ($row = mysqli_fetch_assoc($result)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Home</title>
+    <link rel="icon" href="img-icon/home.png" type="image/png">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 <!-- Bootstrap CSS -->
@@ -137,6 +139,11 @@ while ($row = mysqli_fetch_assoc($result)) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap Bundle JS (includes Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Custom CSS -->
 <link rel="stylesheet" href="Css_Admin/dashboard.css">
@@ -160,7 +167,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         
-
+ 
         </div>
         
         <div class="logout">
@@ -397,62 +404,132 @@ var rentStatusChart = new Chart(rentStatusCtx, {
 
 <div class="row mb-4">
 <div class="col-12">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h2><i class="fas fa-comment-dots"></i> Feedback</h2>
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h2 class="mb-0"><i class="fas fa-comment-dots me-2"></i> Feedback</h2>
+    </div>
+    <div id="feedbackCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            <?php
+            // SQL query to select the first 6 feedback entries, ordered by submission date
+            $sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
+                            f.feedback, f.submitted_at
+                    FROM rooms r
+                    LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
+                    LEFT JOIN users u ON ra.user_id = u.id
+                    INNER JOIN roomfeedback f ON u.id = f.user_id
+                    ORDER BY f.submitted_at DESC
+                    LIMIT 6"; // Limit to 6 feedback entries
+
+            $result = $conn->query($sql);
+
+            if ($result->num_rows > 0) {
+                $active = true; // To set the first carousel item as active
+                $counter = 0;
+
+                while ($row = $result->fetch_assoc()) {
+                    if ($counter % 3 === 0) { // Start a new slide every 3 items
+                        echo "<div class='carousel-item " . ($active ? "active" : "") . "'>";
+                        echo "<div class='row justify-content-center px-3'>"; // Row for 3 cards
+                        $active = false;
+                    }
+
+                    // Feedback card content
+                    echo "<div class='col-12 col-md-6 col-lg-4 mb-4'>";
+                    echo "<div class='card h-100 border-0 shadow-sm'>";
+                    echo "<div class='card-body'>";
+                    echo "<h5 class='card-title text-primary'>" . htmlspecialchars($row['resident_name']) . "</h5>";
+                    echo "<p class='card-text'><strong>Room:</strong> " . htmlspecialchars($row['room_number']) . "</p>";
+                    echo "<p class='card-text'><strong>Feedback:</strong> " . htmlspecialchars($row['feedback']) . "</p>";
+                    echo "<p class='card-text'><small class='text-muted'>Submitted on: " . htmlspecialchars($row['submitted_at']) . "</small></p>";
+                    echo "</div>"; // End card-body
+                    echo "</div>"; // End card
+                    echo "</div>"; // End col
+
+                    $counter++;
+                    if ($counter % 3 === 0 || $counter === $result->num_rows) {
+                        echo "</div>"; // Close row
+                        echo "</div>"; // Close carousel-item
+                    }
+                }
+            } else {
+                echo "<div class='carousel-item active'>";
+                echo "<div class='col-12 text-center p-4'><p class='text-muted'>No feedback available.</p></div>";
+                echo "</div>";
+            }
+            ?>
         </div>
-        <div class="card-body">
-        <?php
-// SQL query to select the first 6 feedback entries, ordered by submission date
-$sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
-                f.feedback, f.submitted_at
-        FROM rooms r
-        LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
-        LEFT JOIN users u ON ra.user_id = u.id
-        INNER JOIN roomfeedback f ON u.id = f.user_id
-        ORDER BY f.submitted_at DESC
-        LIMIT 6"; // Limit to 6 feedback entries
 
-$result = $conn->query($sql);
+       <!-- Carousel Controls -->
 
-if ($result->num_rows > 0) {
-    // Start row for layout
-    echo "<div class='row'>";
-    // Loop through and display each feedback entry
-    while ($row = $result->fetch_assoc()) {
-        echo "<div class='col-12 col-md-6 col-lg-4 mb-4'>"; // Use col-md-6 for 2-in-1 layout, col-lg-4 for 3 items on large screens
-        echo "<div class='card' style='border: 1px solid #e0e0e0; border-radius: 8px;'>";
-        echo "<div class='card-body'>";
-        echo "<h5 class='card-title'>" . htmlspecialchars($row['resident_name']) . "</h5>"; // Resident Name
-        echo "<p class='card-text'><strong>Room:</strong> " . htmlspecialchars($row['room_number']) . "</p>"; // Room Number
-        echo "<p class='card-text'><strong>Feedback:</strong> " . htmlspecialchars($row['feedback']) . "</p>"; // Feedback Text
-        echo "<p class='card-text'><small class='text-muted'>Submitted on: " . htmlspecialchars($row['submitted_at']) . "</small></p>"; // Submission Date
-        echo "</div>"; // End of card-body
-        echo "</div>"; // End of card
-        
-        echo "</div>"; // End of col
-    }
-    // End row for layout
-    echo "</div>";
-} else {
-    echo "<p>No feedback available.</p>";
+
+    </div>
+
+    <!-- View All Feedback Link -->
+    <a href="view-feedback.php" class="btn btn-primary mt-3 mx-auto d-block">
+        See All Feedback
+    </a>
+</div>
+
+</div>
+</div>
+
+<style>
+    #feedbackCarousel {
+    position: relative;
 }
 
-?>
-<a href="view-feedback.php" class="nav-link mt-3"><i class="fas fa-comment-dots"></i> <span>See All Feedback</span></a>
+.carousel-control-prev, .carousel-control-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%); /* Center the controls vertically */
+    z-index: 5; /* Ensure controls are above carousel items */
+    border: none; /* Remove border */
+    padding: 10px;
+    background: none; /* No background */
+}
 
-        </div>
-        
-    </div>
-</div>
+.carousel-control-prev {
+    left: 0; /* Position the previous button to the left side */
+}
 
+.carousel-control-next {
+    right: 0; /* Position the next button to the right side */
+}
 
+.carousel-control-prev-icon, .carousel-control-next-icon {
+    font-size: 2rem; /* Adjust icon size */
+    color: white; /* Optional: change icon color */
+}
 
+    .carousel-item {
+    transition: transform 0.6s ease-in-out;
+}
 
-</div>
-</div>
+.card {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    height: 100%; /* Ensures consistent height for all cards */
+}
 
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+}
 
+.carousel-inner {
+    padding: 20px;
+}
+
+.card-title {
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 0.9rem;
+}
+
+</style>
 
         
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -462,7 +539,35 @@ if ($result->num_rows > 0) {
 
     <script>
 
-        
+document.addEventListener('DOMContentLoaded', function () {
+    // Auto-slide interval (optional: 5 seconds)
+    const feedbackCarousel = document.querySelector('#feedbackCarousel');
+    const carousel = new bootstrap.Carousel(feedbackCarousel, {
+        interval: 5000, // Auto-slide every 5 seconds
+        pause: 'hover', // Pause when the user hovers over the carousel
+        wrap: true,     // Loop back to the first slide after the last
+    });
+
+    // Adjust the height of the carousel dynamically to match the tallest card in the current slide
+    function adjustCarouselHeight() {
+        const activeSlide = document.querySelector('.carousel-item.active');
+        if (activeSlide) {
+            const cards = activeSlide.querySelectorAll('.card');
+            let maxHeight = 0;
+            cards.forEach(card => {
+                maxHeight = Math.max(maxHeight, card.offsetHeight);
+            });
+            feedbackCarousel.querySelector('.carousel-inner').style.height = `${maxHeight}px`;
+        }
+    }
+
+    // Trigger height adjustment on slide change
+    feedbackCarousel.addEventListener('slid.bs.carousel', adjustCarouselHeight);
+
+    // Initial height adjustment
+    adjustCarouselHeight();
+});
+
         // JavaScript to render the graph
 
         // Data for the chart

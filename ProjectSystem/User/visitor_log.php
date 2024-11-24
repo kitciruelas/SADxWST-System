@@ -12,17 +12,26 @@ if (!isset($_SESSION['id'])) {
 $userId = $_SESSION['id'];
 
 // **Handle POST Requests**
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // **Add Visitor Logic**
+    // Function to log activities
+    function logActivity($conn, $userId, $activityType, $activityDetails) {
+        $sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
+        if (!$stmt->execute()) {
+            error_log("Failed to log activity: " . $stmt->error);
+        }
+        $stmt->close();
+    }
+
+    // Add Visitor Logic
     if (isset($_POST['visitor_name'])) {
         $visitorName = trim($_POST['visitor_name']);
         $contactInfo = trim($_POST['contact_info']);
         $purpose = trim($_POST['purpose']);
         $checkInTime = $_POST['check_in_time'];
 
-        // Validate input fields
         if (empty($visitorName) || empty($contactInfo) || empty($purpose) || empty($checkInTime)) {
             echo "<script>alert('All fields are required!'); window.history.back();</script>";
             exit();
@@ -32,11 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        // Format datetime
-        $currentDate = date('Y-m-d');
-        $checkInDatetime = $currentDate . ' ' . $checkInTime . ':00';
+        $checkInDatetime = date('Y-m-d') . ' ' . $checkInTime . ':00';
 
-        // Insert visitor into the database
         $stmt = $conn->prepare(
             "INSERT INTO visitors (name, contact_info, purpose, visiting_user_id, check_in_time) 
              VALUES (?, ?, ?, ?, ?)"
@@ -44,15 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("sssis", $visitorName, $contactInfo, $purpose, $userId, $checkInDatetime);
 
         if ($stmt->execute()) {
+            logActivity($conn, $userId, "Add Visitor", "Visitor '$visitorName' added successfully.");
             echo "<script>alert('Visitor added successfully!'); window.location.href='visitor_log.php';</script>";
-            exit();
         } else {
             echo "<script>alert('Error adding visitor: " . $stmt->error . "'); window.history.back();</script>";
-            exit();
         }
+        $stmt->close();
+        exit();
     }
 
-    // **Check-Out Logic**
+    // Check-Out Visitor Logic
     if (isset($_POST['visitor_id'])) {
         $visitorId = (int)$_POST['visitor_id'];
 
@@ -62,56 +69,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("ii", $visitorId, $userId);
 
         if ($stmt->execute()) {
+            // Fetch visitor's name for logging
+            $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
+            $nameStmt = $conn->prepare($fetchNameSql);
+            $nameStmt->bind_param("i", $visitorId);
+            $nameStmt->execute();
+            $nameStmt->bind_result($visitorName);
+            $nameStmt->fetch();
+            $nameStmt->close();
+
+            logActivity($conn, $userId, "Check-Out Visitor", "Visitor '$visitorName' checked out.");
             echo "<script>alert('Check-out successful!'); window.location.href='visitor_log.php';</script>";
-            exit();
         } else {
             echo "<script>alert('Error updating check-out time: " . $stmt->error . "'); window.history.back();</script>";
+        }
+        $stmt->close();
+        exit();
+    }
+
+    // Archive Visitor Logic
+    if (isset($_POST['delete_visitor_id'])) {
+        $visitorId = (int)$_POST['delete_visitor_id'];
+
+        $conn->begin_transaction();
+
+        $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
+                       SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
+                       FROM visitors WHERE id = ? AND visiting_user_id = ?";
+        $stmt = $conn->prepare($archiveSql);
+        $stmt->bind_param("ii", $visitorId, $userId);
+
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            echo "<script>alert('Error archiving visitor: " . $stmt->error . "'); window.history.back();</script>";
             exit();
         }
-    }
 
-   // **Archive Visitor Logic**
-if (isset($_POST['delete_visitor_id'])) {  // Using delete trigger as archive action
-    $visitorId = (int)$_POST['delete_visitor_id'];
+        // Fetch visitor's name for logging
+        $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
+        $nameStmt = $conn->prepare($fetchNameSql);
+        $nameStmt->bind_param("i", $visitorId);
+        $nameStmt->execute();
+        $nameStmt->bind_result($visitorName);
+        $nameStmt->fetch();
+        $nameStmt->close();
 
-    // Start a transaction
-    $conn->begin_transaction();
+        $stmt->close();
 
-    // Step 1: Archive the visitor by copying it to the archive table
-    $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
-                   SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
-                   FROM visitors WHERE id = ? AND visiting_user_id = ?";
-    $stmt = $conn->prepare($archiveSql);
-    $stmt->bind_param("ii", $visitorId, $userId);
+        $deleteSql = "DELETE FROM visitors WHERE id = ? AND visiting_user_id = ?";
+        $stmt = $conn->prepare($deleteSql);
+        $stmt->bind_param("ii", $visitorId, $userId);
 
-    if (!$stmt->execute()) {
-        echo "<script>alert('Error archiving visitor: " . $stmt->error . "'); window.history.back();</script>";
-        $conn->rollback();
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            echo "<script>alert('Error deleting visitor: " . $stmt->error . "'); window.history.back();</script>";
+            exit();
+        }
+        $stmt->close();
+
+        $conn->commit();
+        logActivity($conn, $userId, "Archive Visitor", "Visitor '$visitorName' archived.");
+        echo "<script>alert('Visitor archived successfully!'); window.location.href='visitor_log.php';</script>";
         exit();
     }
-    $stmt->close();
 
-    // Step 2: Delete the visitor from the original `visitors` table
-    $deleteSql = "DELETE FROM visitors WHERE id = ? AND visiting_user_id = ?";
-    $stmt = $conn->prepare($deleteSql);
-    $stmt->bind_param("ii", $visitorId, $userId);
+    // Edit Visitor Logic
+    if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
+        $visitorId = (int)$_POST['edit_id'];
+        $name = mysqli_real_escape_string($conn, $_POST['edit_msg']['name']);
+        $contactInfo = mysqli_real_escape_string($conn, $_POST['edit_msg']['contact_info']);
+        $purpose = mysqli_real_escape_string($conn, $_POST['edit_msg']['purpose']);
 
-    if (!$stmt->execute()) {
-        echo "<script>alert('Error deleting visitor: " . $stmt->error . "'); window.history.back();</script>";
-        $conn->rollback();
+        if (empty($name) || empty($contactInfo) || empty($purpose)) {
+            echo "<script>alert('All fields are required!'); window.history.back();</script>";
+            exit();
+        }
+
+        // Fetch the visitor's original name for logging
+        $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
+        $stmt = $conn->prepare($fetchNameSql);
+        $stmt->bind_param("i", $visitorId);
+        $stmt->execute();
+        $stmt->bind_result($originalName);
+        $stmt->fetch();
+        $stmt->close();
+
+        $sql = "UPDATE visitors 
+                SET name = '$name', contact_info = '$contactInfo', purpose = '$purpose'
+                WHERE id = $visitorId";
+
+        if (mysqli_query($conn, $sql)) {
+            logActivity($conn, $userId, "Edit Visitor", "Visitor '$originalName' updated.");
+            echo "<script>alert('Visitor updated successfully'); window.location.href='visitor_log.php';</script>";
+        } else {
+            echo "<script>alert('Failed to update visitor'); window.history.back();</script>";
+        }
         exit();
     }
-    $stmt->close();
-
-    // Commit the transaction
-    $conn->commit();
-
-    echo "<script>alert('Visitor Deleted successfully!'); window.location.href='visitor_log.php';</script>";
-    exit();
 }
-
-}
-
 
 
 // Check if form data is submitted via POST
@@ -152,6 +207,8 @@ if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
               </script>";
     }
 } 
+
+
 
 // Assuming you're using $_GET['filter'] to fetch the filter value
 $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
@@ -235,6 +292,8 @@ $conn->close();
         <a href="user_room.php" class="nav-link"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link active"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
         <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="user-payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Payment History</span></a>
+
 
         </div>
         

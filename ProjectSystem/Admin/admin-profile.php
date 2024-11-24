@@ -148,7 +148,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Profile</title>
+    <link rel="icon" href="img-icon/profile.png" type="image/png">
 
     <link rel="stylesheet" href="../User/Css_user/visitor-logs.css"> <!-- I-load ang custom CSS sa huli -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -182,7 +183,15 @@ $conn->close();
         </div>
         
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -262,7 +271,7 @@ $conn->close();
 <div class="accordion-item mt-3">
     <h2 class="accordion-header">
         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accountInfo" aria-expanded="false">
-            Account Information
+        Account Credentials
         </button>
     </h2>  
     <div id="accountInfo" class="accordion-collapse collapse">
@@ -359,7 +368,7 @@ $conn->close();
         <div class="modal-content">
             <form id="accountInfoForm" action="admin-profile.php" method="POST">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editAccountModalLabel">Edit Account Information</h5>
+                    <h5 class="modal-title" id="editAccountModalLabel">Edit Account Credentials</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">

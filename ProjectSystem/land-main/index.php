@@ -149,6 +149,7 @@ $conn->close();
     <link rel="stylesheet" href="land-img/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
 </head>
 <body>
     <!-- Header and Navbar -->
@@ -290,17 +291,20 @@ $conn->close();
 <div class="pagination">
     <div id="pagination">
         <!-- Previous Page Button -->
-        <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
-            Previous
-        </button>
+<!-- Previous Page Button -->
+<button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
+    <i class="fas fa-chevron-left fa-2x"></i> 
+</button>
+
 
         <!-- Page Indicator -->
         <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
 
-        <!-- Next Page Button -->
-        <button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
-            Next
-        </button>
+<!-- Next Page Button -->
+<button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
+     <i class="fas fa-chevron-right fa-2x"></i>
+</button>
+
     </div>
 </div>
 

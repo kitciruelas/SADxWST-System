@@ -180,12 +180,25 @@ function getStaffRole($conn, $staffId) {
 
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="staff-chat.php" class="nav-link active"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+
+        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
 
         </div>
         
         <div class="logout">
-            <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -469,14 +482,15 @@ function getStaffRole($conn, $staffId) {
     
     <div class="container">
         
-        <h4 class="text-center mb-4">List of User Roles</h4>
+        <h4 class="text-center mb-1">Members of Group Chat</h4>
 
         <div class="list-group">
             <?php
             // Query to fetch user details
             $query = "SELECT id, fname, lname, role FROM users
             UNION
-            SELECT id, fname, lname, role FROM staff";
+            SELECT id, fname, lname, role FROM staff
+            ORDER BY id DESC";
               $result = mysqli_query($conn, $query);
 
             // Check if there are results

@@ -29,7 +29,15 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
         </div>
         <div class="logout">
-            <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 

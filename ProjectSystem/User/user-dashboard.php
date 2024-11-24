@@ -145,7 +145,6 @@ $totalRooms = $totalResult->fetch_assoc()['total'];
 // Calculate total pages for pagination
 $totalPages = ceil($totalRooms / $limit);
 
-
 // Check if the form is submitted via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Capture form data
@@ -164,21 +163,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Fetch the old room ID based on the current user
-        $stmt = $conn->prepare("SELECT room_id FROM roomassignments WHERE user_id = ?");
+        // Fetch the old room number based on the current user
+        $stmt = $conn->prepare("SELECT r.room_number FROM roomassignments AS ra JOIN rooms AS r ON ra.room_id = r.room_id WHERE ra.user_id = ?");
         if ($stmt) {
             $stmt->bind_param("i", $userId);
             $stmt->execute();
-            $stmt->bind_result($oldRoomId);
+            $stmt->bind_result($oldRoomNumber); // Now we're fetching room_number
             $stmt->fetch();
             $stmt->close();
         } else {
-            echo "<script>alert('Error: Could not prepare the statement to fetch old room ID.');window.history.back();</script>";
+            echo "<script>alert('Error: Could not prepare the statement to fetch old room number.');window.history.back();</script>";
+            exit;
+        }
+
+        // Fetch the room number for the selected room (new room)
+        $stmt = $conn->prepare("SELECT r.room_number FROM rooms AS r WHERE r.room_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $roomId); // room_id of the new room
+            $stmt->execute();
+            $stmt->bind_result($newRoomNumber); // Fetch the room number of the new room
+            $stmt->fetch();
+            $stmt->close();
+        } else {
+            echo "<script>alert('Error: Could not prepare the statement to fetch new room number.');window.history.back();</script>";
             exit;
         }
 
         // Check if the selected room is the same as the current room
-        if ($oldRoomId === $roomId) {
+        if ($oldRoomNumber === $newRoomNumber) {
             echo "<script>alert('You are already assigned to this room. Please select a different room.');window.history.back();</script>";
             exit;
         }
@@ -213,6 +225,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("iiis", $roomId, $oldRoomId, $userId, $comments);
 
             if ($stmt->execute()) {
+                // Log the activity for room reassignment
+                $activityType = "Room Reassignment Request";
+                $activityDetails = "Reassigned from room $oldRoomNumber to room $newRoomNumber. Reasons: $comments";
+
+                // Insert activity log
+                $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)");
+                if ($logStmt) {
+                    $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
+                    $logStmt->execute();
+                    $logStmt->close();
+                }
+
                 echo "<script>alert('Application submitted successfully!');</script>";
                 echo "<script>window.location.href = '" . $_SERVER['PHP_SELF'] . "';</script>";
                 exit;
@@ -288,13 +312,21 @@ $conn->close();
         </div>
         
         <div class="logout">
-            <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["Fname"]); ?>!</h2>
+        <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
         
 
         <!-- Button to trigger modal with dynamic data -->

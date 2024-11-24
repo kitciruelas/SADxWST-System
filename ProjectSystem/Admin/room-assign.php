@@ -170,14 +170,32 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <title>Room Assign</title>
+    <link rel="icon" href="img-icon/rassign.png" type="image/png">
+
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 </head>
 <body>
     <!-- Sidebar -->
@@ -198,7 +216,15 @@ $conn->close();
 
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -223,7 +249,7 @@ $conn->close();
 </div>
 <div class="container mt-1">
    <!-- Search and Filter Section -->
-<div class="row mb-4">
+<div class="row mb-1">
     <div class="col-12 col-md-8 mt-1">
         <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
@@ -253,84 +279,83 @@ $conn->close();
 
 </div>
 
-<?php if (!empty($assignmentsData)): ?>
-<!-- Room Assignment Table -->
-<table class="table table-bordered" id="assignmentTable">
-    <thead>
-        <tr>
-            <th>No.</th>
-            <th>Resident</th>
-            <th>Room</th>
-            <th>Monthly Rent</th>
-            <th>Assign Room</th>
-        </tr>
-    </thead>
-    <tbody id="room-table-body">
-        <?php
-        // Sort the $assignmentsData array based on the selected sort option
-        if (isset($_GET['sort'])) {
-            switch ($_GET['sort']) {
-                case 'resident_asc':
-                    usort($assignmentsData, fn($a, $b) => strcmp($a['resident'], $b['resident']));
-                    break;
-                case 'resident_desc':
-                    usort($assignmentsData, fn($a, $b) => strcmp($b['resident'], $a['resident']));
-                    break;
-                case 'room_asc':
-                    usort($assignmentsData, fn($a, $b) => strcmp($a['assigned_room_number'], $b['assigned_room_number']));
-                    break;
-                case 'room_desc':
-                    usort($assignmentsData, fn($a, $b) => strcmp($b['assigned_room_number'], $a['assigned_room_number']));
-                    break;
-                case 'rent_asc':
-                    usort($assignmentsData, fn($a, $b) => $a['assigned_monthly_rent'] - $b['assigned_monthly_rent']);
-                    break;
-                case 'rent_desc':
-                    usort($assignmentsData, fn($a, $b) => $b['assigned_monthly_rent'] - $a['assigned_monthly_rent']);
-                    break;
-            }
-        }
-        
-        $counter = 1;
-        foreach ($assignmentsData as $row):
-            if (isset($_SESSION['assigned_user_id']) && $_SESSION['assigned_user_id'] == $row['user_id']) {
-                continue;
-            }
-
-            $hasAssignedRoom = !empty($row['assigned_room_number']);
-            $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
-        ?>
+    <?php if (!empty($assignmentsData)): ?>
+    <!-- Room Assignment Table -->
+    <table class="table table-bordered" id="assignmentTable">
+        <thead>
             <tr>
-                <td><?php echo $counter++; ?></td>
-                <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
-                <td class="room"><?php echo htmlspecialchars($row['assigned_room_number'] ?? 'No Room Assigned'); ?></td>
-                <td class="monthly_rent"><?php echo isset($row['assigned_monthly_rent']) ? number_format($row['assigned_monthly_rent'], 2) : 'N/A'; ?></td>
-                <td>
-                    <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
-                        <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
-                        <select name="room_id" required>
-                            <option value="">Select Room</option>
-                            <?php foreach ($availableRooms as $room): ?>
-                                <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
-                                    <?php echo htmlspecialchars($room['room_number']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="submit" class="btn btn-primary">Assign</button>
-                    </form>
-                    <?php if ($hasAssignedRoom && !$isPending): ?>
-                        <span class="text-success">Room Assignment Active</span>
-                    <?php endif; ?>
-                </td>
+                <th>No.</th>
+                <th>Resident</th>
+                <th>Room</th>
+                <th>Monthly Rent</th>
+                <th>Assign Room</th>
             </tr>
-        <?php endforeach; ?>
-    </tbody>
-</table>
+        </thead>
+        <tbody id="room-table-body">
+            <?php
+            // Sort the $assignmentsData array based on the selected sort option
+            if (isset($_GET['sort'])) {
+                switch ($_GET['sort']) {
+                    case 'resident_asc':
+                        usort($assignmentsData, fn($a, $b) => strcmp($a['resident'], $b['resident']));
+                        break;
+                    case 'resident_desc':
+                        usort($assignmentsData, fn($a, $b) => strcmp($b['resident'], $a['resident']));
+                        break;
+                    case 'room_asc':
+                        usort($assignmentsData, fn($a, $b) => strcmp($a['assigned_room_number'], $b['assigned_room_number']));
+                        break;
+                    case 'room_desc':
+                        usort($assignmentsData, fn($a, $b) => strcmp($b['assigned_room_number'], $a['assigned_room_number']));
+                        break;
+                    case 'rent_asc':
+                        usort($assignmentsData, fn($a, $b) => $a['assigned_monthly_rent'] - $b['assigned_monthly_rent']);
+                        break;
+                    case 'rent_desc':
+                        usort($assignmentsData, fn($a, $b) => $b['assigned_monthly_rent'] - $a['assigned_monthly_rent']);
+                        break;
+                }
+            }
+            
+            $counter = 1;
+            foreach ($assignmentsData as $row):
+                if (isset($_SESSION['assigned_user_id']) && $_SESSION['assigned_user_id'] == $row['user_id']) {
+                    continue;
+                }
 
-<?php unset($_SESSION['assigned_user_id']); ?>
-<?php else: ?>
-    <p>No room assignments found.</p>
-<?php endif; ?>
+                $hasAssignedRoom = !empty($row['assigned_room_number']);
+                $isPending = (isset($row['reassignment_status']) && $row['reassignment_status'] == 'pending');
+            ?>
+                <tr>
+                    <td><?php echo $counter++; ?></td>
+                    <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
+                    <td class="room"><?php echo htmlspecialchars($row['assigned_room_number'] ?? 'No Room Assigned'); ?></td>
+                    <td class="monthly_rent"><?php echo isset($row['assigned_monthly_rent']) ? number_format($row['assigned_monthly_rent'], 2) : 'N/A'; ?></td>
+                    <td>
+                        <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="POST">
+                            <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
+                            <select name="room_id" required>
+                                <option value="">Select Room</option>
+                                <?php foreach ($availableRooms as $room): ?>
+                                    <option value="<?php echo htmlspecialchars($room['room_id']); ?>">
+                                        <?php echo htmlspecialchars($room['room_number']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Assign</button>
+                        </form>
+                        <?php if ($hasAssignedRoom && !$isPending): ?>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <?php unset($_SESSION['assigned_user_id']); ?>
+    <?php else: ?>
+        <p>No room assignments found.</p>
+    <?php endif; ?>
 
 
 <!-- Pagination Controls -->
@@ -374,15 +399,104 @@ $conn->close();
     }
 
 </style>
+<!-- JavaScript Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS and Popper.js -->
 
 
     
     <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Hamburgermenu Script -->
     <script>
+$(document).ready(function () {
+    // Initialize DataTable
+    var table = $('#assignmentTable').DataTable({
+        dom: 'Bfrtip',
+
+        buttons: [
+            {
+                extend: 'copy',
+                className: 'btn btn-secondary',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Room Assignments - ' + getFormattedDate()
+            },
+            {
+                extend: 'csv',
+                className: 'btn btn-primary',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Room Assignments - ' + getFormattedDate()
+            },
+            {
+                extend: 'excel',
+                className: 'btn btn-success',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Room Assignments - ' + getFormattedDate()
+            },
+            {
+                extend: 'print',
+                className: 'btn btn-info',
+                title: '',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                customize: function (win) {
+                    var doc = win.document;
+
+                    $(doc.body)
+                        .css('font-family', 'Arial, sans-serif')
+                        .css('font-size', '12pt')
+                        .prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Room Assignments Report</h1>')
+                        .prepend('<p style="text-align:center; font-size: 12pt; margin-bottom: 20px;">' + getFormattedDate() + '</p><hr>');
+
+                    $(doc.body).find('table').addClass('display').css({
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        marginTop: '20px',
+                        border: '1px solid #ddd'
+                    });
+
+                    $(doc.body).find('table th, table td').css({
+                        border: '1px solid #ddd',
+                        padding: '8px',
+                        textAlign: 'left'
+                    });
+                }
+            }
+        ],
+        paging: false,
+        searching: false,
+        info: false
+    });
+
+    // Sorting functionality for custom dropdown
+    $('#sort').on('change', function () {
+        const sortValue = $(this).val();
+        if (sortValue) {
+            const [column, direction] = sortValue.split('_');
+            const columnIndex = column === 'resident' ? 1 : column === 'room' ? 2 : 3; // Map column to index
+            table.order([columnIndex, direction]).draw();
+        }
+    });
+});
+
+// Helper function for formatted date
+function getFormattedDate() {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 // JavaScript for client-side pagination
 const rowsPerPage = 10; // Display 10 rows per page
 let currentPage = 1;

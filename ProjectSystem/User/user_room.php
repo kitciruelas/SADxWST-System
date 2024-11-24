@@ -35,6 +35,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $feedback = $conn->real_escape_string($_POST['feedback']);
         $userId = $_SESSION['id'];  // Assuming the user ID is stored in the session
 
+        // Fetch user's first name (fname) from the users table
+        $sql = "SELECT fname FROM users WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+
+        if ($stmt) {
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $stmt->bind_result($userFname);
+            $stmt->fetch();
+            $stmt->close();
+        } else {
+            echo "<script>alert('Error fetching user details: " . $conn->error . "');</script>";
+            exit;
+        }
+
         // Check if assignment_id is set and valid
         if (isset($_POST['assignment_id']) && !empty($_POST['assignment_id'])) {
             $assignment_id = $_POST['assignment_id']; // Get assignment ID from POST data
@@ -50,6 +65,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Execute and check if successful
                 if ($stmt->execute()) {
                     echo "<script>alert('Feedback submitted successfully.');</script>";
+
+                    // Log the activity for feedback submission
+                    $activityType = "Feedback Submission";
+                    $activityDetails = "$userFname submitted feedback: '$feedback'";
+
+                    // Insert activity log
+                    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+                    $logStmt = $conn->prepare($logSql);
+
+                    if ($logStmt) {
+                        $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
+                        $logStmt->execute();
+                        $logStmt->close();
+                    } else {
+                        echo "<script>alert('Error logging activity: " . $conn->error . "');</script>";
+                    }
                 } else {
                     echo "<script>alert('Error submitting feedback: " . $stmt->error . "');</script>";
                 }
@@ -64,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
 // Query to get the current assignment_id (adjust query as necessary)
 $query = "SELECT assignment_id FROM roomassignments WHERE user_id = '$userId' ORDER BY assignment_date DESC ";
 $result = mysqli_query($conn, $query);
@@ -109,24 +141,51 @@ if (isset($_GET['delete_id'])) {
     $feedbackIdToDelete = $_GET['delete_id'];
 
     // Ensure that the feedback belongs to the logged-in user before deleting it
-    $deleteQuery = "SELECT user_id FROM roomfeedback WHERE id = ?";
+    $deleteQuery = "SELECT user_id, feedback FROM roomfeedback WHERE id = ?";
     $stmt = $conn->prepare($deleteQuery);
     $stmt->bind_param('i', $feedbackIdToDelete);
     $stmt->execute();
     $deleteResult = $stmt->get_result();
 
     if ($deleteResult->num_rows > 0) {
-        $feedbackOwner = $deleteResult->fetch_assoc()['user_id'];
-        
+        $feedbackData = $deleteResult->fetch_assoc();
+        $feedbackOwner = $feedbackData['user_id'];
+        $feedbackText = $feedbackData['feedback'];
+
         if ($feedbackOwner == $userId) {
             // Prepare DELETE query to remove feedback from the database
             $deleteQuery = "DELETE FROM roomfeedback WHERE id = ?";
             $stmt = $conn->prepare($deleteQuery);
-            
+
             if ($stmt) {
                 $stmt->bind_param('i', $feedbackIdToDelete);
 
                 if ($stmt->execute()) {
+                    // Fetch user's first name
+                    $userQuery = "SELECT fname FROM users WHERE id = ?";
+                    $stmtUser = $conn->prepare($userQuery);
+                    $stmtUser->bind_param('i', $userId);
+                    $stmtUser->execute();
+                    $stmtUser->bind_result($userFname);
+                    $stmtUser->fetch();
+                    $stmtUser->close();
+
+                    // Log activity for deleting feedback
+                    $activityType = "Feedback Deletion";
+                    $activityDetails = "$userFname deleted their feedback: '$feedbackText'";
+
+                    // Insert activity log
+                    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+                    $logStmt = $conn->prepare($logSql);
+
+                    if ($logStmt) {
+                        $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
+                        $logStmt->execute();
+                        $logStmt->close();
+                    } else {
+                        echo "<script>alert('Error logging activity: " . $conn->error . "');</script>";
+                    }
+
                     echo "<script>
                         alert('Feedback deleted successfully.');
                         window.location.href = 'user_room.php';  // Change to the correct feedback list page
@@ -147,6 +206,7 @@ if (isset($_GET['delete_id'])) {
     }
 }
 
+// Handle feedback update request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
     $feedbackId = $_POST['feedback_id'];
     $feedbackText = $_POST['feedbackText'];
@@ -160,6 +220,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
         if ($stmt) {
             $stmt->bind_param('sii', $feedbackText, $feedbackId, $userId);
             if ($stmt->execute()) {
+                // Fetch user's first name
+                $userQuery = "SELECT fname FROM users WHERE id = ?";
+                $stmtUser = $conn->prepare($userQuery);
+                $stmtUser->bind_param('i', $userId);
+                $stmtUser->execute();
+                $stmtUser->bind_result($userFname);
+                $stmtUser->fetch();
+                $stmtUser->close();
+
+                // Log activity for updating feedback
+                $activityType = "Feedback Update";
+                $activityDetails = "User '$userFname' updated their feedback to: '$feedbackText'";
+
+                // Insert activity log
+                $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+                $logStmt = $conn->prepare($logSql);
+
+                if ($logStmt) {
+                    $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
+                    $logStmt->execute();
+                    $logStmt->close();
+                } else {
+                    echo "<script>alert('Error logging activity: " . $conn->error . "');</script>";
+                }
+
                 echo "<script>alert('Feedback updated successfully.'); window.location.href = 'user_room.php';</script>";
             } else {
                 echo "<script>alert('Error updating feedback: " . $stmt->error . "');</script>";
@@ -171,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
         }
     } 
 }
+
 
 ?>
 
@@ -206,11 +292,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
         <a href="user_room.php" class="nav-link active"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
         <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="user-payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Payment History</span></a>
+
 
         </div>
-        
         <div class="logout">
-            <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 

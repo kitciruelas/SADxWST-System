@@ -161,13 +161,23 @@ $conn->close();
         </div>
 
         <div class="sidebar-nav">
-        <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="#" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="user_room.php" class="nav-link"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
+        <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="user-payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Payment History</span></a>
         </div>
         
         <div class="logout">
-            <a href="../config/user-logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -287,7 +297,7 @@ $conn->close();
       <div class="accordion-item mt-3">
   <h2 class="accordion-header">
     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accountInfo" aria-expanded="false">
-      Account Information
+    Account Credentials
     </button>
   </h2>  
   <div id="accountInfo" class="accordion-collapse collapse ">
@@ -406,7 +416,7 @@ $conn->close();
         <div class="modal-content">
             <form id="accountInfoForm" action="profile.php" method="POST">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editAccountModalLabel">Edit Account Information</h5>
+                    <h5 class="modal-title" id="editAccountModalLabel">Edit Account Credentials</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">

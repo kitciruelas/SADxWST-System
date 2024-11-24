@@ -134,6 +134,7 @@ function getMessages($conn, $receiverId = 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../User/Css_user/visitor-logs.css">
+    <link rel="icon" href="img-icon/chats.png" type="image/png">
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -374,7 +375,15 @@ function getMessages($conn, $receiverId = 0) {
         </div>
         
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -456,14 +465,15 @@ function getMessages($conn, $receiverId = 0) {
     
     <div class="container">
         
-        <h4 class="text-center mb-4">List of User Roles</h4>
+        <h4 class="text-center mb-1">Members of Group Chat</h4>
 
         <div class="list-group">
             <?php
             // Query to fetch user details
             $query = "SELECT id, fname, lname, role FROM users
             UNION
-            SELECT id, fname, lname, role FROM staff";
+            SELECT id, fname, lname, role FROM staff
+            ORDER BY id DESC";
               $result = mysqli_query($conn, $query);
 
             // Check if there are results

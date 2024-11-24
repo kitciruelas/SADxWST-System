@@ -130,8 +130,11 @@ if (isset($_GET['delete_payment_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <title>Rent Payment</title>
+    <link rel="icon" href="img-icon/images.png" type="image/png">
+
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap CSS -->
@@ -186,7 +189,15 @@ if (isset($_GET['delete_payment_id'])) {
 
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -202,7 +213,7 @@ if (isset($_GET['delete_payment_id'])) {
 <div class="d-flex justify-content-start">
        
     <div class="container mt-1">
-    <div class="row mb-4">
+    <div class="row mb-1">
     <div class="col-12 col-md-6">
         <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for payment details..." onkeyup="filterTable()">
     </div>
@@ -249,7 +260,7 @@ if (isset($_GET['delete_payment_id'])) {
             <th>Action</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody id="rentpayment-page">
         <?php
         // Fetch rent payment data
         $sql = "SELECT rp.payment_id, u.fname, u.lname, r.room_number, rp.amount, rp.payment_date, rp.status, rp.payment_method, rp.reference_number
@@ -473,8 +484,61 @@ if (isset($_GET['delete_payment_id'])) {
 </div>
 
 
+
+<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 <!-- JavaScript to show/hide reference number field -->
 <script>
+$(document).ready(function() {
+    var table = $('#paymentTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'copy',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Reassign List Report - ' + getFormattedDate(),
+            },
+            {
+                extend: 'csv',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Reassign List Report - ' + getFormattedDate(),
+            },
+            {
+                extend: 'excel',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Reassign List Report - ' + getFormattedDate(),
+            },
+            {
+                extend: 'print',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: '',
+                customize: function(win) {
+                    var doc = win.document;
+                    $(doc.body).css({
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '12pt',
+                        color: '#333333',
+                        lineHeight: '1.6',
+                        backgroundColor: '#ffffff',
+                    });
+                    $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Reassign List Report</h1>');
+                    $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
+                },
+            }
+        ],
+        paging: false,
+        searching: false,
+        info: false,
+    });
+});
+// Function to get the current date and time in a formatted string
+function getFormattedDate() {
+    var now = new Date();
+    var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+    var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
+    return date + ' ' + time;
+}
+
     function applySort() {
     var sortValue = document.getElementById("sort").value;
     
@@ -656,7 +720,6 @@ function updateRoomNumber() {
     
 
    
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 
     <!-- Bootstrap JS and Popper.js -->
@@ -665,39 +728,49 @@ function updateRoomNumber() {
     <!-- Hamburger Menu Script -->
     <script>
 
-     // JavaScript for client-side pagination
-     const rowsPerPage = 10; // Limit to 10 rows per page
+const rowsPerPage = 10;
     let currentPage = 1;
-    const rows = document.querySelectorAll('#room-table-body tr');
-    const totalPages = Math.ceil(rows.length / rowsPerPage);
+    
+    // Wait for the page to load fully before applying pagination
+    window.onload = function() {
+        const rows = document.querySelectorAll('#rentpayment-page tr');
+        const totalPages = Math.ceil(rows.length / rowsPerPage);
 
-    // Show the initial set of rows
-    showPage(currentPage);
-
-    function showPage(page) {
-        const start = (page - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-        rows.forEach((row, index) => {
-            row.style.display = index >= start && index < end ? '' : 'none';
-        });
-        document.getElementById('pageIndicator').innerText = `Page ${page}`;
-        document.getElementById('prevPage').disabled = page === 1;
-        document.getElementById('nextPage').disabled = page === totalPages;
-    }
-
-    function nextPage() {
-        if (currentPage < totalPages) {
-            currentPage++;
-            showPage(currentPage);
+        // Function to display the current page
+        function showPage(page) {
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            rows.forEach((row, index) => {
+                row.style.display = index >= start && index < end ? '' : 'none';
+            });
+            document.getElementById('pageIndicator').innerText = `Page ${page}`;
+            document.getElementById('prevPage').disabled = page === 1;
+            document.getElementById('nextPage').disabled = page === totalPages;
         }
-    }
 
-    function prevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            showPage(currentPage);
+        // Show the first page when the page is loaded
+        showPage(currentPage);
+
+        // Next Page function
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                showPage(currentPage);
+            }
         }
-    }
+
+        // Previous Page function
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                showPage(currentPage);
+            }
+        }
+
+        // Attach next/prev page functions to buttons
+        document.getElementById('prevPage').onclick = prevPage;
+        document.getElementById('nextPage').onclick = nextPage;
+    };
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const sidebar = document.getElementById('sidebar');
         sidebar.classList.add('collapsed');

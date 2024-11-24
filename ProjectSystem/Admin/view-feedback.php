@@ -71,7 +71,7 @@ $result = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -100,7 +100,15 @@ $result = $stmt->get_result();
 
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -153,7 +161,6 @@ $result = $stmt->get_result();
 <div class="row">
 <?php
 if ($result->num_rows > 0) {
-    $counter = 1;
     while ($row = $result->fetch_assoc()) {
         echo "<div class='col-12 col-md-4 mb-4'>"; // Card container
         echo "<div class='card h-100 position-relative'>"; // Add relative position for the card
@@ -175,13 +182,11 @@ if ($result->num_rows > 0) {
         
         echo "</div>"; // Close card
         echo "</div>"; // Close column
-        $counter++;
     }
 } else {
-    echo "<div class='col-12'><p>No feedback found.</p></div>";
+    echo "<div class='col-12 text-center'><p>No feedback found.</p></div>";
 }
 ?>
-
 <style>
     /* General container styling for card layout */
 .col-8.col-md-4 {
@@ -261,12 +266,7 @@ if ($result->num_rows > 0) {
 </style>
 </div>
 
-<!-- Pagination Controls -->
-<div id="pagination">
-    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
-    <span id="pageIndicator">Page 1</span>
-    <button id="nextPage" onclick="nextPage()">Next</button>
-</div>
+
 <style>
     /* Style for the entire table */
     .table {
@@ -401,39 +401,8 @@ document.getElementById("searchInput").addEventListener("keyup", function() {
             row.style.display = matches ? "" : "none";
         });
     });
-// JavaScript for client-side pagination
-const rowsPerPage = 10; // Display 10 rows per page
-let currentPage = 1;
-const rows = document.querySelectorAll('#room-table-body tr');
-const totalPages = Math.ceil(rows.length / rowsPerPage);
+    
 
-// Show the initial set of rows
-showPage(currentPage);
-
-function showPage(page) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    rows.forEach((row, index) => {
-        row.style.display = index >= start && index < end ? '' : 'none';
-    });
-    document.getElementById('pageIndicator').innerText = `Page ${page}`;
-    document.getElementById('prevPage').disabled = page === 1;
-    document.getElementById('nextPage').disabled = page === totalPages;
-}
-
-function nextPage() {
-    if (currentPage < totalPages) {
-        currentPage++;
-        showPage(currentPage);
-    }
-}
-
-function prevPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        showPage(currentPage);
-    }
-}
 
          document.addEventListener('DOMContentLoaded', function() {
         const filterSelect = document.getElementById('filterSelect');

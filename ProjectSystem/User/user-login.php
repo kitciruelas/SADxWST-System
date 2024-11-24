@@ -38,7 +38,7 @@
 
       <button type="submit" class="btn">Log in</button>
 
-      <p class="forgot-password"><a href="forgot-password.php">Forgot Password?</a></p>
+      <p class="forgot-password"><a href="change-password.php">Forgot Password?</a></p>
      <!--  <p>Don't have an account? <a href="signup.php">Sign up here</a></p>-->
     </form>
   </div>

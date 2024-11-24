@@ -272,8 +272,10 @@ $result = $conn->query($query);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <title>Room List</title>
+    <link rel="icon" href="img-icon/rlist.png" type="image/png">
+
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap CSS -->
@@ -326,26 +328,34 @@ $result = $conn->query($query);
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Room Manage</h2>
+        <h2>Room List</h2>
     </div>
 
     <!-- Main content -->
     <div class="main-content">
     <div class="container">
+    <div class="d-flex justify-content-start">
+    <a href="admin-room.php" class="btn " onclick="window.location.reload();">
+    <i class="fas fa-arrow-left fa-2x me-1"></i></a>
 
-<div class="d-flex justify-content-start">
-<button type="button" class="btn " onclick="window.history.back();">
-    <i class="fas fa-arrow-left fa-2x me-2"></i></button>
-</div>        
+</div>      
     <div class="container mt-1">
    <!-- Search and Filter Section -->
-<div class="row mb-4">
+<div class="row mb-1">
     <div class="col-12 col-md-6">
         <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
     </div>
@@ -358,20 +368,20 @@ $result = $conn->query($query);
             <option value="status">Monthly Rent</option>
         </select>
     </div>
-        <div class="col-6 col-md-2">
-            <select name="sort" class="form-select" id="sort" onchange="applySort()">
-                <option value="" selected>Select Sort</option>
-                <option value="capacity_asc">Capacity (Low to High)</option>
-                <option value="capacity_desc">Capacity (High to Low)</option>
-                <option value="rent_asc">Monthly Rent (Low to High)</option>
-                <option value="rent_desc">Monthly Rent (High to Low)</option>
-            </select>
+    <div class="col-6 col-md-2">
+        <select name="sort" class="form-select" id="sort" onchange="applySort()">
+            <option value="" selected>Select Sort</option>
+            <option value="capacity_asc">Capacity (Low to High)</option>
+            <option value="capacity_desc">Capacity (High to Low)</option>
+            <option value="rent_asc">Monthly Rent (Low to High)</option>
+            <option value="rent_desc">Monthly Rent (High to Low)</option>
+        </select>
     </div>
     <div class="col-6 col-md-2">
         <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
     </div>
 </div>
-<table id="room-table" class="table table-bordered">
+<table  class="table table-bordered" id="roomtable">
     <thead class="table-light">
         <tr>
             <th>No</th>
@@ -636,9 +646,14 @@ $result = $conn->query($query);
         </div>
     </div>
 </div>
+<!-- JavaScript Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS and Popper.js -->
+
 
 
     <!-- Bootstrap JS and Popper.js -->
@@ -646,6 +661,85 @@ $result = $conn->query($query);
 
     <!-- Hamburger Menu Script -->
     <script>
+$(document).ready(function () {
+    // Initialize DataTable
+    var table = $('#roomtable').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'copy',
+                exportOptions: {
+                    columns: ':not(:last-child):not(:nth-child(7))'
+                },
+                title: 'Room List - ' + getFormattedDate()
+            },
+            {
+                extend: 'csv',
+                exportOptions: {
+                    columns: ':not(:last-child):not(:nth-child(7))'
+                },
+                title: 'Room List - ' + getFormattedDate()
+            },
+            {
+                extend: 'excel',
+                exportOptions: {
+                    columns: ':not(:last-child):not(:nth-child(7))'
+                },
+                title: 'Room List - ' + getFormattedDate()
+            },
+            {
+                extend: 'print',
+                title: '', // No title
+                exportOptions: {
+                    columns: ':not(:last-child):not(:nth-child(7))'
+                },
+                customize: function (win) {
+                    var doc = win.document;
+
+                    $(doc.body)
+                        .css('font-family', 'Arial, sans-serif')
+                        .css('font-size', '12pt')
+                        .prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Room List Report</h1>')
+                        .prepend('<p style="text-align:center; font-size: 12pt; margin-bottom: 20px;">' + getFormattedDate() + '</p><hr>');
+
+                    $(doc.body).find('table').addClass('display').css({
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        marginTop: '20px',
+                        border: '1px solid #ddd'
+                    });
+
+                    $(doc.body).find('table th, table td').css({
+                        border: '1px solid #ddd',
+                        padding: '8px',
+                        textAlign: 'left'
+                    });
+                }
+            }
+        ],
+        paging: false,
+        searching: false,
+        info: false
+    });
+
+    // Sorting functionality
+    $('#sort').on('change', function () {
+        const sortValue = $(this).val();
+        if (sortValue) {
+            const [column, direction] = sortValue.split('_');
+            const columnIndex = column === 'capacity' ? 3 : 4;
+            table.order([columnIndex, direction]).draw();
+        }
+    });
+});
+
+// Helper function for formatted date
+function getFormattedDate() {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+
 
 function applySort() {
     const sortValue = document.getElementById("sort").value;

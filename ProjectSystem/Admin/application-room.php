@@ -106,13 +106,51 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <title>Reassign Room</title>
+    <link rel="icon" href="img-icon/rreas.svg" type="image/png">
+
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"><!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<!-- jQuery (full version) -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- DataTables CSS (recommended for styling) -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+
+<!-- DataTables Buttons CSS (for buttons like export) -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+
+<!-- DataTables Buttons JS (for exporting and other button features) -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+
+<!-- JSZip for Excel Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+
+<!-- pdfMake for PDF Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+
+<!-- DataTables Buttons for exporting -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+
+<!-- DataTables Print Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+
+<!-- Bootstrap JS (optional, if you're using Bootstrap components) -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+
 </head>
 <body>
     <!-- Sidebar -->
@@ -136,13 +174,21 @@ $conn->close();
 
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Room Reassign</h2>
+        <h2>Reassign Room</h2>
     </div>
 
     <!-- Main content -->
@@ -292,15 +338,69 @@ $conn->close();
 
 </style>
 
-            
+            <!-- JavaScript Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
    
     
     <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Hamburgermenu Script -->
     <script>
+   $(document).ready(function() {
+    var table = $('#assignmentTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'copy',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Reassign List Report - ' + getFormattedDate(),
+            },
+            {
+                extend: 'csv',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Reassign List Report - ' + getFormattedDate(),
+            },
+            {
+                extend: 'excel',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Reassign List Report - ' + getFormattedDate(),
+            },
+            {
+                extend: 'print',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: '',
+                customize: function(win) {
+                    var doc = win.document;
+                    $(doc.body).css({
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '12pt',
+                        color: '#333333',
+                        lineHeight: '1.6',
+                        backgroundColor: '#ffffff',
+                    });
+                    $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Reassign List Report</h1>');
+                    $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
+                },
+            }
+        ],
+        paging: false,
+        searching: false,
+        info: false,
+    });
+});
+// Function to get the current date and time in a formatted string
+function getFormattedDate() {
+    var now = new Date();
+    var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+    var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
+    return date + ' ' + time;
+}
+
         // Function to sort the table based on the selected sorting criteria
     document.getElementById('sortSelect').addEventListener('change', function() {
         var table = document.getElementById('assignmentTable');

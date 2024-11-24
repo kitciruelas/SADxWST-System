@@ -16,6 +16,14 @@ if (!$conn) {
 // Initialize variable for error message
 $errorMessage = '';
 
+require 'PHPMailer-master/src/Exception.php';
+require 'PHPMailer-master/src/PHPMailer.php';
+require 'PHPMailer-master/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php';
 // Handle create user request
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
     // Collect and sanitize form data
@@ -45,49 +53,86 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
         $errorMessage = 'Password must be at least 6 characters long.';
     }
 
+    // Check if the user is at least 16 years old based on birthdate
+    if (!empty($birthdate)) {
+        $today = new DateTime();
+        $birthdateObj = DateTime::createFromFormat('Y-m-d', $birthdate); // Ensure correct format
+
+        // Check if the birthdate is valid
+        if (!$birthdateObj) {
+            $errorMessage = 'Invalid birthdate format. Please use YYYY-MM-DD.';
+        } else {
+            // Calculate age
+            $age = $today->diff($birthdateObj)->y;
+            if ($age < 16) {
+                $errorMessage = 'User must be at least 16 years old to create an account.';
+            }
+        }
+    } else {
+        $errorMessage = 'Birthdate is required.';
+    }
+
+   // Check for duplicate email in both staff and users tables
+if (!$errorMessage) {
+    $checkEmailSql = "SELECT email FROM users WHERE email = ? UNION SELECT email FROM staff WHERE email = ?";
+    if ($stmt = $conn->prepare($checkEmailSql)) {
+        $stmt->bind_param("ss", $email, $email);
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows > 0) {
+            $errorMessage = 'The email address is already registered in the system.';
+        }
+        $stmt->close();
+    } else {
+        $errorMessage = "Error checking for duplicate email: " . htmlspecialchars($conn->error);
+    }
+}
+
+
+    // If no errors, proceed with the insertion into the database
     if (!$errorMessage) {
         // Hash password for security
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-        // Format the birthdate to ensure it is in 'YYYY-MM-DD' format and not '0000-00-00'
+        // Format the birthdate to ensure it is in 'YYYY-MM-DD' format
         $birthdateFormatted = date('Y-m-d', strtotime($birthdate));
-        if ($birthdateFormatted === '0000-00-00' || !$birthdateFormatted) {
-            $errorMessage = 'Birthdate cannot be 0000-00-00 or empty.';
-        } else {
-            // Select the SQL insert statement based on the role
-            $sql = ($role === 'Staff') 
-                ? "INSERT INTO staff (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                : "INSERT INTO users (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-            // Prepare the statement
-            if ($stmt = $conn->prepare($sql)) {
-                $stmt->bind_param(
-                    "sssssssssss", 
-                    $fname, 
-                    $lname, 
-                    $mi, 
-                    $suffix, 
-                    $birthdateFormatted, 
-                    $age, 
-                    $address, 
-                    $contact, 
-                    $sex, 
-                    $email, 
-                    $hashedPassword
-                );
-                
-                // Execute the statement and handle potential errors
-                if ($stmt->execute()) {
-                    echo "<script>alert('User added successfully!');</script>";
-                } else {
-                    $errorMessage = "Error inserting user: " . htmlspecialchars($stmt->error);
-                }
-                $stmt->close();
+        // Select the SQL insert statement based on the role
+        $sql = ($role === 'Staff') 
+            ? "INSERT INTO staff (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            : "INSERT INTO users (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        // Prepare the statement
+        if ($stmt = $conn->prepare($sql)) {
+            $stmt->bind_param(
+                "sssssssssss", 
+                $fname, 
+                $lname, 
+                $mi, 
+                $suffix, 
+                $birthdateFormatted, 
+                $age, 
+                $address, 
+                $contact, 
+                $sex, 
+                $email, 
+                $hashedPassword
+            );
+            
+            // Execute the statement and handle potential errors
+            if ($stmt->execute()) {
+                // Send the registration email after successful insert
+                sendRegistrationEmail($email, $fname, $lname, $password, $role);  // Pass the role along with other parameters
+                echo "<script>alert('User added successfully! A confirmation email has been sent.');</script>";
             } else {
-                $errorMessage = "Error preparing the statement: " . htmlspecialchars($conn->error);
+                $errorMessage = "Error inserting user: " . htmlspecialchars($stmt->error);
             }
+            $stmt->close();
+        } else {
+            $errorMessage = "Error preparing the statement: " . htmlspecialchars($conn->error);
         }
     }
 
@@ -96,6 +141,86 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
         echo "<script>alert('$errorMessage');</script>";
     }
 }
+
+
+function sendRegistrationEmail($userEmail, $firstName, $lastName, $password, $role) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com'; // Use Gmail SMTP server
+        $mail->SMTPAuth = true;
+        $mail->Username = 'dormioph@gmail.com'; // Your Gmail email
+        $mail->Password = 'ymrd smvk acxa whdy'; // Your generated Google App Password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Use STARTTLS encryption
+        $mail->Port = 587; // Port for STARTTLS
+    
+        // Disable SSL certificate verification (for testing purposes)
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+    
+        // Recipients
+        $mail->setFrom('dormioph@gmail.com', 'Dormio Ph');
+        $mail->addAddress($userEmail, "$firstName $lastName");  // Recipient's email
+    
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Registration Successful';
+        
+        if ($role === 'Staff') {
+            // Custom content for staff registration
+            $mail->Body = "Dear $firstName $lastName,<br><br>
+                           We are excited to welcome you as a member of our staff! Your registration has been successfully completed.<br><br>
+                           <strong>Important Reminders for Your Role:</strong><br>
+                           <ul>
+                               <li><strong>Communication is Key:</strong> Please maintain regular communication with the administration for any updates or instructions regarding your duties.</li>
+                               <li><strong>Work Schedule:</strong> Be sure to review and follow your assigned work schedule and responsibilities. Make sure you're aware of any upcoming shifts or changes.</li>
+                               <li><strong>Reporting Procedures:</strong> Follow the appropriate reporting procedures when on duty, and for any incidents or important updates related to your role.</li>
+                           </ul>
+                           <br>Below are your login details for accessing the system:<br><br>
+                           <strong>Email:</strong> $userEmail<br>
+                           <strong>Password:</strong> $password<br><br>
+                           For your security, we highly recommend that you change your password upon your first login.<br><br>
+                           Should you have any questions or require assistance, please don't hesitate to reach out to the administration team.<br><br>
+                           We are happy to have you on board!<br><br>
+                           Best regards,<br>Maricel Perce<br>Admin";
+        } else {
+            // Content for general users (non-staff)
+            $mail->Body = "Dear $firstName $lastName,<br><br>
+                           We are pleased to inform you that your registration has been completed! Welcome to our community!<br><br>
+                           <strong>Important Reminder About Your Stay:</strong><br>
+                           <ul>
+                               <li><strong>Communication is Essential:</strong> To ensure a smooth transition, please notify the appropriate personnel about your plans to vacate the premises.</li>
+                               <li><strong>Check-Out Procedures:</strong> Familiarize yourself with any specific check-out procedures that may apply.</li>
+                               <li><strong>Final Room Inspection:</strong> Be prepared for a final inspection of your room before departure.</li>
+                           </ul>
+                           <br>Your registration was successful. Below are your login details:<br><br>
+                           <strong>Email:</strong> $userEmail<br>
+                           <strong>Password:</strong> $password<br><br>
+                           For your security, we recommend that you change your password after logging in.<br><br>
+                           If you have any questions or need assistance, please get in touch with the dormitory staff.<br><br>
+                           Thank you for being a part of our community!<br><br>
+                           Best regards,<br>Maricel Perce<br>Dorm Staff";
+        }
+    
+        // Send email
+        if ($mail->send()) {
+            echo 'Registration email has been sent.';
+        } else {
+            echo 'Failed to send registration email.';
+        }
+    } catch (Exception $e) {
+        // Log detailed error for debugging
+        error_log("Mailer Error: {$mail->ErrorInfo}");
+        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+    }
+}
+
 
 // Handle edit user request
 if (isset($_POST['edit_user'])) {
@@ -375,9 +500,11 @@ $sql = "SELECT * FROM users ORDER BY $order";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Users</title>
+    <link rel="icon" href="img-icon/user.png" type="image/png">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -408,7 +535,15 @@ $sql = "SELECT * FROM users ORDER BY $order";
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -624,9 +759,11 @@ $sql = "SELECT * FROM users ORDER BY $order";
                 <div class="form-grid">
                     <!-- Row 2 -->
                     <div class="form-group">
-                        <label for="birthdate">Birthdate:</label>
-                        <input type="date" id="birthdate" name="Birthdate" required onchange="calculateAge()">
-                    </div>
+    <label for="birthdate">Birthdate:</label>
+    <input type="date" id="birthdate" name="Birthdate" required placeholder="Select your birthdate" onchange="calculateAge()">
+    <small id="ageError" style="color: red; display: none;">You must be at least 16 years old.</small>
+</div>
+
                     <div class="form-group">
                         <label for="age">Age:</label>
                         <input type="number" id="age" name="Age" required readonly>
@@ -799,6 +936,7 @@ $sql = "SELECT * FROM users ORDER BY $order";
 
         <!-- JavaScript for modal functionality -->
         <script>
+     
 $(document).ready(function () {
     $('#userTable').DataTable({
         dom: 'Bfrtip',
@@ -807,21 +945,21 @@ $(document).ready(function () {
                 extend: 'copy',
                 className: 'btn btn-primary',
                 exportOptions: {
-                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                    columns: ':not(:last-child)' // Exclude the last column (Actions)
                 }
             },
             {
                 extend: 'csv',
                 className: 'btn btn-success',
                 exportOptions: {
-                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                    columns: ':not(:last-child)' // Exclude the last column (Actions)
                 }
             },
             {
                 extend: 'excel',
                 className: 'btn btn-info',
                 exportOptions: {
-                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                    columns: ':not(:last-child)' // Exclude the last column (Actions)
                 }
             },
             {
@@ -837,35 +975,58 @@ $(document).ready(function () {
                     ]; // Modify the table header in PDF
                 },
                 exportOptions: {
-                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                    columns: ':not(:last-child)' // Exclude the last column (Actions)
                 }
             },
             {
                 extend: 'print',
                 className: 'btn btn-warning',
+                title: '', // Empty title to remove it
                 customize: function (win) {
-                    // Set the page orientation to portrait
-                    $(win.document.body).find('style').append('@page { size: portrait; }');
+                    var doc = win.document;
 
-                    // Apply custom styles to the print layout
-                    $(win.document.body).find('th').css({
-                        'background-color': '#4CAF50',  // Header background color
-                        'color': 'white',  // Header text color
-                        'font-weight': 'bold',  // Bold the header text
-                        'text-align': 'center'  // Center align the header text
+                    // Add a formal header (Title and Date)
+                    $(doc.body).prepend(
+                        '<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Users List</h1>' +
+                        '<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>'
+                    );
+
+                    // Style the page for print
+                    $(doc.body).css({
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '12pt',
+                        color: '#333333',
+                        lineHeight: '1.6',
+                        backgroundColor: '#ffffff',
                     });
 
-                    // Optionally hide unwanted elements (like card and container)
-                    $(win.document.body).find('.card').css('display', 'none');
-                    $(win.document.body).find('.container').css('display', 'none');
-
-                    // Adjust table styling for print
-                    $(win.document.body).find('td').css({
-                        'font-size': '14px',  // Change font size for table data
+                    // Style the table
+                    $(doc.body).find('table').css({
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        marginTop: '20px',
+                        border: '1px solid #dddddd',
                     });
+                    $(doc.body).find('table th').css({
+                        backgroundColor: '#f3f3f3',
+                        color: '#000000',
+                        fontSize: '14pt',
+                        padding: '8px',
+                        border: '1px solid #dddddd',
+                        textAlign: 'left',
+                    });
+                    $(doc.body).find('table td').css({
+                        fontSize: '12pt',
+                        padding: '8px',
+                        border: '1px solid #dddddd',
+                        textAlign: 'left',
+                    });
+
+                    // Optionally add footer
+                    $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page ' + $(win).find('.paginate_button').text() + '</footer>');
                 },
                 exportOptions: {
-                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                    columns: ':not(:last-child)' // Exclude the last column (Actions)
                 }
             }
         ],
@@ -876,6 +1037,16 @@ $(document).ready(function () {
         autoWidth: false
     });
 });
+
+// Helper function for formatting the date
+function getFormattedDate() {
+    const date = new Date();
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
 
 
         // Store the original rows when the page loads

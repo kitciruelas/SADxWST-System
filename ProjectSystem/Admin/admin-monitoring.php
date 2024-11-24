@@ -105,13 +105,45 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_Admin/admin-manageuser.css">
+    <title>Presence Monitoring</title>
+    <link rel="icon" href="img-icon/eye.png" type="image/png">
+
+    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+
+<!-- Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<!-- DataTables Buttons CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+
+<!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+
+<!-- JSZip for Excel Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+
+<!-- pdfMake for PDF Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+
+<!-- DataTables Buttons for exporting -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 </head>
 <body>
     <!-- Sidebar -->
@@ -131,7 +163,15 @@ $conn->close();
 
         </div>
         <div class="logout">
-            <a href="../config/logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        <a href="../config/logout.php" onclick="return confirmLogout();">
+    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
+
+<script>
+function confirmLogout() {
+    return confirm("Are you sure you want to log out?");
+}
+</script>
         </div>
     </div>
 
@@ -144,10 +184,6 @@ $conn->close();
     <div class="main-content">
     <div class="container">
 
-<div class="d-flex justify-content-start">
-<button type="button" class="btn " onclick="window.history.back();">
-    <i class="fas fa-arrow-left fa-2x me-2"></i></button>
-</div>        
     <div class="container mt-1">
     <!-- Search and Filter Section -->
     <!-- Room Table Filter Section -->
@@ -179,7 +215,7 @@ $conn->close();
 
 <!-- Room Table -->
 <div class="table-responsive">
-    <table class="table table-bordered">
+    <table class="table table-bordered" id="monitoring">
         <thead class="table-light">
             <tr>
                 <th>ID</th>
@@ -262,11 +298,136 @@ $conn->close();
 
 </style>
 
+
+           <!-- JavaScript Libraries -->
+           <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Bootstrap JS and Popper.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Hamburger Menu Script -->
     <script>
+   $(document).ready(function() {
+  var table = $('#monitoring').DataTable({
+    dom: 'Bfrtip',  // Include Buttons and other elements (search, pagination, etc.)
+    buttons: [
+      {
+        extend: 'copy',
+        exportOptions: {
+          columns: ':not(:last-child)'  // Exclude the last column (Actions)
+        },
+        title: 'Visitor List Report - ' + getFormattedDate(),
+      },
+      {
+        extend: 'csv',
+        exportOptions: {
+          columns: ':not(:last-child)'  // Exclude the last column (Actions)
+        },
+        title: 'Visitor List Report - ' + getFormattedDate(),
+      },
+      {
+        extend: 'excel',
+        exportOptions: {
+          columns: ':not(:last-child)'  // Exclude the last column (Actions)
+        },
+        title: 'Visitor List Report - ' + getFormattedDate(),
+      },
+      {
+        extend: 'print',
+        exportOptions: {
+          columns: ':not(:last-child)'  // Exclude the last column (Actions)
+        },
+        title: '', // Empty title to remove it
+        customize: function(win) {
+          var doc = win.document;
+
+          // Style the page for print
+          $(doc.body).css({
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '12pt',
+            color: '#333333',
+            lineHeight: '1.6',
+            backgroundColor: '#ffffff',
+          });
+
+          // Add a formal header (Title and Date)
+          $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Monitoring List Report</h1>');
+          $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
+
+          // Style the table
+          $(doc.body).find('table').css({
+            width: '100%',
+            borderCollapse: 'collapse',
+            marginTop: '20px',
+            border: '1px solid #dddddd',
+          });
+          $(doc.body).find('table th').css({
+            backgroundColor: '#f3f3f3',
+            color: '#000000',
+            fontSize: '14pt',
+            padding: '8px',
+            border: '1px solid #dddddd',
+            textAlign: 'left',
+          });
+          $(doc.body).find('table td').css({
+            fontSize: '12pt',
+            padding: '8px',
+            border: '1px solid #dddddd',
+            textAlign: 'left',
+          });
+
+          // Print footer (optional, page numbering)
+          $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page ' + $(win).find('.paginate_button').text() + '</footer>');
+        },
+      }
+    ],
+    paging: false,   // Disable pagination
+    searching: false,  // Disable search functionality
+    info: false,  // Hide the "Showing 1 to X of X entries" info
+  });
+
+
+  // Function to sort the table based on selected option
+  $('#sortSelect').change(function() {
+    var value = $(this).val();
+
+    switch (value) {
+      case 'resident_asc':
+        table.order([0, 'asc']).draw();  // Assuming column 0 is 'Resident'
+        break;
+      case 'resident_desc':
+        table.order([0, 'desc']).draw();
+        break;
+      case 'check_in_asc':
+        table.order([2, 'asc']).draw();  // Assuming column 2 is 'Check-In Time'
+        break;
+      case 'check_in_desc':
+        table.order([2, 'desc']).draw();
+        break;
+      case 'check_out_asc':
+        table.order([3, 'asc']).draw();  // Assuming column 3 is 'Check-Out Time'
+        break;
+      case 'check_out_desc':
+        table.order([3, 'desc']).draw();
+        break;
+      default:
+        table.order([]).draw();  // Reset to default order
+        break;
+    }
+  });
+});
+
+
+// Function to get the current date and time in a formatted string
+function getFormattedDate() {
+  var now = new Date();
+  var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+  var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
+  return date + ' ' + time;
+}
 function applySort() {
     const sortValue = document.getElementById('sortSelect').value;
     const table = document.querySelector('.table');

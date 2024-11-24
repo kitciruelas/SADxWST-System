@@ -338,16 +338,47 @@ if (isset($_POST['delete_user'])) {
     if ($archiveUsers) {
         $archiveUsers->bind_param("i", $userId);
         if ($archiveUsers->execute()) {
-            // Prepare delete statement for users after archiving
-            $stmtUsers = $conn->prepare("DELETE FROM users WHERE id = ?");
-            if ($stmtUsers) {
-                $stmtUsers->bind_param("i", $userId);
-                if ($stmtUsers->execute()) {
-                    echo "<script>alert('User deleted successfully!');</script>";
+            // Archive staff if applicable
+            $archiveStaff = $conn->prepare("INSERT INTO staff_archive (id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, archived_at)
+                                            SELECT id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, NOW()
+                                            FROM staff WHERE id = ?");
+            
+            if ($archiveStaff) {
+                $archiveStaff->bind_param("i", $userId);
+                if ($archiveStaff->execute()) {
+                    // Proceed to delete the user and staff after archiving
+                    $deleteUserQuery = "DELETE FROM users WHERE id = ?";
+                    $deleteStaffQuery = "DELETE FROM staff WHERE id = ?";
+                    
+                    // Prepare and execute the delete query for the user
+                    $stmtDeleteUser = $conn->prepare($deleteUserQuery);
+                    if ($stmtDeleteUser) {
+                        $stmtDeleteUser->bind_param("i", $userId);
+                        if ($stmtDeleteUser->execute()) {
+                            echo "<script>alert('User and staff archived and deleted successfully!');</script>";
+                        } else {
+                            echo "<script>alert('Error deleting user: " . $stmtDeleteUser->error . "');</script>";
+                        }
+                        $stmtDeleteUser->close();
+                    }
+
+                    // Prepare and execute the delete query for the staff
+                    $stmtDeleteStaff = $conn->prepare($deleteStaffQuery);
+                    if ($stmtDeleteStaff) {
+                        $stmtDeleteStaff->bind_param("i", $userId);
+                        if ($stmtDeleteStaff->execute()) {
+                            // Optionally alert if staff entry was deleted
+                        } else {
+                            echo "<script>alert('Error deleting staff: " . $stmtDeleteStaff->error . "');</script>";
+                        }
+                        $stmtDeleteStaff->close();
+                    }
                 } else {
-                    echo "<script>alert('Error deleting user: " . $stmtUsers->error . "');</script>";
+                    echo "<script>alert('Error archiving staff: " . $archiveStaff->error . "');</script>";
                 }
-                $stmtUsers->close();
+                $archiveStaff->close();
+            } else {
+                echo "<script>alert('Error preparing statement for staff archiving: " . $conn->error . "');</script>";
             }
         } else {
             echo "<script>alert('Error archiving user: " . $archiveUsers->error . "');</script>";
@@ -355,33 +386,6 @@ if (isset($_POST['delete_user'])) {
         $archiveUsers->close();
     } else {
         echo "<script>alert('Error preparing statement for user archiving: " . $conn->error . "');</script>";
-    }
-    
-    // Archive staff if applicable
-    $archiveStaff = $conn->prepare("INSERT INTO staff_archive (id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, archived_at)
-                                    SELECT id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, NOW()
-                                    FROM staff WHERE id = ?");
-    
-    if ($archiveStaff) {
-        $archiveStaff->bind_param("i", $userId);
-        if ($archiveStaff->execute()) {
-            // Prepare delete statement for staff after archiving
-            $stmtStaff = $conn->prepare("DELETE FROM staff WHERE id = ?");
-            if ($stmtStaff) {
-                $stmtStaff->bind_param("i", $userId);
-                if ($stmtStaff->execute()) {
-                    // Optionally alert if staff entry was deleted
-                } else {
-                    echo "<script>alert('Error deleting staff: " . $stmtStaff->error . "');</script>";
-                }
-                $stmtStaff->close();
-            }
-        } else {
-            echo "<script>alert('Error archiving staff: " . $archiveStaff->error . "');</script>";
-        }
-        $archiveStaff->close();
-    } else {
-        echo "<script>alert('Error preparing statement for staff archiving: " . $conn->error . "');</script>";
     }
 }
 
@@ -461,7 +465,8 @@ if (!empty($search)) {
 }
 
 // Apply sorting and pagination
-$sql .= " ORDER BY id DESC LIMIT $startRow, $rowsPerPage";
+$sql .= " ORDER BY created_at DESC LIMIT $startRow, $rowsPerPage
+";
 
 $result = $conn->query($sql);
 if ($result === false) {
@@ -489,6 +494,32 @@ switch ($sort) {
 // Now modify your SQL query to use the sorting logic
 $sql = "SELECT * FROM users ORDER BY $order";
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle-status'])) {
+    // Get user ID
+    $userId = intval($_POST['user_id']);  // Ensure this is an integer for security
+
+    // Fetch current status from the database
+    $sql = "SELECT status FROM users WHERE id = $userId";
+    $result = mysqli_query($conn, $sql);
+
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $currentStatus = $row['status'];
+
+        // Toggle the status: active -> inactive, inactive -> active
+        $newStatus = ($currentStatus === 'active') ? 'inactive' : 'active';
+
+        // Update the user's status in the database
+        $updateSql = "UPDATE users SET status = '$newStatus' WHERE id = $userId";
+        if (mysqli_query($conn, $updateSql)) {
+            echo "<script>alert('User status updated successfully.');</script>";
+        } else {
+            echo "<script>alert('Error updating status: " . mysqli_error($conn) . "');</script>";
+        }
+    } else {
+        echo "<script>alert('No user found with ID: $userId');</script>";
+    }
+}
 
 
 ?>

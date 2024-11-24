@@ -7,6 +7,14 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     exit;
 }
 
+require 'PHPMailer-master/src/Exception.php';
+require 'PHPMailer-master/src/PHPMailer.php';
+require 'PHPMailer-master/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php';
 include '../config/config.php'; // Ensure this is correct
 // Check connection
 if ($conn->connect_error) {
@@ -85,7 +93,73 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Close the connection
 }
+// Rent Payment Reminder function
+function sendRentPaymentReminder($userId, $roomId, $conn) {
+    // Fetch user details
+    $userQuery = "SELECT Fname, Lname, email FROM users WHERE id = ?";
+    if ($stmt = mysqli_prepare($conn, $userQuery)) {
+        mysqli_stmt_bind_param($stmt, 'i', $userId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $firstName, $lastName, $userEmail);
+        mysqli_stmt_fetch($stmt);
+        mysqli_stmt_close($stmt);
+    }
 
+    // Fetch room's monthly rent
+    $roomRentQuery = "SELECT room_monthlyrent FROM rooms WHERE room_id = ?";
+    if ($stmt = mysqli_prepare($conn, $roomRentQuery)) {
+        mysqli_stmt_bind_param($stmt, 'i', $roomId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $roomRent);
+        mysqli_stmt_fetch($stmt);
+        mysqli_stmt_close($stmt);
+    }
+
+    // Rent payment reminder logic
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com'; // Use Gmail SMTP server
+        $mail->SMTPAuth = true;
+        $mail->Username = 'dormioph@gmail.com'; // Your Gmail email
+        $mail->Password = 'ymrd smvk acxa whdy'; // Your generated Google App Password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Use STARTTLS encryption
+        $mail->Port = 587; // Port for STARTTLS
+    
+        // Recipients
+        $mail->setFrom('dormioph@gmail.com', 'Dormio Ph');
+        $mail->addAddress($userEmail, "$firstName $lastName");  // Recipient's email
+    
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Upcoming Rent Payment Reminder';
+        
+        // Calculate 10 minutes before the due date (adjust as necessary)
+        $dueDateTime = new DateTime(); // Assuming due date is now + 10 minutes for simplicity
+        $reminderDate = $dueDateTime->modify('+10 minutes');
+        $currentDate = new DateTime();
+
+        if ($reminderDate->format('Y-m-d H:i') === $currentDate->format('Y-m-d H:i')) {
+            // Custom content for rent payment reminder
+            $mail->Body = "Dear $firstName $lastName,<br><br>
+                           This is a reminder that your rent payment of <strong>$roomRent</strong> is due on <strong>" . $dueDateTime->format('F j, Y H:i') . "</strong>. Please make sure to complete your payment within the next 10 minutes to avoid any penalties or disruptions to your room assignment.<br><br>
+                           If you have any questions, please contact the administration.<br><br>
+                           Best regards,<br>Maricel Perce<br>Admin";
+        
+            // Send email
+            if ($mail->send()) {
+                echo 'Rent payment reminder email has been sent.';
+            } else {
+                echo 'Failed to send rent payment reminder email.';
+            }
+        }
+    } catch (Exception $e) {
+        // Log detailed error for debugging
+        error_log("Mailer Error: {$mail->ErrorInfo}");
+        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+    }
+}
 // Fetch room assignments for all users
 $currentAssignmentsQuery = "
     SELECT 

@@ -13,23 +13,49 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
+// Start session at the beginning of the script
+session_start();
+
 // Process form submission to add new announcement
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     if (isset($_POST['announcement-title']) && isset($_POST['announcement-content'])) {
         $title = $_POST['announcement-title'];
         $content = $_POST['announcement-content'];
 
-        // Insert the new announcement into the database with the current date
-        $sql = "INSERT INTO announce (title, content, date_published) VALUES ('$title', '$content', NOW())";
-        if (mysqli_query($conn, $sql)) {
-            echo "<script>alert('New announcement added successfully');</script>";
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit;
+        // Ensure the user is logged in by checking the session ID
+        if (isset($_SESSION['id'])) {
+            $staff = $_SESSION['id']; // Store user ID in $staff
+
+            // Insert the new announcement into the database with the current date
+            $sql = "INSERT INTO announce (title, content, date_published) VALUES ('$title', '$content', NOW())";
+            if (mysqli_query($conn, $sql)) {
+                // Log the activity in the activity_logs table using the correct variable
+                $activity_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                                 VALUES ('$staff', 'Announcement Created', 'New announcement added with title: $title')";
+                if (mysqli_query($conn, $activity_sql)) {
+                    echo "<script>alert('New announcement added successfully');</script>";
+                } else {
+                    echo "Error logging activity: " . mysqli_error($conn);
+                }
+
+                // Redirect to the same page
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit;
+            } else {
+                echo "Error adding announcement: " . mysqli_error($conn);
+            }
         } else {
-            echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+            echo "Error: User not logged in.";
         }
+    } else {
+        echo "Error: Announcement title or content missing.";
     }
 }
+
+
+
+// Ensure session is started to access $_SESSION['id']
+// Ensure session is started to access $_SESSION['id']
 
 // Check if the update form is submitted
 if (isset($_POST['update'])) {
@@ -37,17 +63,36 @@ if (isset($_POST['update'])) {
     $updated_title = $_POST['announcement-title'];
     $updated_content = $_POST['announcement-content'];
 
-    $sql = "UPDATE announce 
-    SET title = '$updated_title', 
-        content = '$updated_content', 
-        date_published = NOW() 
-    WHERE announcementId = $announcement_id";
-if (mysqli_query($conn, $sql)) {
-        echo "<script>alert('Announcement updated successfully');</script>";
-        header("Location: " . $_SERVER['PHP_SELF']);
-        exit();
+    // Ensure that input values are not empty
+    if (!empty($updated_title) && !empty($updated_content)) {
+        $sql = "UPDATE announce 
+                SET title = '$updated_title', 
+                    content = '$updated_content', 
+                    date_published = NOW() 
+                WHERE announcementId = $announcement_id";
+
+        if (mysqli_query($conn, $sql)) {
+            // Retrieve the title and content of the announcement to log it
+            $title_sql = "SELECT title, content FROM announce WHERE announcementId = $announcement_id";
+            $result = mysqli_query($conn, $title_sql);
+            $row = mysqli_fetch_assoc($result);
+            $announcement_title = $row['title'];
+            $announcement_content = $row['content'];
+
+            // Log the activity of updating the announcement
+            $staff_id = $_SESSION['id'];  // Assuming the user is logged in and their ID is in the session
+            $activity_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                             VALUES ('$staff_id', 'Announcement Updated', 'Updated announcement with ID: $announcement_id, title: $announcement_title, and content: $announcement_content')";
+            mysqli_query($conn, $activity_sql);
+
+            echo "<script>alert('Announcement updated successfully');</script>";
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        } else {
+            echo "Error updating announcement: " . mysqli_error($conn);
+        }
     } else {
-        echo "Error updating announcement: " . mysqli_error($conn);
+        echo "Title and content cannot be empty.";
     }
 }
 
@@ -55,23 +100,41 @@ if (mysqli_query($conn, $sql)) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
     $announcementId = $_POST['announcement-id'];
 
-    // Step 1: Copy the announcement to the archive table
-    $archiveSql = "INSERT INTO announce_archive (announcementId, title, content, date_published, is_displayed)
-                   SELECT announcementId, title, content, date_published, is_displayed
-                   FROM announce WHERE announcementId = $announcementId";
+    // Ensure that announcementId is valid
+    if (isset($announcementId) && !empty($announcementId)) {
+        // Step 1: Copy the announcement to the archive table
+        $archiveSql = "INSERT INTO announce_archive (announcementId, title, content, date_published, is_displayed)
+                       SELECT announcementId, title, content, date_published, is_displayed
+                       FROM announce WHERE announcementId = $announcementId";
 
-    if (mysqli_query($conn, $archiveSql)) {
-        // Step 2: Delete the announcement from the original table
-        $deleteSql = "DELETE FROM announce WHERE announcementId = $announcementId";
-        if (mysqli_query($conn, $deleteSql)) {
-            echo "<script>alert('Announcement archived and deleted successfully');</script>";
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit;
+        if (mysqli_query($conn, $archiveSql)) {
+            // Step 2: Delete the announcement from the original table
+            $deleteSql = "DELETE FROM announce WHERE announcementId = $announcementId";
+            if (mysqli_query($conn, $deleteSql)) {
+                // Retrieve the title and content of the announcement to log it
+                $title_sql = "SELECT title, content FROM announce WHERE announcementId = $announcementId";
+                $result = mysqli_query($conn, $title_sql);
+                $row = mysqli_fetch_assoc($result);
+                $announcement_title = $row['title'];
+                $announcement_content = $row['content'];
+
+                // Log the activity of deleting the announcement
+                $staff_id = $_SESSION['id'];  // Assuming the user is logged in and their ID is in the session
+                $activity_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                                 VALUES ('$staff_id', 'Announcement Deleted', 'Deleted announcement with ID: $announcementId, title: $announcement_title, and content: $announcement_content')";
+                mysqli_query($conn, $activity_sql);
+
+                echo "<script>alert('Announcement Deleted successfully');</script>";
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            } else {
+                echo "Error deleting announcement: " . mysqli_error($conn);
+            }
         } else {
-            echo "Error deleting announcement: " . mysqli_error($conn);
+            echo "Error archiving announcement: " . mysqli_error($conn);
         }
     } else {
-        echo "Error archiving announcement: " . mysqli_error($conn);
+        echo "Invalid announcement ID.";
     }
 }
 

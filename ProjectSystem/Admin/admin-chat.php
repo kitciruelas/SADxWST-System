@@ -413,12 +413,21 @@ function confirmLogout() {
             <div class="d-flex">
 
 <!-- Chatlogs Section (Left) -->
-<div id="chatlogs" class="d-flex flex-column" style="flex: 1; overflow-y: auto; margin-right: 20px; padding-right: 10px;">
+<div id="chatlogs" class="d-flex flex-column">
     <?php 
-    // Display messages
-    foreach (getMessages($conn) as $message): 
-        // Check if the message was sent by the current user
-        $message_type = ($message['sender_id'] === $_SESSION['id']) ? 'sent' : 'received';
+    // Fetch messages
+    $messages = getMessages($conn);
+    
+    // Check if there are messages
+    if (empty($messages)): ?>
+        <div class="no-chat-history" style="text-align: center; color: #888; font-size: 18px; padding: 20px;">
+            No chat history available.
+        </div>
+    <?php else: 
+        // Display messages
+        foreach ($messages as $message): 
+            // Check if the message was sent by the current user
+            $message_type = ($message['sender_id'] === $_SESSION['id']) ? 'sent' : 'received';
     ?>
     <div class="message-container <?= htmlspecialchars($message_type) ?>" onclick="showDetails(<?= htmlspecialchars($message['id']) ?>)">
         <?php if ($message_type === 'received' && isset($message['profile_pic'])): ?>
@@ -445,7 +454,8 @@ function confirmLogout() {
             <div class="small text-muted text-right"><?= date('h:i A', strtotime($message['timestamp'])) ?></div>
         </div>
     </div>
-    <?php endforeach; ?>
+    <?php endforeach; 
+    endif; ?>
     
     <!-- Sticky Message Form -->
     <form name="form1" id="messageForm" onsubmit="return submitchat()" action="staff-chat.php" method="POST" class="mt-5" style="position: sticky; bottom: 0; background-color: white; z-index: 10; padding: 10px; border-top: 1px solid #ddd;">

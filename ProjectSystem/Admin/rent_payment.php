@@ -16,7 +16,7 @@ if ($conn->connect_error) {
 
 
 // SQL query to fetch users from the users table
-$sql = "SELECT id, fname, lname FROM users";
+$sql = "SELECT id, fname, lname FROM users ORDER BY id;";
 $result = mysqli_query($conn, $sql);
 
 // Store the options in an array
@@ -122,6 +122,16 @@ if (isset($_GET['delete_payment_id'])) {
 
     exit();
 }
+// Check for the 'message' query parameter and display an alert if it exists
+if (isset($_GET['message'])) {
+    echo "<script>alert('" . htmlspecialchars($_GET['message']) . "');</script>";
+}
+
+// Check for the 'error' query parameter and display an error alert if it exists
+if (isset($_GET['error'])) {
+    echo "<script>alert('" . htmlspecialchars($_GET['error']) . "');</script>";
+}
+
 ?>
 
 
@@ -178,7 +188,7 @@ if (isset($_GET['delete_payment_id'])) {
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" ><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 

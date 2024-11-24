@@ -303,6 +303,7 @@ function confirmLogout() {
     
     <!-- JavaScript -->
     <script>
+        
 $(document).ready(function() {
   var table = $('#visitorTable').DataTable({
     dom: 'Bfrtip',  // Include Buttons and other elements (search, pagination, etc.)
@@ -373,15 +374,18 @@ $(document).ready(function() {
           });
 
           // Print footer (optional, page numbering)
-          $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page ' + $(win).find('.paginate_button').text() + '</footer>');
+          var pageCount = $(win).find('.paginate_button').length > 0 ? $(win).find('.paginate_button').length : 1;
+          $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page 1 of ' + pageCount + '</footer>');
         },
       }
     ],
     paging: false,   // Disable pagination
     searching: false,  // Disable search functionality
     info: false,  // Hide the "Showing 1 to X of X entries" info
-  });
+    order: [] // Disable initial sort, if not needed
 
+  });
+  
 
   // Function to sort the table based on selected option
   $('#sortSelect').change(function() {

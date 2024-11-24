@@ -44,9 +44,22 @@ if (isset($_GET['delete_attendance_id'])) {
     // Get the ID of the attendance record to be deleted
     $delete_id = $_GET['delete_attendance_id'];
 
-    // Validate if the ID is numeric (optional but recommended)
+    // Validate if the ID is numeric
     if (is_numeric($delete_id)) {
-        // Prepare the DELETE SQL query
+        // Step 1: Retrieve the fname associated with the attendance record
+        $fname = '';
+        $fetch_sql = "SELECT u.fname FROM presencemonitoring p 
+                      JOIN users u ON p.user_id = u.id 
+                      WHERE p.attendance_id = ?";
+        if ($fetch_stmt = $conn->prepare($fetch_sql)) {
+            $fetch_stmt->bind_param("i", $delete_id);
+            $fetch_stmt->execute();
+            $fetch_stmt->bind_result($fname);
+            $fetch_stmt->fetch();
+            $fetch_stmt->close();
+        }
+
+        // Step 2: Prepare the DELETE SQL query
         $sql = "DELETE FROM presencemonitoring WHERE attendance_id = ?";
 
         // Prepare the statement
@@ -56,6 +69,18 @@ if (isset($_GET['delete_attendance_id'])) {
 
             // Execute the query
             if ($stmt->execute()) {
+                // Step 3: Log the activity
+                $user_id = $_SESSION['id']; // Use session user ID
+                $activity_type = 'Delete';
+                $activity_details = "Deleted attendance record for $fname";
+
+                $log_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+                if ($log_stmt = $conn->prepare($log_sql)) {
+                    $log_stmt->bind_param("iss", $user_id, $activity_type, $activity_details);
+                    $log_stmt->execute();
+                    $log_stmt->close();
+                }
+
                 // Success message
                 echo "<script>alert('Record deleted successfully'); window.location.href='admin-monitoring.php';</script>";
             } else {
@@ -73,6 +98,7 @@ if (isset($_GET['delete_attendance_id'])) {
         echo "<script>alert('Invalid ID');</script>";
     }
 }
+
 $query = "
 SELECT 
     pm.attendance_id AS ID,

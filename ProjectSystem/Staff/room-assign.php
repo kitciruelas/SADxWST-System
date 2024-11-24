@@ -42,48 +42,70 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Check if the room is at capacity
-    if ($currentCount >= $roomCapacity) {
-        // Alert for full capacity
-        echo "<script>alert('Cannot assign room. Room is at full capacity.');</script>";
-    } else {
-        // Check if the user already has a room assigned
-        $checkAssignmentQuery = "SELECT assignment_id FROM roomassignments WHERE user_id = ?";
-        if ($stmt = mysqli_prepare($conn, $checkAssignmentQuery)) {
-            mysqli_stmt_bind_param($stmt, 'i', $userId);
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_store_result($stmt);
+if ($currentCount >= $roomCapacity) {
+    // Alert for full capacity
+    echo "<script>alert('Cannot assign room. Room is at full capacity.');</script>";
+} else {
+    // Check if the user already has a room assigned
+    $checkAssignmentQuery = "SELECT assignment_id FROM roomassignments WHERE user_id = ?";
+    if ($stmt = mysqli_prepare($conn, $checkAssignmentQuery)) {
+        mysqli_stmt_bind_param($stmt, 'i', $userId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_store_result($stmt);
 
-            if (mysqli_stmt_num_rows($stmt) > 0) {
-                // Update existing room assignment
-                $updateRoomQuery = "UPDATE roomassignments SET room_id = ?, assignment_date = CURRENT_DATE WHERE user_id = ?";
-                if ($updateRoomStmt = mysqli_prepare($conn, $updateRoomQuery)) {
-                    mysqli_stmt_bind_param($updateRoomStmt, 'ii', $roomId, $userId);
-                    if (mysqli_stmt_execute($updateRoomStmt)) {
-                        echo "<script>alert('Room assignment updated successfully.');</script>";
-                    } else {
-                        echo "<script>alert('Error updating room assignment.');</script>";
-                    }
-                    mysqli_stmt_close($updateRoomStmt);
+        if (mysqli_stmt_num_rows($stmt) > 0) {
+            // Update existing room assignment
+            $updateRoomQuery = "UPDATE roomassignments SET room_id = ?, assignment_date = CURRENT_DATE WHERE user_id = ?";
+            if ($updateRoomStmt = mysqli_prepare($conn, $updateRoomQuery)) {
+                mysqli_stmt_bind_param($updateRoomStmt, 'ii', $roomId, $userId);
+                if (mysqli_stmt_execute($updateRoomStmt)) {
+                    echo "<script>alert('Room assignment updated successfully.');</script>";
+
+                    // Log the activity for room assignment update
+                    $logQuery = "
+                        INSERT INTO activity_logs (user_id, activity_type, activity_details)
+                        VALUES (?, 'Room Assignment Update', ?)
+                    ";
+                    $logStmt = mysqli_prepare($conn, $logQuery);
+                    $activityDetails = "User ID: $userId, New Room ID: $roomId";
+                    mysqli_stmt_bind_param($logStmt, 'is', $_SESSION['id'], $activityDetails);
+                    mysqli_stmt_execute($logStmt);
+                    mysqli_stmt_close($logStmt);
+                } else {
+                    echo "<script>alert('Error updating room assignment.');</script>";
                 }
-            } else {
-                // Insert new room assignment
-                $insertRoomQuery = "INSERT INTO roomassignments (user_id, room_id, assignment_date) VALUES (?, ?, CURRENT_DATE)";
-                if ($insertRoomStmt = mysqli_prepare($conn, $insertRoomQuery)) {
-                    mysqli_stmt_bind_param($insertRoomStmt, 'ii', $userId, $roomId);
-                    if (mysqli_stmt_execute($insertRoomStmt)) {
-                        echo "<script>alert('Room assigned successfully.');</script>";
-                    } else {
-                        echo "<script>alert('Error assigning room.');</script>";
-                    }
-                    mysqli_stmt_close($insertRoomStmt);
-                }
+                mysqli_stmt_close($updateRoomStmt);
             }
+        } else {
+            // Insert new room assignment
+            $insertRoomQuery = "INSERT INTO roomassignments (user_id, room_id, assignment_date) VALUES (?, ?, CURRENT_DATE)";
+            if ($insertRoomStmt = mysqli_prepare($conn, $insertRoomQuery)) {
+                mysqli_stmt_bind_param($insertRoomStmt, 'ii', $userId, $roomId);
+                if (mysqli_stmt_execute($insertRoomStmt)) {
+                    echo "<script>alert('Room assigned successfully.');</script>";
 
-            mysqli_stmt_close($stmt);
+                    // Log the activity for room assignment
+                    $logQuery = "
+                        INSERT INTO activity_logs (user_id, activity_type, activity_details)
+                        VALUES (?, 'Room Assignment', ?)
+                    ";
+                    $logStmt = mysqli_prepare($conn, $logQuery);
+                    $activityDetails = "User ID: $userId, Assigned Room ID: $roomId";
+                    mysqli_stmt_bind_param($logStmt, 'is', $_SESSION['id'], $activityDetails);
+                    mysqli_stmt_execute($logStmt);
+                    mysqli_stmt_close($logStmt);
+                } else {
+                    echo "<script>alert('Error assigning room.');</script>";
+                }
+                mysqli_stmt_close($insertRoomStmt);
+            }
         }
-    }
 
-    // Close the connection
+        mysqli_stmt_close($stmt);
+    }
+}
+
+// Close the connection
 }
 
 // Fetch room assignments for all users

@@ -53,10 +53,10 @@ if (isset($_POST['user_id'])) {
         $room_number = ''; // If no room is assigned
     }
 }
-
-
-// Check if the form is submitted (for both create and update)
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Get the staff ID from the session
+    $staff_id = $_SESSION['id'];
+
     // Check if it's a payment creation (no payment_id in the form)
     if (!isset($_POST['payment_id'])) {
         // Capture form data for creating a payment
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $payment_date = mysqli_real_escape_string($conn, $_POST['payment_date']);
         $status = mysqli_real_escape_string($conn, $_POST['status']);
         $payment_method = mysqli_real_escape_string($conn, $_POST['payment_method']);
-        $reference_number = isset($_POST['reference_number']) ? mysqli_real_escape_string($conn, $_POST['reference_number']) : NULL;
+        $reference_number = !empty($_POST['reference_number']) ? mysqli_real_escape_string($conn, $_POST['reference_number']) : NULL;
 
         // Prepare SQL query to insert payment data
         $query = "INSERT INTO rentpayment (user_id, amount, payment_date, status, payment_method, reference_number) 
@@ -73,9 +73,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Execute the query
         if (mysqli_query($conn, $query)) {
-            header('Location: rent_payment.php?message=Payment created successfully');
+            // Log activity
+            $activity_details = "Created payment for user_id: $user_id, amount: $amount, payment method: $payment_method";
+            $log_query = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                          VALUES ('$staff_id', 'Payment Created', '$activity_details')";
+            mysqli_query($conn, $log_query);
+
+            echo "<script>alert('Payment created successfully'); window.location.href='rent_payment.php';</script>";
         } else {
-            header('Location: rent_payment.php?error=Failed to create payment');
+            echo "<script>alert('Failed to create payment'); window.location.href='rent_payment.php';</script>";
         }
     }
 
@@ -98,30 +104,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Execute the query
         if (mysqli_query($conn, $sql)) {
-            header('Location: rent_payment.php?message=Payment updated successfully');
+            // Log activity
+            $activity_details = "Updated payment for payment_id: $payment_id, new amount: $amount, status: $status";
+            $log_query = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                          VALUES ('$staff_id', 'Payment Updated', '$activity_details')";
+            mysqli_query($conn, $log_query);
+
+            echo "<script>alert('Payment updated successfully'); window.location.href='rent_payment.php';</script>";
         } else {
-            header('Location: rent_payment.php?error=Failed to update payment');
+            echo "<script>alert('Failed to update payment'); window.location.href='rent_payment.php';</script>";
         }
     }
 }
+
 // Check if the delete request is set
 if (isset($_GET['delete_payment_id'])) {
     $payment_id = mysqli_real_escape_string($conn, $_GET['delete_payment_id']);
+
+    // Prepare the SQL query to get the user_id of the payment being deleted
+    $select_query = "SELECT user_id FROM rentpayment WHERE payment_id = '$payment_id'";
+    $result = mysqli_query($conn, $select_query);
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $user_id = $row['user_id'];  // Get the user_id associated with the payment
+    } else {
+        // If no payment found, redirect with an error
+        echo "<script>alert('Payment not found'); window.location.href='rent_payment.php';</script>";
+        exit();
+    }
+
+    // Get the staff ID from the session
+    $staff_id = $_SESSION['id'];
 
     // Prepare the SQL query to delete the payment
     $query = "DELETE FROM rentpayment WHERE payment_id = '$payment_id'";
 
     // Execute the query
     if (mysqli_query($conn, $query)) {
-        // Redirect to the same page with a success message
-        header('Location: rent_payment.php?message=Payment deleted successfully');
+        // Log activity: record the user_id (the person whose payment is being deleted)
+        $activity_details = "Deleted payment with payment_id: $payment_id for user_id: $user_id";
+        $log_query = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                      VALUES ('$staff_id', 'Payment Deleted', '$activity_details')";
+        mysqli_query($conn, $log_query);
+
+        echo "<script>alert('Payment deleted successfully'); window.location.href='rent_payment.php';</script>";
     } else {
-        // Redirect with an error message if deletion fails
-        header('Location: rent_payment.php?error=Failed to delete payment');
+        echo "<script>alert('Failed to delete payment'); window.location.href='rent_payment.php';</script>";
     }
 
     exit();
 }
+
+
 ?>
 
 

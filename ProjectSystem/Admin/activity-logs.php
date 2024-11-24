@@ -182,7 +182,7 @@ if (isset($_GET['delete_payment_id'])) {
         <div class="sidebar-nav">
             <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 

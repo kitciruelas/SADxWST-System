@@ -48,14 +48,120 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 
 <div class="otp-container">
-<img src="logo.png" alt="Dormio Logo" class="logo">
+    <img src="logo.png" alt="Dormio Logo" class="logo">
     <h2>Enter OTP</h2>
     <form method="POST">
-        <label for="otp">OTP Code:</label>
-        <input type="text" id="otp" name="otp" maxlength="5" required>
-        <input type="submit" value="Verify OTP">
+        <div class="form-group">
+            <input type="text" id="otp" name="otp" maxlength="5" placeholder=" " required>
+            <label for="otp">OTP Code</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Verify OTP</button>
     </form>
+
+    <!-- Resend OTP link -->
+    <a href="change-password.php" class="resend-otp-link">Resend OTP</a>
 </div>
+
+
+<style>
+   .otp-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.logo {
+    width: 100px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.form-group {
+    position: relative;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus {
+    border-color: #007bff;
+}
+
+input[type="text"]:focus + label,
+input[type="text"]:not(:placeholder-shown) + label {
+    top: -8px;
+    left: 12px;
+    font-size: 12px;
+    color: #007bff;
+}
+
+label {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #aaa;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+button.btn {
+    display: inline-block;
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button.btn-primary {
+    background-color: #007bff;
+    color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+button.btn-primary:hover {
+    background-color: #0056b3;
+}
+.resend-otp-link {
+    display: inline-block;
+    margin-top: 10px; /* Adds space above the link */
+    color: #007bff; /* Bootstrap primary color */
+    text-decoration: none; /* Removes underline */
+    font-size: 14px; /* Adjusts the font size */
+    font-weight: bold; /* Makes the text bold */
+}
+
+.resend-otp-link:hover {
+    color: #0056b3; /* Darker shade on hover */
+    text-decoration: underline; /* Underline the link on hover */
+}
+
+
+</style>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

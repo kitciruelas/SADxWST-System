@@ -211,7 +211,7 @@ function confirmLogout() {
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
             <option value="resident">Resident</option>
-            <option value="old_room_number">Old Room</option>
+            <!-- <option value="old_room_number">Old Room</option>-->
             <option value="new_room">Reassign Room</option>
             <option value="monthly_rent">Monthly Rent</option>
             <option value="status">Status</option>
@@ -223,10 +223,10 @@ function confirmLogout() {
     <option value="all" selected>Sort by</option>
         <option value="resident_asc">Resident (A to Z)</option>
         <option value="resident_desc">Resident (Z to A)</option>
-        <option value="old_room_asc">Old Room (Low to High)</option>
-        <option value="old_room_desc">Old Room (High to Low)</option>
-        <option value="new_room_asc">Reassign Room (Low to High)</option>
-        <option value="new_room_desc">Reassign Room (High to Low)</option>
+       <!--   <option value="old_room_asc">Old Room (Low to High)</option>
+        <option value="old_room_desc">Old Room (High to Low)</option>-->
+        <option value="new_room_asc">Request Reassigment (Low to High)</option>
+        <option value="new_room_desc">Request Reassigment (High to Low)</option>
         <option value="status_asc">Status (A to Z)</option>
         <option value="status_desc">Status (Z to A)</option>
     </select>
@@ -240,9 +240,9 @@ function confirmLogout() {
         <thead>
             <tr>
                 <th>No.</th>
-                <th>Old Room</th>
+               <!--  <th>Old Room</th>-->
                 <th>Resident</th>
-                <th>Reassign Room</th>
+                <th>Request Reassigment</th>
                 <th>Comment</th>
                 <th>Status</th>
             </tr>
@@ -255,7 +255,7 @@ function confirmLogout() {
                     ?>
                     <tr>
                         <td><?php echo $no++; ?></td>
-                        <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>
+                     <!--     <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>-->
                         <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
                         <td class="new_room"><?php echo htmlspecialchars($row['new_room_number'] ?? 'N/A'); ?></td>
                         <td><?php echo !empty($row['comments']) ? htmlspecialchars($row['comments']) : 'No comment'; ?></td>

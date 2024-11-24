@@ -29,6 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($stmt->execute()) {
             echo "<script>alert('Reassignment status updated successfully.');</script>";
 
+            // Log the activity for updating reassignment status
+            $logQuery = "
+                INSERT INTO activity_logs (user_id, activity_type, activity_details)
+                VALUES (?, 'Reassignment Status Update', ?)
+            ";
+            $logStmt = $conn->prepare($logQuery);
+            $activityDetails = "Reassignment ID: $reassignmentId, New Status: $newStatus";
+            $logStmt->bind_param("is", $_SESSION['id'], $activityDetails);
+            $logStmt->execute();
+            $logStmt->close();
+
             // Proceed only if the status is approved
             if ($newStatus === 'approved') {
                 // Fetch reassignment details to get user_id, old_room_id, and new_room_id
@@ -58,6 +69,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     if ($updateAssignmentStmt->execute()) {
                         echo "<script>alert('User\'s room assignment updated to new room successfully.');</script>";
+
+                        // Log the activity for room assignment update
+                        $logQuery = "
+                            INSERT INTO activity_logs (user_id, activity_type, activity_details)
+                            VALUES (?, 'Room Assignment Update', ?)
+                        ";
+                        $logStmt = $conn->prepare($logQuery);
+                        $activityDetails = "User ID: $userId, New Room ID: $newRoomId";
+                        $logStmt->bind_param("is", $_SESSION['id'], $activityDetails);
+                        $logStmt->execute();
+                        $logStmt->close();
                     } else {
                         echo "Error updating room assignment: " . $updateAssignmentStmt->error;
                     }
@@ -77,23 +99,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-
-
 $sql = "
     SELECT 
         rr.reassignment_id, 
         CONCAT(u.fname, ' ', u.lname) AS resident,
-        COALESCE(ro.room_number, 'N/A') AS old_room_number, -- Use COALESCE to handle NULL old rooms
+        ro.room_number AS old_room_number,
         rn.room_number AS new_room_number,
         rr.reassignment_date,
-        IFNULL(rr.comment, 'No comment') AS comments, -- Correct field name assumed
-        rr.status
+        IFNULL(rr.comment, 'No comment') AS comments,
+        rr.status,
+        ra.application_id,
+        ra.application_date,
+        ra.status AS application_status,
+        IFNULL(ra.comments, 'No comments') AS application_comments
     FROM room_reassignments rr
     JOIN users u ON rr.user_id = u.id
     LEFT JOIN rooms ro ON rr.old_room_id = ro.room_id
     JOIN rooms rn ON rr.new_room_id = rn.room_id
+    LEFT JOIN roomapplications ra ON rr.user_id = ra.user_id AND ra.room_id = rr.old_room_id
     ORDER BY rr.reassignment_id DESC
 ";
+
 
 $result = $conn->query($sql);
 
@@ -208,7 +234,7 @@ function confirmLogout() {
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
             <option value="resident">Resident</option>
-            <option value="old_room_number">Old Room</option>
+          <!--   <option value="old_room_number">Old Room</option>-->
             <option value="new_room">Reassign Room</option>
             <option value="monthly_rent">Monthly Rent</option>
             <option value="status">Status</option>
@@ -220,8 +246,8 @@ function confirmLogout() {
     <option value="all" selected>Sort by</option>
         <option value="resident_asc">Resident (A to Z)</option>
         <option value="resident_desc">Resident (Z to A)</option>
-        <option value="old_room_asc">Old Room (Low to High)</option>
-        <option value="old_room_desc">Old Room (High to Low)</option>
+        <!--   <option value="old_room_asc">Old Room (Low to High)</option>
+        <option value="old_room_desc">Old Room (High to Low)</option>-->
         <option value="new_room_asc">Request Reassigment (Low to High)</option>
         <option value="new_room_desc">Request Reassigment (High to Low)</option>
         <option value="status_asc">Status (A to Z)</option>
@@ -237,7 +263,7 @@ function confirmLogout() {
         <thead>
             <tr>
                 <th>No.</th>
-                <th>Old Room</th>
+                 <!--  <th>Old Room</th>-->
                 <th>Resident</th>
                 <th>Request Reassigment</th>
                 <th>Comment</th>
@@ -252,7 +278,7 @@ function confirmLogout() {
                     ?>
                     <tr>
                         <td><?php echo $no++; ?></td>
-                        <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>
+                       <!--  <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>-->
                         <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
                         <td class="new_room"><?php echo htmlspecialchars($row['new_room_number'] ?? 'N/A'); ?></td>
                         <td><?php echo !empty($row['comments']) ? htmlspecialchars($row['comments']) : 'No comment'; ?></td>

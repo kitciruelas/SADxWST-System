@@ -189,28 +189,30 @@ function confirmLogout() {
     <!-- Room Table Filter Section -->
 <div class="row mb-4">
     <div class="col-12 col-md-8">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search...">
     </div>
     <div class="col-6 col-md-2">
         <select id="filterSelect" class="form-select">
-            <option value="all" selected>Filter by</option>
-            <option value="room_number">Room</option>
-            <option value="check_in_time">Check-In Time</option>
-            <option value="check_out_time">Check-Out Time</option>
+            <option value="all">Filter by</option>
+            <option value="1">Resident Name</option>
+            <option value="2">Room</option>
+            <option value="3">Check-In Time</option>
+            <option value="4">Check-Out Time</option>
         </select>
     </div>
     <div class="col-6 col-md-2">
-    <select id="sortSelect" class="form-select" onchange="applySort()" style="width: 100%;">
-        <option value="" selected>Sort by</option>
-        <option value="room_number_asc">Room (Low to High)</option>
-        <option value="room_number_desc">Room (High to Low)</option>
-        <option value="check_in_time_asc">Check-In Time (Earliest to Latest)</option>
-        <option value="check_in_time_desc">Check-In Time (Latest to Earliest)</option>
-        <option value="check_out_time_asc">Check-Out Time (Earliest to Latest)</option>
-        <option value="check_out_time_desc">Check-Out Time (Latest to Earliest)</option>
-    </select>
-</div>
-
+        <select id="sortSelect" class="form-select">
+            <option value="">Sort by</option>
+            <option value="resident_asc">Resident Name (A-Z)</option>
+            <option value="resident_desc">Resident Name (Z-A)</option>
+            <option value="room_asc">Room (Low to High)</option>
+            <option value="room_desc">Room (High to Low)</option>
+            <option value="checkin_asc">Check-In (Earliest)</option>
+            <option value="checkin_desc">Check-In (Latest)</option>
+            <option value="checkout_asc">Check-Out (Earliest)</option>
+            <option value="checkout_desc">Check-Out (Latest)</option>
+        </select>
+    </div>
 </div>
 
 <!-- Room Table -->
@@ -226,28 +228,24 @@ function confirmLogout() {
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="room-table-body">
+        <tbody>
             <?php
             if ($result->num_rows > 0) {
-                $counter = 1;
                 while ($row = $result->fetch_assoc()) {
                     echo "<tr>";
-                    echo "<td>" . $counter++ . "</td>";
+                    echo "<td>" . htmlspecialchars($row["ID"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Resident_Name"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Room_Number"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Check_In_Time"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Check_Out_Time"]) . "</td>";
                     echo "<td>";
                     echo "<form method='GET' action='admin-monitoring.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                    <input type='hidden' name='delete_attendance_id' value='" . htmlspecialchars($row["ID"]) . "' />
-                    <button type='submit' class='custom-btn delete-btn'>Delete</button>
-                </form>";
-                
+                        <input type='hidden' name='delete_attendance_id' value='" . htmlspecialchars($row["ID"]) . "' />
+                        <button type='submit' class='custom-btn delete-btn'>Delete</button>
+                    </form>";
                     echo "</td>";
                     echo "</tr>";
                 }
-            } else {
-                echo "<tr><td colspan='6'>No records found</td></tr>";
             }
             ?>
         </tbody>
@@ -311,224 +309,144 @@ function confirmLogout() {
     <!-- Hamburger Menu Script -->
     <script>
    $(document).ready(function() {
-  var table = $('#monitoring').DataTable({
-    dom: 'Bfrtip',  // Include Buttons and other elements (search, pagination, etc.)
-    buttons: [
-      {
-        extend: 'copy',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: 'Visitor List Report - ' + getFormattedDate(),
-      },
-      {
-        extend: 'csv',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: 'Visitor List Report - ' + getFormattedDate(),
-      },
-      {
-        extend: 'excel',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: 'Visitor List Report - ' + getFormattedDate(),
-      },
-      {
-        extend: 'print',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: '', // Empty title to remove it
-        customize: function(win) {
-          var doc = win.document;
+    // Initialize DataTable with pagination disabled
+    var table = $('#monitoring').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'print'
+        ],
+        paging: false,      // Disable DataTables pagination
+        info: false,        // Remove "Showing X of Y entries" info
+        searching:false,
+        lengthChange: false,
+        order: []
+    });
 
-          // Style the page for print
-          $(doc.body).css({
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '12pt',
-            color: '#333333',
-            lineHeight: '1.6',
-            backgroundColor: '#ffffff',
-          });
+    // Custom pagination logic
+    const rowsPerPage = 10;
+    let currentPage = 1;
+    const rows = $('#monitoring tbody tr');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
 
-          // Add a formal header (Title and Date)
-          $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Monitoring List Report</h1>');
-          $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
-
-          // Style the table
-          $(doc.body).find('table').css({
-            width: '100%',
-            borderCollapse: 'collapse',
-            marginTop: '20px',
-            border: '1px solid #dddddd',
-          });
-          $(doc.body).find('table th').css({
-            backgroundColor: '#f3f3f3',
-            color: '#000000',
-            fontSize: '14pt',
-            padding: '8px',
-            border: '1px solid #dddddd',
-            textAlign: 'left',
-          });
-          $(doc.body).find('table td').css({
-            fontSize: '12pt',
-            padding: '8px',
-            border: '1px solid #dddddd',
-            textAlign: 'left',
-          });
-
-          // Print footer (optional, page numbering)
-          $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page ' + $(win).find('.paginate_button').text() + '</footer>');
-        },
-      }
-    ],
-    paging: false,   // Disable pagination
-    searching: false,  // Disable search functionality
-    info: false,  // Hide the "Showing 1 to X of X entries" info
-  });
-
-
-  // Function to sort the table based on selected option
-  $('#sortSelect').change(function() {
-    var value = $(this).val();
-
-    switch (value) {
-      case 'resident_asc':
-        table.order([0, 'asc']).draw();  // Assuming column 0 is 'Resident'
-        break;
-      case 'resident_desc':
-        table.order([0, 'desc']).draw();
-        break;
-      case 'check_in_asc':
-        table.order([2, 'asc']).draw();  // Assuming column 2 is 'Check-In Time'
-        break;
-      case 'check_in_desc':
-        table.order([2, 'desc']).draw();
-        break;
-      case 'check_out_asc':
-        table.order([3, 'asc']).draw();  // Assuming column 3 is 'Check-Out Time'
-        break;
-      case 'check_out_desc':
-        table.order([3, 'desc']).draw();
-        break;
-      default:
-        table.order([]).draw();  // Reset to default order
-        break;
+    function showPage(page) {
+        const start = (page - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        
+        rows.hide();
+        rows.slice(start, end).show();
+        
+        $('#pageIndicator').text(`Page ${page}`);
+        $('#prevPage').prop('disabled', page === 1);
+        $('#nextPage').prop('disabled', page === totalPages);
     }
-  });
-});
 
+    function nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            showPage(currentPage);
+        }
+    }
 
-// Function to get the current date and time in a formatted string
-function getFormattedDate() {
-  var now = new Date();
-  var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
-  var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
-  return date + ' ' + time;
-}
-function applySort() {
-    const sortValue = document.getElementById('sortSelect').value;
-    const table = document.querySelector('.table');
-    const rows = Array.from(table.querySelector('tbody').rows);
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            showPage(currentPage);
+        }
+    }
 
-    rows.sort((a, b) => {
-        let cellA, cellB;
+    // Initialize pagination
+    showPage(1);
 
-        switch (sortValue) {
-            case 'room_number_asc':
-                cellA = a.querySelector('td:nth-child(3)').textContent.trim(); // Room Number Column
-                cellB = b.querySelector('td:nth-child(3)').textContent.trim();
-                return cellA.localeCompare(cellB);
+    // Bind pagination buttons
+    $('#prevPage').on('click', prevPage);
+    $('#nextPage').on('click', nextPage);
 
-            case 'room_number_desc':
-                cellA = a.querySelector('td:nth-child(3)').textContent.trim();
-                cellB = b.querySelector('td:nth-child(3)').textContent.trim();
-                return cellB.localeCompare(cellA);
+    // Update pagination when search/filter changes
+    table.on('search.dt', function() {
+        currentPage = 1;
+        rows = $('#monitoring tbody tr:visible');
+        totalPages = Math.ceil(rows.length / rowsPerPage);
+        showPage(1);
+    });
 
-            case 'check_in_time_asc':
-                cellA = new Date(a.querySelector('td:nth-child(4)').textContent.trim()); // Check-In Time Column
-                cellB = new Date(b.querySelector('td:nth-child(4)').textContent.trim());
-                return cellA - cellB;
+    // Handle custom search
+    $('#searchInput').on('keyup', function() {
+        table.search(this.value).draw();
+    });
 
-            case 'check_in_time_desc':
-                cellA = new Date(a.querySelector('td:nth-child(4)').textContent.trim());
-                cellB = new Date(b.querySelector('td:nth-child(4)').textContent.trim());
-                return cellB - cellA;
-
-            case 'check_out_time_asc':
-                cellA = new Date(a.querySelector('td:nth-child(5)').textContent.trim()); // Check-Out Time Column
-                cellB = new Date(b.querySelector('td:nth-child(5)').textContent.trim());
-                return cellA - cellB;
-
-            case 'check_out_time_desc':
-                cellA = new Date(a.querySelector('td:nth-child(5)').textContent.trim());
-                cellB = new Date(b.querySelector('td:nth-child(5)').textContent.trim());
-                return cellB - cellA;
-
-            default:
-                return 0; // No sorting
+    // Handle custom filter
+    $('#filterSelect').on('change', function() {
+        var columnIndex = $(this).val();
+        if (columnIndex === 'all') {
+            table.search($('#searchInput').val()).draw();
+        } else {
+            table.column(columnIndex).search($('#searchInput').val()).draw();
         }
     });
 
-    // Re-attach the rows to the table after sorting
-    rows.forEach(row => table.querySelector('tbody').appendChild(row));
+    // Handle custom sort
+    $('#sortSelect').on('change', function() {
+        var value = $(this).val();
+        
+        switch(value) {
+            case 'resident_asc':
+                table.order([1, 'asc']).draw();
+                break;
+            case 'resident_desc':
+                table.order([1, 'desc']).draw();
+                break;
+            case 'room_asc':
+                table.order([2, 'asc']).draw();
+                break;
+            case 'room_desc':
+                table.order([2, 'desc']).draw();
+                break;
+            case 'checkin_asc':
+                table.order([3, 'asc']).draw();
+                break;
+            case 'checkin_desc':
+                table.order([3, 'desc']).draw();
+                break;
+            case 'checkout_asc':
+                table.order([4, 'asc']).draw();
+                break;
+            case 'checkout_desc':
+                table.order([4, 'desc']).draw();
+                break;
+            default:
+                table.order([]).draw();
+        }
+    });
+
+    // Hamburger menu
+    const sidebar = $('#sidebar');
+    const hamburgerMenu = $('#hamburgerMenu');
+    const mainContent = $('.main-content');
+    const topbar = $('.topbar');
+
+    hamburgerMenu.on('click', function() {
+        sidebar.toggleClass('collapsed');
+        mainContent.toggleClass('expanded');
+        topbar.toggleClass('expanded');
+        
+        const icon = hamburgerMenu.find('i');
+        icon.toggleClass('fa-bars fa-times');
+    });
+});
+
+function confirmDelete() {
+    return confirm("Are you sure you want to delete this record?");
 }
 
-          // Get the elements
-    const searchInput = document.getElementById('searchInput');
-    const filterSelect = document.getElementById('filterSelect');
-    const tableBody = document.getElementById('room-table-body');
-    
-    // Function to filter the table based on the search and filter criteria
-    function filterTable() {
-        const searchQuery = searchInput.value.toLowerCase();
-        const filterValue = filterSelect.value;
-
-        // Loop through all rows
-        Array.from(tableBody.rows).forEach(row => {
-            let shouldDisplay = false;
-
-            // Get the column values for the selected filter
-            const residentName = row.cells[1].textContent.toLowerCase();
-            const roomNumber = row.cells[2].textContent.toLowerCase();
-            const checkInTime = row.cells[3].textContent.toLowerCase();
-            const checkOutTime = row.cells[4].textContent.toLowerCase();
-            const dateTime = row.cells[5].textContent.toLowerCase();
-
-            // Check if the search query matches based on the filter selected
-            if (filterValue === 'all') {
-                shouldDisplay = residentName.includes(searchQuery) ||
-                                roomNumber.includes(searchQuery) ||
-                                checkInTime.includes(searchQuery) ||
-                                checkOutTime.includes(searchQuery) ||
-                                dateTime.includes(searchQuery);
-            } else if (filterValue === 'room_number') {
-                shouldDisplay = roomNumber.includes(searchQuery);
-            } else if (filterValue === 'check_in_time') {
-                shouldDisplay = checkInTime.includes(searchQuery);
-            } else if (filterValue === 'check_out_time') {
-                shouldDisplay = checkOutTime.includes(searchQuery);
-            } else if (filterValue === 'date_time') {
-                shouldDisplay = dateTime.includes(searchQuery);
-            }
-
-            // Show or hide the row based on the result
-            row.style.display = shouldDisplay ? '' : 'none';
-        });
-    }
-
-    // Add event listeners for search input and filter select
-    searchInput.addEventListener('input', filterTable);
-    filterSelect.addEventListener('change', filterTable);
-
-    // Initial filter application
-    filterTable();
-
-    
-   function confirmDelete() {
-    return confirm("Are you sure you want to delete this record?");
+function getFormattedDate() {
+    const now = new Date();
+    const date = now.getFullYear() + '-' + 
+                 String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                 String(now.getDate()).padStart(2, '0');
+    const time = String(now.getHours()).padStart(2, '0') + ':' + 
+                 String(now.getMinutes()).padStart(2, '0') + ':' + 
+                 String(now.getSeconds()).padStart(2, '0');
+    return `${date} ${time}`;
 }
 
      // JavaScript for client-side pagination

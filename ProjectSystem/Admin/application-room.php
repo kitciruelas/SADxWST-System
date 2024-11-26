@@ -14,6 +14,101 @@ if ($conn->connect_error) {
 }
 
 
+require 'PHPMailer-master/src/Exception.php';
+require 'PHPMailer-master/src/PHPMailer.php';
+require 'PHPMailer-master/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php'; // Adjust path as needed
+
+function sendReassignmentEmail($userEmail, $firstName, $lastName, $newRoomNumber) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'dormioph@gmail.com';
+        $mail->Password = 'ymrd smvk acxa whdy';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+
+        // Recipients
+        $mail->setFrom('dormioph@gmail.com', 'Dormio Ph');
+        $mail->addAddress($userEmail, "$firstName $lastName");
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Room Reassignment Approved';
+        $mail->Body = "
+            <h2>Room Reassignment Approved</h2>
+            <p>Dear $firstName $lastName,</p>
+            <p>Your room reassignment request has been approved. You have been assigned to Room $newRoomNumber.</p>
+            <p>Please ensure to complete your move within the designated timeframe.</p>
+            <p>Best regards,<br>Dormio Ph Management</p>
+        ";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
+function sendRejectionEmail($userEmail, $firstName, $lastName) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'dormioph@gmail.com';
+        $mail->Password = 'ymrd smvk acxa whdy';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+
+        // Recipients
+        $mail->setFrom('dormioph@gmail.com', 'Dormio Ph');
+        $mail->addAddress($userEmail, "$firstName $lastName");
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Room Reassignment Request Rejected';
+        $mail->Body = "
+            <h2>Room Reassignment Update</h2>
+            <p>Dear $firstName $lastName,</p>
+            <p>We regret to inform you that your room reassignment request has been rejected.</p>
+            <p>If you have any questions, please contact the dormitory management.</p>
+            <p>Best regards,<br>Dormio Ph Management</p>
+        ";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
 // Assuming $conn is the MySQLi connection
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -29,42 +124,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($stmt->execute()) {
             echo "<script>alert('Reassignment status updated successfully.');</script>";
 
-            // Proceed only if the status is approved
-            if ($newStatus === 'approved') {
-                // Fetch reassignment details to get user_id, old_room_id, and new_room_id
-                $fetchDetailsQuery = "
-                    SELECT user_id, old_room_id, new_room_id
-                    FROM room_reassignments
-                    WHERE reassignment_id = ?
+            // Handle both approved and rejected statuses
+            if ($newStatus === 'approved' || $newStatus === 'rejected') {
+                // Fetch user details for email
+                $userQuery = "
+                    SELECT u.email, u.fname, u.lname, r.room_number 
+                    FROM room_reassignments rr
+                    JOIN users u ON rr.user_id = u.id
+                    LEFT JOIN rooms r ON rr.new_room_id = r.room_id
+                    WHERE rr.reassignment_id = ?
                 ";
-                $fetchDetailsStmt = $conn->prepare($fetchDetailsQuery);
-                $fetchDetailsStmt->bind_param("i", $reassignmentId);
-                $fetchDetailsStmt->execute();
-                $reassignmentDetails = $fetchDetailsStmt->get_result()->fetch_assoc();
-                $fetchDetailsStmt->close();
+                $userStmt = $conn->prepare($userQuery);
+                $userStmt->bind_param("i", $reassignmentId);
+                $userStmt->execute();
+                $userResult = $userStmt->get_result()->fetch_assoc();
+                $userStmt->close();
 
-                if ($reassignmentDetails) {
-                    $userId = $reassignmentDetails['user_id'];
-                    $newRoomId = $reassignmentDetails['new_room_id'];
-
-                    // Update the roomassignments table for the new room
-                    $updateAssignmentQuery = "
-                        UPDATE roomassignments
-                        SET room_id = ?, assignment_date = CURRENT_DATE
-                        WHERE user_id = ?
-                    ";
-                    $updateAssignmentStmt = $conn->prepare($updateAssignmentQuery);
-                    $updateAssignmentStmt->bind_param("ii", $newRoomId, $userId);
-
-                    if ($updateAssignmentStmt->execute()) {
-                        echo "<script>alert('User\'s room assignment updated to new room successfully.');</script>";
-                    } else {
-                        echo "Error updating room assignment: " . $updateAssignmentStmt->error;
+                if ($userResult) {
+                    if ($newStatus === 'approved') {
+                        // Use existing sendReassignmentEmail function
+                        $emailSent = sendReassignmentEmail(
+                            $userResult['email'],
+                            $userResult['fname'],
+                            $userResult['lname'],
+                            $userResult['room_number']
+                        );
+                    } else { // rejected
+                        $emailSent = sendRejectionEmail(
+                            $userResult['email'],
+                            $userResult['fname'],
+                            $userResult['lname']
+                        );
                     }
 
-                    $updateAssignmentStmt->close();
-                } else {
-                    echo "<script>alert('Reassignment details not found.');</script>";
+                    if (!$emailSent) {
+                        echo "<script>alert('Status updated but email notification failed.');</script>";
+                    }
                 }
             }
         } else {

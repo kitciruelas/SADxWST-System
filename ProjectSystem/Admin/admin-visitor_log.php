@@ -77,6 +77,8 @@ $query = "
     SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person
     FROM visitors v
     LEFT JOIN users u ON v.visiting_user_id = u.id
+    WHERE 1=1 $dateCondition
+    ORDER BY v.check_in_time DESC
 ";
 $result = $conn->query($query);
 
@@ -199,45 +201,49 @@ function confirmLogout() {
 </div>
 <div class="table-responsive">
     <table class="table table-bordered" id="visitorTable">
-        <thead class="table-light">
+        <thead>
             <tr>
-                <th scope="col">No.</th>
-                <th scope="col" onclick="sortTable(1)">Visiting Person</th>
-                <th scope="col" onclick="sortTable(2)">Contact Info</th>
-                <th scope="col" onclick="sortTable(3)">Purpose</th>
-                <th scope="col" onclick="sortTable(4)">Resident Name</th>
-                <th scope="col" onclick="sortTable(5)">Check-In</th>
-                <th scope="col" onclick="sortTable(6)">Check-Out</th>
-                <th scope="col">Actions</th>
+                <th>No.</th>
+                <th>Visiting Person</th>
+                <th>Contact Info</th>
+                <th>Purpose</th>
+                <th>Resident Name</th>
+                <th>Check-In</th>
+                <th>Check-Out</th>
+                <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="visitor-table-body">
-        <?php if ($result->num_rows > 0): 
-            $counter = 1;
-            while ($row = $result->fetch_assoc()):
-                $isCheckedOut = !empty($row['check_out_time']);
-                $checkInTime = date("M d, Y g:i A", strtotime($row['check_in_time'])); 
-                $checkOutTime = $isCheckedOut ? date("M d, Y g:i A", strtotime($row['check_out_time'])) : 'N/A'; 
-        ?>
-            <tr>
-                <td><?= $counter++ ?></td>
-                <td class="name"><?= htmlspecialchars($row['name']) ?></td>
-                <td class="contact_info"><?= htmlspecialchars($row['contact_info']) ?></td>
-                <td class="purpose"><?= htmlspecialchars($row['purpose']) ?></td>
-                <td class="visiting_person"><?= htmlspecialchars($row['visiting_person']) ?></td>
-                <td><?= $checkInTime ?></td>
-                <td><?= $checkOutTime ?></td>
-                <td>
-                    <form action="admin-visitor_log.php" method="post" style="display:inline;">
-                        <input type="hidden" name="visitor_id" value="<?= $row['id']; ?>">
-                        <button type="submit" class="btn btn-danger btn-sm" 
-                            onclick="return confirm('Are you sure you want to delete this visitor?')">Delete</button>
-                    </form>
-                </td>
-            </tr>
-        <?php endwhile; else: ?>
-            <tr><td colspan="8" class="text-center">No visitors found</td></tr>
-        <?php endif; ?>
+        <tbody>
+            <?php 
+            if ($result && $result->num_rows > 0): 
+                $counter = 1;
+                while ($row = $result->fetch_assoc()):
+            ?>
+                <tr>
+                    <td><?= $counter++ ?></td>
+                    <td><?= htmlspecialchars($row['name']) ?></td>
+                    <td><?= htmlspecialchars($row['contact_info']) ?></td>
+                    <td><?= htmlspecialchars($row['purpose']) ?></td>
+                    <td><?= htmlspecialchars($row['visiting_person']) ?></td>
+                    <td><?= date("M d, Y g:i A", strtotime($row['check_in_time'])) ?></td>
+                    <td><?= !empty($row['check_out_time']) ? date("M d, Y g:i A", strtotime($row['check_out_time'])) : 'N/A' ?></td>
+                    <td>
+                        <form action="admin-visitor_log.php" method="post" style="display: inline;">
+                            <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this visitor record?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            <?php 
+                endwhile; 
+            else: 
+            ?>
+                <tr>
+                    <td colspan="8">No visitors found</td>
+                </tr>
+            <?php endif; ?>
         </tbody>
     </table>
 </div>
@@ -305,116 +311,42 @@ function confirmLogout() {
     <script>
         
 $(document).ready(function() {
-  var table = $('#visitorTable').DataTable({
-    dom: 'Bfrtip',  // Include Buttons and other elements (search, pagination, etc.)
-    buttons: [
-      {
-        extend: 'copy',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: 'Visitor List Report - ' + getFormattedDate(),
-      },
-      {
-        extend: 'csv',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: 'Visitor List Report - ' + getFormattedDate(),
-      },
-      {
-        extend: 'excel',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: 'Visitor List Report - ' + getFormattedDate(),
-      },
-      {
-        extend: 'print',
-        exportOptions: {
-          columns: ':not(:last-child)'  // Exclude the last column (Actions)
-        },
-        title: '', // Empty title to remove it
-        customize: function(win) {
-          var doc = win.document;
+    $('#visitorTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        pageLength: 10,
+        ordering: true,
+        searching: true,
+        lengthChange: false,
+        info: true,
+        responsive: true,
+        order: [[5, 'desc']], // Sort by check-in time
+        columnDefs: [{
+            targets: -1,
+            orderable: false
+        }]
+    });
 
-          // Style the page for print
-          $(doc.body).css({
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '12pt',
-            color: '#333333',
-            lineHeight: '1.6',
-            backgroundColor: '#ffffff',
-          });
+    // Custom search
+    $('#searchInput').on('keyup', function() {
+        $('#visitorTable').DataTable().search(this.value).draw();
+    });
 
-          // Add a formal header (Title and Date)
-          $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Visitor List Report</h1>');
-          $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
-
-          // Style the table
-          $(doc.body).find('table').css({
-            width: '100%',
-            borderCollapse: 'collapse',
-            marginTop: '20px',
-            border: '1px solid #dddddd',
-          });
-          $(doc.body).find('table th').css({
-            backgroundColor: '#f3f3f3',
-            color: '#000000',
-            fontSize: '14pt',
-            padding: '8px',
-            border: '1px solid #dddddd',
-            textAlign: 'left',
-          });
-          $(doc.body).find('table td').css({
-            fontSize: '12pt',
-            padding: '8px',
-            border: '1px solid #dddddd',
-            textAlign: 'left',
-          });
-
-          // Print footer (optional, page numbering)
-          var pageCount = $(win).find('.paginate_button').length > 0 ? $(win).find('.paginate_button').length : 1;
-          $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page 1 of ' + pageCount + '</footer>');
-        },
-      }
-    ],
-    paging: false,   // Disable pagination
-    searching: false,  // Disable search functionality
-    info: false,  // Hide the "Showing 1 to X of X entries" info
-    order: [] // Disable initial sort, if not needed
-
-  });
-  
-
-  // Function to sort the table based on selected option
-  $('#sortSelect').change(function() {
-    var value = $(this).val();
-
-    switch (value) {
-      case 'resident_asc':
-        table.order([0, 'asc']).draw();  // Assuming column 0 is 'Resident'
-        break;
-      case 'resident_desc':
-        table.order([0, 'desc']).draw();
-        break;
-      case 'check_in_asc':
-        table.order([2, 'asc']).draw();  // Assuming column 2 is 'Check-In Time'
-        break;
-      case 'check_in_desc':
-        table.order([2, 'desc']).draw();
-        break;
-      case 'check_out_asc':
-        table.order([3, 'asc']).draw();  // Assuming column 3 is 'Check-Out Time'
-        break;
-      case 'check_out_desc':
-        table.order([3, 'desc']).draw();
-        break;
-      default:
-        table.order([]).draw();  // Reset to default order
-        break;
-    }
-  });
+    // Custom filter
+    $('#filterSelect').on('change', function() {
+        const column = parseInt($(this).val());
+        if (!isNaN(column)) {
+            $('#visitorTable').DataTable()
+                .columns().search('')
+                .column(column)
+                .search($('#searchInput').val())
+                .draw();
+        } else {
+            $('#visitorTable').DataTable()
+                .search($('#searchInput').val())
+                .draw();
+        }
+    });
 });
 
 

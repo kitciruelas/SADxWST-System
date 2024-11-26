@@ -28,6 +28,11 @@ $applicationsQuery = "SELECT COUNT(*) AS pendingApplications FROM  room_reassign
 $applicationsResult = $conn->query($applicationsQuery);
 $pendingApplications = $applicationsResult->fetch_assoc()['pendingApplications'];
 
+// Add new query for move-out requests
+$moveOutQuery = "SELECT COUNT(*) AS pendingMoveOuts FROM move_out_requests WHERE status = 'pending'";
+$moveOutResult = $conn->query($moveOutQuery);
+$pendingMoveOuts = $moveOutResult->fetch_assoc()['pendingMoveOuts'];
+
 
 
     
@@ -93,61 +98,176 @@ function confirmLogout() {
 
     <!-- Main content -->
     <div class="main-content">        
-        
         <div class="container mt-5">
             <div class="row">
                 <!-- Room List Card -->
-                <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="card text-center">
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card dashboard-card">
                         <div class="card-body">
-                            <span class="badge-status"><?php echo $roomCount; ?> Rooms Available</span>
-                            <i class="fas fa-list fa-3x"></i>
-                            <h5 class="card-title mt-3">Room List</h5>
-                            <p class="card-text">Manage and view the list of rooms.</p>
-                            <div class="progress mt-2">
-                                <div class="progress-bar" role="progressbar" style="width: <?php echo ($roomCount / 100) * 100; ?>%;" aria-valuenow="<?php echo $roomCount; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="card-icon bg-primary">
+                                    <i class="fas fa-building fa-2x text-white"></i>
+                                </div>
+                                <div class="stat-card-info text-right">
+                                    <h6 class="text-muted mb-2">Total Rooms</h6>
+                                    <h2 class="mb-0 font-weight-bold"><?php echo $roomCount; ?></h2>
+                                </div>
                             </div>
-                            <a href="roomlist.php" class="btn btn-primary mt-3">View Manage</a>
+                            <div class="card-details mt-3">
+                                <p class="text-muted mb-2">Manage and view the list of rooms</p>
+                                <a href="roomlist.php" class="btn btn-primary btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
                         </div>
                     </div>
                 </div>
-
 
                 <!-- Room Assign Card -->
-                <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="card text-center">
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card dashboard-card">
                         <div class="card-body">
-                            <span class="badge-status"><?php echo $assignedRooms; ?> Assigned</span>
-                            <i class="fas fa-user-check fa-3x"></i>
-                            <h5 class="card-title mt-3">Room Assign</h5>
-                            <p class="card-text">Assign rooms to users.</p>
-                            <div class="progress mt-2">
-                                <div class="progress-bar" role="progressbar" style="width: <?php echo ($assignedRooms / 100) * 100; ?>%;" aria-valuenow="<?php echo $assignedRooms; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="card-icon bg-success">
+                                    <i class="fas fa-key fa-2x text-white"></i>
+                                </div>
+                                <div class="stat-card-info text-right">
+                                    <h6 class="text-muted mb-2">Assigned Rooms</h6>
+                                    <h2 class="mb-0 font-weight-bold"><?php echo $assignedRooms; ?></h2>
+                                </div>
                             </div>
-                            <a href="room-assign.php" class="btn btn-primary mt-3">View Manage</a>
+                            <div class="card-details mt-3">
+                                <p class="text-muted mb-2">Assign rooms to users</p>
+                                <a href="room-assign.php" class="btn btn-success btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="card text-center">
+                <!-- Reassign Room Card -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card dashboard-card">
                         <div class="card-body">
-                            <span class="badge-status"><?php echo $pendingApplications; ?> Pending Reassign</span>
-                            <i class="fas fa-file-alt fa-3x"></i>
-                            <h5 class="card-title mt-3">Reassign Room</h5>
-                            <p class="card-text">Apply for room allocation.</p>
-                            <div class="progress mt-2">
-                                <div class="progress-bar" role="progressbar" style="width: <?php echo ($pendingApplications / 100) * 100; ?>%;" aria-valuenow="<?php echo $pendingApplications; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="card-icon bg-warning">
+                                    <i class="fas fa-exchange-alt fa-2x text-white"></i>
+                                </div>
+                                <div class="stat-card-info text-right">
+                                    <h6 class="text-muted mb-2">Pending Reassignments</h6>
+                                    <h2 class="mb-0 font-weight-bold"><?php echo $pendingApplications; ?></h2>
+                                </div>
                             </div>
-                            <a href="application-room.php" class="btn btn-primary mt-3">View Manage</a>
+                            <div class="card-details mt-3">
+                                <p class="text-muted mb-2">Room reassignment requests</p>
+                                <a href="application-room.php" class="btn btn-warning btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Move Out Management Card -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="card-icon bg-danger">
+                                    <i class="fas fa-door-open fa-2x text-white"></i>
+                                </div>
+                                <div class="stat-card-info text-right">
+                                    <h6 class="text-muted mb-2">Pending Move-outs</h6>
+                                    <h2 class="mb-0 font-weight-bold"><?php echo $pendingMoveOuts; ?></h2>
+                                </div>
+                            </div>
+                            <div class="card-details mt-3">
+                                <p class="text-muted mb-2">Manage move-out requests</p>
+                                <a href="manage_move_out.php" class="btn btn-danger btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-    
-    
+    <style>
+    .dashboard-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bg-primary { background: #4e73df !important; }
+    .bg-success { background: #1cc88a !important; }
+    .bg-warning { background: #f6c23e !important; }
+    .bg-danger { background: #e74a3b !important; }
+
+    .stat-card-info h2 {
+        font-size: 2rem;
+        color: #5a5c69;
+    }
+
+    .btn-primary {
+        background: #4e73df;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+    }
+
+    .btn-success {
+        background: #1cc88a;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+    }
+
+    .btn-warning {
+        background: #f6c23e;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+        color: white;
+    }
+
+    .btn-danger {
+        background: #e74a3b;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+    }
+
+    .btn-primary:hover { background: #2e59d9; }
+    .btn-success:hover { background: #169b6b; }
+    .btn-warning:hover { background: #dfa826; }
+    .btn-danger:hover { background: #be3c30; }
+
+    .text-muted {
+        color: #858796 !important;
+    }
+
+    .card-details {
+        border-top: 1px solid rgba(0,0,0,0.05);
+        padding-top: 15px;
+    }
+
+    .stat-card-info h6 {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    </style>
+
     <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>

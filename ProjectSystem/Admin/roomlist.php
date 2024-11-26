@@ -67,6 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
         die("Error: Missing required fields.");
     }
 
+    // Validate capacity
+    if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
+        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        exit;
+    }
+
     // Check if the room number already exists
     $sql_check = "SELECT COUNT(*) FROM Rooms WHERE room_number = ?";
     $stmt_check = $conn->prepare($sql_check);
@@ -107,6 +113,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $room_id = $_POST['room_id'];
+
+    // Validate capacity
+    if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
+        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        exit;
+    }
+
+    // Check if new capacity is less than current occupants
+    $check_occupants_sql = "SELECT COUNT(*) as current_occupants FROM roomassignments WHERE room_id = ?";
+    $check_stmt = $conn->prepare($check_occupants_sql);
+    $check_stmt->bind_param("i", $room_id);
+    $check_stmt->execute();
+    $result = $check_stmt->get_result();
+    $current_occupants = $result->fetch_assoc()['current_occupants'];
+    $check_stmt->close();
+
+    if ($current_occupants > $_POST['capacity']) {
+        echo "<script>alert('Error: Cannot reduce capacity below current number of occupants (" . $current_occupants . ").'); window.location.href = 'roomlist.php';</script>";
+        exit;
+    }
 
     // Check if the room number already exists for a different room
     $sql_check = "SELECT COUNT(*) FROM rooms WHERE room_number = ? AND room_id != ?";
@@ -395,76 +421,79 @@ function confirmLogout() {
         </tr>
     </thead>
     <tbody id="room-table-body">
-        <?php
-        // Query to get rooms, capacities, and current occupants
-        $query = "
-            SELECT 
-                r.room_id,
-                r.room_number,
-                r.room_desc,
-                r.capacity AS totalCapacity,
-                r.room_monthlyrent,
-                r.status,
-                r.room_pic,
-                COUNT(ra.assignment_id) AS currentOccupants
-            FROM 
-                rooms r
-            LEFT JOIN 
-                roomassignments ra ON r.room_id = ra.room_id
-            GROUP BY 
-                r.room_id
-        ";
+    <?php
+// Query to get rooms, capacities, and current occupants
+$query = "
+    SELECT 
+        r.room_id,
+        r.room_number,
+        r.room_desc,
+        r.capacity AS totalCapacity,
+        r.room_monthlyrent,
+        r.status,
+        r.room_pic,
+        COUNT(ra.assignment_id) AS currentOccupants
+    FROM 
+        rooms r
+    LEFT JOIN 
+        roomassignments ra ON r.room_id = ra.room_id
+    GROUP BY 
+        r.room_id
+";
 
-        $result = $conn->query($query);
+$result = $conn->query($query);
 
-        if ($result->num_rows > 0) {
-            $counter = 1;
-            while ($row = $result->fetch_assoc()) {
-                // Check if the room is fully occupied and update status
-                $currentOccupants = $row["currentOccupants"];
-                $totalCapacity = $row["totalCapacity"];
-                $status = ($currentOccupants >= $totalCapacity) ? 'Occupied' : 'Available';
+if ($result->num_rows > 0) {
+    $counter = 1;
+    while ($row = $result->fetch_assoc()) {
+        // Check if room status is not maintenance before updating
+        if ($row["status"] !== 'maintenance') {
+            $currentOccupants = $row["currentOccupants"];
+            $totalCapacity = $row["totalCapacity"];
+            $status = ($currentOccupants >= $totalCapacity) ? 'occupied' : 'available';
 
-                // Only update status if it's different from current status
-                if ($status != $row["status"]) {
-                    $updateStatusQuery = "UPDATE rooms SET status = '$status' WHERE room_id = " . $row["room_id"];
-                    $conn->query($updateStatusQuery); // Execute update query
-                }
+            // Only update status if it's different from the current status
+            if ($status !== $row["status"]) {
+                $updateStatusQuery = "UPDATE rooms SET status = '$status' WHERE room_id = " . $row["room_id"];
+                $conn->query($updateStatusQuery);
+            }
+        }
 
-                echo "<tr>";
-                echo "<td>" . $counter++ . "</td>";
-                echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
-                echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
-                echo "<td>" . htmlspecialchars($row["currentOccupants"]) . "/" . htmlspecialchars($row["totalCapacity"]) . " people</td>";
-                echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
-                echo "<td>" . $status . "</td>"; // Display updated status in the table
-                echo "<td>";
+        echo "<tr>";
+        echo "<td>" . $counter++ . "</td>";
+        echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
+        echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
+        echo "<td>" . htmlspecialchars($row["currentOccupants"]) . "/" . htmlspecialchars($row["totalCapacity"]) . " people</td>";
+        echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
+        echo "<td>" . htmlspecialchars($row["status"]) . "</td>"; // Display status
+        echo "<td>";
 
-                if (!empty($row["room_pic"])) {
-                    $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
-                    if (file_exists($imagePath)) {
-                        echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
-                    } else {
-                        echo "Image not found";
-                    }
-                } else {
-                    echo "No Image";
-                }
-
-                echo "</td>";
-                echo "<td>";
-                echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
-                echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                        <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                        <button type='submit' class='custom-btn'>Delete</button>
-                      </form>";
-                echo "</td>";
-                echo "</tr>";
+        if (!empty($row["room_pic"])) {
+            $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
+            if (file_exists($imagePath)) {
+                echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
+            } else {
+                echo "Image not found";
             }
         } else {
-            echo "<tr><td colspan='8'>No rooms found</td></tr>";
+            echo "No Image";
         }
-        ?>
+
+        echo "</td>";
+        echo "<td>";
+        echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
+        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
+                <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
+                <button type='submit' class='custom-btn'>Delete</button>
+              </form>";
+        echo "</td>";
+        echo "</tr>";
+    }
+} else {
+    echo "<tr><td colspan='8'>No rooms found</td></tr>";
+}
+?>
+
     </tbody>
 </table>
 

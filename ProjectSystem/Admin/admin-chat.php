@@ -133,7 +133,7 @@ function getMessages($conn, $receiverId = 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../User/Css_user/visitor-logs.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/dashboard.css">
     <link rel="icon" href="img-icon/chats.png" type="image/png">
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
@@ -352,6 +352,278 @@ function getMessages($conn, $receiverId = 0) {
 
 
 
+    /* Message form container */
+    #messageForm {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 15px;
+        border-top: 1px solid #ddd;
+        margin-top: auto; /* Push to bottom */
+        width: 100%;
+        z-index: 100;
+    }
+
+    /* Chat container modifications */
+    #chatlogs {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 200px);
+        padding-bottom: 80px; /* Make room for the message form */
+        overflow-y: auto;
+    }
+
+    /* Input group styling */
+    .input-group {
+        background: #f0f2f5;
+        border-radius: 24px;
+        padding: 8px;
+        margin: 0;
+    }
+
+    .input-group textarea {
+        border: none;
+        background: transparent;
+        resize: none;
+        padding: 8px 12px;
+        max-height: 100px;
+        min-height: 40px;
+    }
+
+    .input-group textarea:focus {
+        outline: none;
+        box-shadow: none;
+    }
+
+    .input-group .btn-primary {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .input-group .btn-primary i {
+        font-size: 1.2rem;
+    }
+
+    /* Add/modify these styles */
+    #container {
+        height: calc(100vh - 100px); /* Adjust based on your topbar height */
+        display: flex;
+        flex-direction: column;
+    }
+
+    #chatlogs {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 20px; /* Space for the message form */
+        margin-bottom: 0; /* Remove bottom margin */
+    }
+
+    #messageForm {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 15px;
+        border-top: 1px solid #ddd;
+        width: 100%;
+        z-index: 100;
+    }
+
+    .input-group {
+        margin-bottom: 0; /* Remove bottom margin */
+    }
+
+    .main {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /* Main layout containers */
+    .main-content {
+        margin-left: 250px;
+        padding: 20px;
+        height: calc(100vh - 60px);
+        max-width: 1500px;
+        margin-right: 20px;
+        background-color: white;
+        overflow: visible;
+    }
+
+    /* Update chat container layout */
+    .chat-container {
+        display: flex;
+        height: 100%;
+        background: transparent;
+        width: 100%;
+        margin: 0 auto;
+        gap: 40px;
+        padding: 0;
+        position: relative;
+        overflow: visible;
+    }
+
+    /* Update chat main section */
+    .chat-main {
+        position: fixed;
+        left: 210px;
+        width: calc(100% - 600px);
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 100px);
+        top: 80px;
+        overflow: visible;
+    }
+
+    /* Update members section */
+    #messageDetails {
+        width: 280px;
+        padding: 20px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        height: fit-content;
+        position: fixed;
+        right: 20px;
+        top: 80px;
+    }
+
+    /* Update responsive breakpoints */
+    @media (max-width: 1600px) {
+        .chat-main {
+            width: calc(100% - 580px);
+        }
+    }
+
+    @media (max-width: 1400px) {
+        .chat-main {
+            width: calc(100% - 560px);
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .chat-main {
+            width: calc(100% - 540px);
+        }
+    }
+
+    @media (max-width: 992px) {
+        .chat-main {
+            width: calc(100% - 520px);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .chat-main {
+            left: 20px;
+            width: calc(100% - 40px);
+        }
+        
+        #messageDetails {
+            display: none;
+        }
+    }
+
+    /* Messages area */
+    #chatlogs {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px 10px 0 0;
+    }
+
+    /* Message form */
+    #messageForm {
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #e0e0e0;
+        border-radius: 0 0 10px 10px;
+    }
+
+    /* Search bar */
+    .search-card {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+        width: 100%; /* Take full width */
+    }
+
+    .search-bar {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1600px) {
+        .main-content {
+            max-width: 1300px;
+        }
+    }
+
+    @media (max-width: 1400px) {
+        .main-content {
+            max-width: 1100px;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .main-content {
+            max-width: 900px;
+            margin-right: 15px;
+        }
+        
+        .chat-main {
+            width: calc(100% - 280px);
+        }
+        
+        #messageDetails {
+            width: 280px; /* Fixed width for members section */
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .main-content {
+            max-width: 700px;
+            margin-right: 10px;
+        }
+        
+        .chat-main {
+            width: calc(100% - 260px);
+        }
+        
+        #messageDetails {
+            width: 245px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+            margin-right: 0;
+            max-width: 100%;
+            padding: 10px;
+        }
+        
+        .chat-main {
+            width: 100%;
+        }
+        
+        #messageDetails {
+            display: none;
+        }
+    }
     </style>
 </head>
 <body>
@@ -399,144 +671,140 @@ function confirmLogout() {
 
     </div>
     <div class="main-content">
-    <div id="container" class="container-fluid d-flex flex-column h-10" style="width: 1000px;">
-        <div class="main flex-grow-1 d-flex flex-column" style="padding: 10px;">
-            <div class="search-card">
-                <!-- Search Input -->
-                <div class="input-group search-bar mb-3">
-                    <input type="text" id="search" class="form-control" placeholder="Search messages..." aria-label="Search messages">
-                    
+        <div class="chat-container">
+            <!-- Left side: Chat main section -->
+            <div class="chat-main">
+                <!-- Search bar -->
+                <div class="search-card">
+                    <div class="input-group search-bar">
+                        <input type="text" id="search" class="form-control" placeholder="Search messages...">
+                    </div>
                 </div>
-                
+
+                <!-- Messages area -->
+                <div id="chatlogs">
+                    <?php 
+                    // Fetch messages
+                    $messages = getMessages($conn);
+                    
+                    // Check if there are messages
+                    if (empty($messages)): ?>
+                        <div class="no-chat-history" style="text-align: center; color: #888; font-size: 18px; padding: 20px;">
+                            No chat history available.
+                        </div>
+                    <?php else: 
+                        // Display messages
+                        foreach ($messages as $message): 
+                            // Check if the message was sent by the current user
+                            $message_type = ($message['sender_id'] === $_SESSION['id']) ? 'sent' : 'received';
+                    ?>
+                    <div class="message-container <?= htmlspecialchars($message_type) ?>" onclick="showDetails(<?= htmlspecialchars($message['id']) ?>)">
+                        <?php if ($message_type === 'received' && isset($message['profile_pic'])): ?>
+                            <img src="<?= htmlspecialchars($message['profile_pic']) ?>" alt="Profile Picture" class="profile-pic">
+                        <?php endif; ?>
+
+                        <div class="message <?= htmlspecialchars($message_type) ?>" data-id="<?= htmlspecialchars($message['id']) ?>">
+                            <?php if ($message_type === 'sent'): ?>
+                                <div class="message-menu">
+                                    <i class="fas fa-ellipsis-v" onclick="toggleMenu(this)"></i>
+                                    <div class="menu-options">
+                                        <div onclick="editMessage('<?= htmlspecialchars($message['id']) ?>', '<?= htmlspecialchars($message['message']) ?>')">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </div>
+                                        <div onclick="deleteMessage(<?= htmlspecialchars($message['id']) ?>)">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <strong><?= htmlspecialchars($message['sender_name']) ?> (<?= htmlspecialchars($message['role']) ?>)</strong>
+                            <div class="message-content"><?= htmlspecialchars($message['message']) ?></div>
+                            <div class="small text-muted text-right"><?= date('h:i A', strtotime($message['timestamp'])) ?></div>
+                        </div>
+                    </div>
+                    <?php endforeach; 
+                    endif; ?>
+                </div>
+
+                <!-- Message input form -->
+                <form name="form1" id="messageForm" onsubmit="return submitchat()" method="POST">
+                    <div class="input-group">
+                        <textarea 
+                            name="msg" 
+                            class="form-control" 
+                            placeholder="Type a message..." 
+                            required
+                            rows="1"
+                            onkeyup="this.rows = (this.value.match(/\n/g) || []).length + 1"
+                        ></textarea>
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
 
-            <div class="d-flex">
+            <!-- Right side: Members list -->
+            <div id="messageDetails">
+                <h4 class="text-center mb-3">Members</h4>
+                <div class="list-group">
+                    <?php
+                    // Query to fetch user details
+                    $query = "SELECT id, fname, lname, role FROM users
+                    UNION
+                    SELECT id, fname, lname, role FROM staff
+                    ORDER BY id DESC";
+                      $result = mysqli_query($conn, $query);
 
-<!-- Chatlogs Section (Left) -->
-<div id="chatlogs" class="d-flex flex-column">
-    <?php 
-    // Fetch messages
-    $messages = getMessages($conn);
-    
-    // Check if there are messages
-    if (empty($messages)): ?>
-        <div class="no-chat-history" style="text-align: center; color: #888; font-size: 18px; padding: 20px;">
-            No chat history available.
-        </div>
-    <?php else: 
-        // Display messages
-        foreach ($messages as $message): 
-            // Check if the message was sent by the current user
-            $message_type = ($message['sender_id'] === $_SESSION['id']) ? 'sent' : 'received';
-    ?>
-    <div class="message-container <?= htmlspecialchars($message_type) ?>" onclick="showDetails(<?= htmlspecialchars($message['id']) ?>)">
-        <?php if ($message_type === 'received' && isset($message['profile_pic'])): ?>
-            <img src="<?= htmlspecialchars($message['profile_pic']) ?>" alt="Profile Picture" class="profile-pic">
-        <?php endif; ?>
-
-        <div class="message <?= htmlspecialchars($message_type) ?>" data-id="<?= htmlspecialchars($message['id']) ?>">
-            <?php if ($message_type === 'sent'): ?>
-                <div class="message-menu">
-                    <i class="fas fa-ellipsis-v" onclick="toggleMenu(this)"></i>
-                    <div class="menu-options">
-                        <div onclick="editMessage(<?= htmlspecialchars($message['id']) ?>)">
-                            <i class="fas fa-edit"></i> Edit
+                    // Check if there are results
+                    if (mysqli_num_rows($result) > 0) {
+                        // Loop through each row and display the role and name
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            $fullName = $row['fname'] . ' ' . $row['lname']; // Concatenate first and last name
+                            $role = $row['role']; // Get the user's role
+                    ?>
+                            <!-- Button that triggers the modal -->
+                            <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2"
+                    data-toggle="modal" data-target="#userModal" 
+                    data-id="<?= $row['id'] ?>" 
+                    data-fname="<?= $row['fname'] ?>" 
+                    data-lname="<?= $row['lname'] ?>" 
+                    data-role="<?= $row['role'] ?>">
+                    <div>
+                        <strong><?= htmlspecialchars($fullName) ?></strong>
+                        <div>
+                            <?php
+                            // Display role as badge
+                            if ($role == 'Admin') {
+                                echo '<span class="badge badge-primary">Admin</span>';
+                            } elseif ($role == 'Staff') {
+                                echo '<span class="badge badge-success">Staff</span>';
+                            } else {
+                                echo '<span class="badge badge-info">User</span>';
+                            }
+                            ?>
                         </div>
-                        <div onclick="deleteMessage(<?= htmlspecialchars($message['id']) ?>)">
-                            <i class="fas fa-trash"></i> Delete
+                    </div>
+                </button>
+
+                            <?php
+                                }
+                            } else {
+                                echo "<p>No users found.</p>";
+                            }
+
+                            // Close the database connection
+                            mysqli_close($conn);
+                            ?>
                         </div>
                     </div>
                 </div>
-            <?php endif; ?>
-            
-            <strong><?= htmlspecialchars($message['sender_name']) ?> (<?= htmlspecialchars($message['role']) ?>)</strong>
-            <div class="message-content"><?= htmlspecialchars($message['message']) ?></div>
-            <div class="small text-muted text-right"><?= date('h:i A', strtotime($message['timestamp'])) ?></div>
-        </div>
-    </div>
-    <?php endforeach; 
-    endif; ?>
-    
-    <!-- Sticky Message Form -->
-    <form name="form1" id="messageForm" onsubmit="return submitchat()" action="staff-chat.php" method="POST" class="mt-5" style="position: sticky; bottom: 0; background-color: white; z-index: 10; padding: 10px; border-top: 1px solid #ddd;">
-        <div class="input-group mt-2">
-            <textarea name="msg" class="form-control" placeholder="Your message here..." required></textarea>
-            <div class="input-group-append">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-paper-plane fa-2x"></i>
-                </button>
             </div>
         </div>
-    </form>
-</div>
-
-<!-- Details Section (Right) -->
-<div id="messageDetails" class="d-flex flex-column" style="width: 300px; padding-left: 20px; height: 100vh; overflow-y: auto;">
-    
-    <div class="container">
-        
-        <h4 class="text-center mb-1">Members of Group Chat</h4>
-
-        <div class="list-group">
-            <?php
-            // Query to fetch user details
-            $query = "SELECT id, fname, lname, role FROM users
-            UNION
-            SELECT id, fname, lname, role FROM staff
-            ORDER BY id DESC";
-              $result = mysqli_query($conn, $query);
-
-            // Check if there are results
-            if (mysqli_num_rows($result) > 0) {
-                // Loop through each row and display the role and name
-                while ($row = mysqli_fetch_assoc($result)) {
-                    $fullName = $row['fname'] . ' ' . $row['lname']; // Concatenate first and last name
-                    $role = $row['role']; // Get the user's role
-            ?>
-                    <!-- Button that triggers the modal -->
-                    <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2"
-        data-toggle="modal" data-target="#userModal" 
-        data-id="<?= $row['id'] ?>" 
-        data-fname="<?= $row['fname'] ?>" 
-        data-lname="<?= $row['lname'] ?>" 
-        data-role="<?= $row['role'] ?>">
-    <div>
-        <strong><?= htmlspecialchars($fullName) ?></strong>
-        <div>
-            <?php
-            // Display role as badge
-            if ($role == 'Admin') {
-                echo '<span class="badge badge-primary">Admin</span>';
-            } elseif ($role == 'Staff') {
-                echo '<span class="badge badge-success">Staff</span>';
-            } else {
-                echo '<span class="badge badge-info">User</span>';
-            }
-            ?>
-        </div>
     </div>
-</button>
-
-            <?php
-                }
-            } else {
-                echo "<p>No users found.</p>";
-            }
-
-            // Close the database connection
-            mysqli_close($conn);
-            ?>
-        </div>
-    </div>
-</div>
-
-
-</div>
-</div>
-
-
-</div>
-
 </div>
 
 <!-- jQuery and Bootstrap JS -->
@@ -598,14 +866,33 @@ function applyFilters() {
     });
 });
 
-      function toggleMenu(element) {
-    var menu = element.nextElementSibling;
-    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    document.addEventListener('click', function(event) {
+let currentlyOpenMenu = null; // Track the currently open menu
+
+function toggleMenu(element) {
+    const menu = element.nextElementSibling;
+    
+    // If there's already an open menu and it's not the one we just clicked
+    if (currentlyOpenMenu && currentlyOpenMenu !== menu) {
+        currentlyOpenMenu.style.display = 'none';
+    }
+    
+    // Toggle the clicked menu
+    if (menu.style.display === 'block') {
+        menu.style.display = 'none';
+        currentlyOpenMenu = null;
+    } else {
+        menu.style.display = 'block';
+        currentlyOpenMenu = menu;
+    }
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', function closeMenu(event) {
         if (!element.contains(event.target) && !menu.contains(event.target)) {
             menu.style.display = 'none';
+            currentlyOpenMenu = null;
+            document.removeEventListener('click', closeMenu);
         }
-    }, { once: true });
+    });
 }
 
 function submitchat() {
@@ -674,23 +961,41 @@ $(document).ready(function() {
     localStorage.removeItem("chatScrollPosition");
 });
 
-function editMessage(messageId) {
-    var newContent = prompt("Edit your message:");
-    if (newContent) {
-        $.ajax({
-            type: "POST",
-            url: "admin-chat.php",
-            data: { edit_id: messageId, edit_msg: newContent },
-            success: function(response) {
-                window.location.reload();  // Reload the page after submitting the message
-            },
-            error: function() {
-                alert("Message could not be edited.");
-            }
-        });
+function editMessage(messageId, messageContent) {
+    // Show prompt with current message content
+    const newContent = prompt("Edit message:", messageContent);
+    
+    // If user clicks Cancel or enters empty message, do nothing
+    if (newContent === null || !newContent.trim()) {
+        return;
     }
+    
+    // Send edit request to server
+    $.ajax({
+        type: "POST",
+        url: "admin-chat.php",
+        data: { 
+            edit_id: messageId, 
+            edit_msg: newContent 
+        },
+        success: function(response) {
+            try {
+                const result = JSON.parse(response);
+                if (result.error) {
+                    alert(result.error);
+                } else {
+                    window.location.reload();
+                }
+            } catch (e) {
+                console.error('Error parsing response:', e);
+                alert('An error occurred while saving the message');
+            }
+        },
+        error: function() {
+            alert("Message could not be edited. Please try again.");
+        }
+    });
 }
-
 
 function deleteMessage(messageId) {
     if (confirm("Are you sure you want to delete this message?")) {

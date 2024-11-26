@@ -204,65 +204,223 @@ $conn->close();
 
 
 <!-- Room List -->
-<div class="container">
-
-
-<!-- Room List -->
-<!-- Room List -->
 <div class="container-fluid">
-    <div class="row justify-content-center">
-    <?php
-    if ($result === false) {
-        echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
-    } elseif ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $currentOccupants = $row['current_occupants'] ?? 0; 
-            $totalCapacity = $row['capacity'] ?? 0;
+    <div id="roomCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            <?php
+            if ($result === false) {
+                echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
+            } elseif ($result->num_rows > 0) {
+                $cards = array();
+                while ($row = $result->fetch_assoc()) {
+                    $currentOccupants = $row['current_occupants'] ?? 0; 
+                    $totalCapacity = $row['capacity'] ?? 0;
 
-            // Determine room status
-            if ($currentOccupants >= $totalCapacity) {
-                $status = 'Occupied';
-            } elseif (strtolower($row['status']) === 'maintenance') {
-                $status = 'Maintenance';
+                    // Determine room status
+                    if ($currentOccupants >= $totalCapacity) {
+                        $status = 'Occupied';
+                    } elseif (strtolower($row['status']) === 'maintenance') {
+                        $status = 'Maintenance';
+                    } else {
+                        $status = 'Available';
+                    }
+
+                    // Store each card HTML in array
+                    ob_start();
+                    ?>
+                    <div class="col-md-4 room-card" data-status="<?php echo htmlspecialchars($status); ?>">
+                        <div class="card custom-card h-100">
+                            <?php 
+                            $imagePath = "../uploads/" . ($row['room_pic'] ?? '');
+                            if (!empty($row['room_pic']) && file_exists($imagePath)): ?>
+                                <img src="<?php echo htmlspecialchars($imagePath); ?>" 
+                                     alt="Room Image" 
+                                     class="card-img-top custom-card-img" 
+                                     style="cursor: pointer;" 
+                                     onclick="openModal('<?php echo htmlspecialchars($imagePath); ?>')">
+                            <?php else: ?>
+                                <img src="path/to/default/image.jpg" alt="No Image Available" class="card-img-top custom-card-img">
+                            <?php endif; ?>
+
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
+                                <p class="room-price">
+                                    Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly
+                                </p>
+                                <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <?php
+                    $cards[] = ob_get_clean();
+                }
+
+                // Adjust number of cards per slide based on screen size
+                $cardsPerSlide = 3;
+                $totalCards = count($cards);
+                for ($i = 0; $i < $totalCards; $i += $cardsPerSlide) {
+                    $activeClass = ($i === 0) ? 'active' : '';
+                    echo '<div class="carousel-item ' . $activeClass . '">';
+                    echo '<div class="row justify-content-center">'; // Added justify-content-center
+                    
+                    // Add cards to this slide
+                    for ($j = $i; $j < min($i + $cardsPerSlide, $totalCards); $j++) {
+                        echo $cards[$j];
+                    }
+                    
+                    // Fill empty spaces with blank cards if needed
+                    for ($k = min($i + $cardsPerSlide, $totalCards); $k < $i + $cardsPerSlide; $k++) {
+                        echo '<div class="col-md-4 room-card invisible"></div>';
+                    }
+                    
+                    echo '</div>';
+                    echo '</div>';
+                }
             } else {
-                $status = 'Available';
+                echo "<p class='text-center'>No rooms available.</p>";
             }
             ?>
-            <!-- Room Card -->
-            <div class="col-md-4 room-card mb-4" data-status="<?php echo htmlspecialchars($status); ?>">
-                <div class="card custom-card h-100">
-                    <?php 
-                    $imagePath = "../uploads/" . ($row['room_pic'] ?? '');
-                    if (!empty($row['room_pic']) && file_exists($imagePath)): ?>
-                        <img src="<?php echo htmlspecialchars($imagePath); ?>" 
-                             alt="Room Image" 
-                             class="card-img-top custom-card-img" 
-                             style="cursor: pointer;" 
-                             onclick="openModal('<?php echo htmlspecialchars($imagePath); ?>')">
-                    <?php else: ?>
-                        <img src="path/to/default/image.jpg" alt="No Image Available" class="card-img-top custom-card-img"> <!-- Fallback image -->
-                    <?php endif; ?>
-
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
-                        <p class="room-price">
-                            Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly
-                        </p>
-                        
-                        <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
-
-                        
-                    </div>
-                </div>
-            </div>
-            <?php
-        }
-    } else {
-        echo "<p class='text-center'>No rooms available.</p>";
-    }
-    ?>
+        </div>
+        
+        <!-- Custom Navigation Buttons -->
+        <div class="custom-carousel-controls">
+            <button class="custom-carousel-btn prev" type="button" data-bs-target="#roomCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="custom-carousel-btn next" type="button" data-bs-target="#roomCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
     </div>
 </div>
+
+<!-- Updated CSS -->
+<style>
+    /* Carousel Controls */
+    .carousel-control-prev,
+    .carousel-control-next {
+        width: 5%;
+        background: none;
+        opacity: 1;
+    }
+
+    .carousel-control-prev i,
+    .carousel-control-next i {
+        color: #000;
+        text-shadow: none;
+        transition: transform 0.3s ease;
+    }
+
+    .carousel-control-prev:hover i,
+    .carousel-control-next:hover i {
+        transform: scale(1.2);
+    }
+
+    /* Carousel Items */
+    .carousel-item {
+        padding: 1rem;
+    }
+
+    .carousel-item .row {
+        margin: 0 -10px;
+    }
+
+    .room-card {
+        padding: 0 10px;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 992px) {
+        .carousel-item .row {
+            flex-wrap: wrap;
+        }
+        
+        .room-card {
+            flex: 0 0 50%;
+            max-width: 50%;
+            margin-bottom: 20px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .room-card {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 10%;
+        }
+    }
+
+    /* Hide empty card placeholders on mobile */
+    @media (max-width: 768px) {
+        .room-card.invisible {
+            display: none;
+        }
+    }
+</style>
+
+<!-- Add this CSS -->
+<style>
+    .custom-carousel-controls {
+        position: absolute;
+        top: 50%;
+        width: 100%;
+        transform: translateY(-50%);
+        display: flex;
+        justify-content: space-between;
+        pointer-events: none;
+    }
+
+    .custom-carousel-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        pointer-events: auto;
+        margin: 0 15px;
+    }
+
+    .custom-carousel-btn:hover {
+        background-color: rgba(255, 255, 255, 1);
+        transform: scale(1.1);
+    }
+
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+        filter: invert(1) grayscale(100);
+    }
+</style>
+
+<!-- Updated JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const carousel = new bootstrap.Carousel(document.querySelector('#roomCarousel'), {
+            interval: 5000,
+            wrap: true,
+            touch: true
+        });
+
+        // Optional: Pause on hover
+        document.querySelector('#roomCarousel').addEventListener('mouseenter', function() {
+            carousel.pause();
+        });
+
+        document.querySelector('#roomCarousel').addEventListener('mouseleave', function() {
+            carousel.cycle();
+        });
+    });
+</script>
 
 <!-- Custom CSS -->
 <style>
@@ -285,61 +443,6 @@ $conn->close();
 </style>
 
 
-
-
-<!-- Pagination Links -->
-<div class="pagination">
-    <div id="pagination">
-        <!-- Previous Page Button -->
-<!-- Previous Page Button -->
-<button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
-    <i class="fas fa-chevron-left fa-2x"></i> 
-</button>
-
-
-        <!-- Page Indicator -->
-        <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
-
-<!-- Next Page Button -->
-<button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
-     <i class="fas fa-chevron-right fa-2x"></i>
-</button>
-
-    </div>
-</div>
-
-<!-- Custom CSS -->
-<style>
-    .pagination {
-        display: flex;
-        justify-content: center; /* Center the content horizontally */
-        align-items: center; /* Center the content vertically if needed */
-        margin-top: 20px; /* Add some space from other elements */
-    }
-
-    #pagination {
-        display: flex;
-        align-items: center;
-        gap: 10px; /* Add space between buttons and text */
-    }
-
-    button {
-        padding: 8px 16px; /* Add padding to buttons for better clickability */
-        font-size: 16px; /* Set a readable font size */
-        cursor: pointer;
-        border: 1px solid #ccc;
-        border-radius: 5px; /* Round the corners of buttons */
-    }
-
-    button[disabled] {
-        background-color: #f0f0f0;
-        cursor: not-allowed; /* Change cursor when disabled */
-    }
-
-    #pageIndicator {
-        font-size: 16px; /* Same font size for the indicator */
-    }
-</style>
 
 
 </div>

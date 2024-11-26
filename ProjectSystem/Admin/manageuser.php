@@ -27,94 +27,108 @@ require 'vendor/autoload.php';
 // Handle create user request
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
     // Collect and sanitize form data
-    $fname = trim($_POST['Fname']);
-    $lname = trim($_POST['Lname']);
-    $mi = trim($_POST['MI']);
-    $suffix = trim($_POST['Suffix']);
-    $birthdate = trim($_POST['Birthdate']); // Expected format from input: YYYY-MM-DD
-    $age = (int) $_POST['Age'];
-    $address = trim($_POST['Address']);
-    $contact = trim($_POST['contact']);
-    $sex = trim($_POST['sex']);
-    $role = trim($_POST['Role']);  // General User or Staff
-    $email = trim($_POST['email']);
+    $fname = trim(mysqli_real_escape_string($conn, $_POST['Fname']));
+    $lname = trim(mysqli_real_escape_string($conn, $_POST['Lname']));
+    $mi = trim(mysqli_real_escape_string($conn, $_POST['MI']));
+    $suffix = trim(mysqli_real_escape_string($conn, $_POST['Suffix']));
+    $birthdate = trim($_POST['Birthdate']);
+    $address = trim(mysqli_real_escape_string($conn, $_POST['Address']));
+    $contact = trim(mysqli_real_escape_string($conn, $_POST['contact']));
+    $sex = trim(mysqli_real_escape_string($conn, $_POST['sex']));
+    $role = trim(mysqli_real_escape_string($conn, $_POST['Role']));
+    $email = trim(mysqli_real_escape_string($conn, $_POST['email']));
     $password = $_POST['password'];
 
-    // Handle optional Suffix field
-    $suffix = empty($suffix) ? NULL : $suffix;
+    // Calculate age from birthdate
+    $birthdateObj = new DateTime($birthdate);
+    $today = new DateTime();
+    $age = $birthdateObj->diff($today)->y;
 
     // Validate form data
     $errorMessage = '';
-    if (empty($fname) || empty($lname) || empty($age) || empty($address) || empty($contact) || empty($sex) || empty($email) || empty($password)) {
-        $errorMessage = 'All required fields must be filled.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    
+    // Required fields validation
+    if (empty($fname)) {
+        $errorMessage = 'First name is required.';
+    } elseif (empty($lname)) {
+        $errorMessage = 'Last name is required.';
+    } elseif (empty($birthdate)) {
+        $errorMessage = 'Birthdate is required.';
+    } elseif (empty($address)) {
+        $errorMessage = 'Address is required.';
+    } elseif (strlen($address) < 10) {
+        $errorMessage = 'Please enter a complete address including House/Unit No., Street, Barangay, City/Municipality, and Province.';
+    } elseif (empty($contact)) {
+        $errorMessage = 'Contact number is required.';
+    } elseif (empty($sex)) {
+        $errorMessage = 'Sex is required.';
+    } elseif (empty($email)) {
+        $errorMessage = 'Email is required.';
+    } elseif (empty($password)) {
+        $errorMessage = 'Password is required.';
+    }
+
+    // Email format validation
+    if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Invalid email format.';
-    } elseif (strlen($password) < 6) {
+    }
+
+    // Password length validation
+    if (!empty($password) && strlen($password) < 6) {
         $errorMessage = 'Password must be at least 6 characters long.';
     }
 
-    // Check if the user is at least 16 years old based on birthdate
-    if (!empty($birthdate)) {
-        $today = new DateTime();
-        $birthdateObj = DateTime::createFromFormat('Y-m-d', $birthdate); // Ensure correct format
+    // Contact number validation (must start with 09 and be 11 digits)
+    if (!empty($contact) && !preg_match('/^09\d{9}$/', $contact)) {
+        $errorMessage = 'Contact number must start with 09 and be 11 digits long.';
+    }
 
-        // Check if the birthdate is valid
-        if (!$birthdateObj) {
+    // Birthdate validation
+    if (!empty($birthdate)) {
+        $birthdateObj = DateTime::createFromFormat('Y-m-d', $birthdate);
+        $today = new DateTime();
+        
+        if (!$birthdateObj || $birthdateObj->format('Y-m-d') !== $birthdate) {
             $errorMessage = 'Invalid birthdate format. Please use YYYY-MM-DD.';
         } else {
             // Calculate age
             $age = $today->diff($birthdateObj)->y;
             if ($age < 16) {
-                $errorMessage = 'User must be at least 16 years old to create an account.';
+                $errorMessage = 'User must be at least 16 years old.';
             }
         }
-    } else {
-        $errorMessage = 'Birthdate is required.';
     }
 
-   // Check for duplicate email in both staff and users tables
-if (!$errorMessage) {
-    $checkEmailSql = "SELECT email FROM users WHERE email = ? UNION SELECT email FROM staff WHERE email = ?";
-    if ($stmt = $conn->prepare($checkEmailSql)) {
+    // Check for duplicate email
+    if (!$errorMessage) {
+        $checkEmailSql = "SELECT email FROM users WHERE email = ? UNION SELECT email FROM staff WHERE email = ?";
+        $stmt = $conn->prepare($checkEmailSql);
         $stmt->bind_param("ss", $email, $email);
         $stmt->execute();
         $stmt->store_result();
 
         if ($stmt->num_rows > 0) {
-            $errorMessage = 'The email address is already registered in the system.';
+            $errorMessage = 'This email address is already registered.';
         }
         $stmt->close();
-    } else {
-        $errorMessage = "Error checking for duplicate email: " . htmlspecialchars($conn->error);
     }
-}
 
-
-    // If no errors, proceed with the insertion into the database
+    // If no errors, proceed with insertion
     if (!$errorMessage) {
-        // Hash password for security
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-        // Format the birthdate to ensure it is in 'YYYY-MM-DD' format
-        $birthdateFormatted = date('Y-m-d', strtotime($birthdate));
-
-        // Select the SQL insert statement based on the role
-        $sql = ($role === 'Staff') 
-            ? "INSERT INTO staff (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            : "INSERT INTO users (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        // Prepare the statement
+        $table = ($role === 'Staff') ? 'staff' : 'users';
+        
+        $sql = "INSERT INTO $table (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
         if ($stmt = $conn->prepare($sql)) {
-            $stmt->bind_param(
-                "sssssssssss", 
+            $stmt->bind_param("sssssssssss", 
                 $fname, 
                 $lname, 
                 $mi, 
                 $suffix, 
-                $birthdateFormatted, 
-                $age, 
+                $birthdate,
+                $age,
                 $address, 
                 $contact, 
                 $sex, 
@@ -122,26 +136,27 @@ if (!$errorMessage) {
                 $hashedPassword
             );
             
-            // Execute the statement and handle potential errors
             if ($stmt->execute()) {
-                // Send the registration email after successful insert
-                sendRegistrationEmail($email, $fname, $lname, $password, $role);  // Pass the role along with other parameters
-                echo "<script>alert('User added successfully! A confirmation email has been sent.');</script>";
+                // Send registration email
+                sendRegistrationEmail($email, $fname, $lname, $password, $role);
+                echo "<script>
+                    alert('User added successfully! A confirmation email has been sent.');
+                    window.location.href = 'manageuser.php';
+                </script>";
             } else {
-                $errorMessage = "Error inserting user: " . htmlspecialchars($stmt->error);
+                $errorMessage = "Error creating user: " . $stmt->error;
             }
             $stmt->close();
         } else {
-            $errorMessage = "Error preparing the statement: " . htmlspecialchars($conn->error);
+            $errorMessage = "Error preparing statement: " . $conn->error;
         }
     }
 
-    // Display any error message
-    if (!empty($errorMessage)) {
-        echo "<script>alert('$errorMessage');</script>";
+    // Display error message if any
+    if ($errorMessage) {
+        echo "<script>alert('" . addslashes($errorMessage) . "');</script>";
     }
 }
-
 
 function sendRegistrationEmail($userEmail, $firstName, $lastName, $password, $role) {
     $mail = new PHPMailer(true);
@@ -229,98 +244,100 @@ if (isset($_POST['edit_user'])) {
     $lname = trim($_POST['Lname']);
     $mi = trim($_POST['MI']);
     $suffix = trim($_POST['Suffix']);
-    $role = trim($_POST['Role']); // Role comes from the form
+    $newRole = trim($_POST['Role']);
 
-    // Function to execute update and handle errors
-    function executeUpdate($conn, $query, $params, $types) {
-        $stmt = $conn->prepare($query);
-        if ($stmt) {
-            $stmt->bind_param($types, ...$params); // Spread operator to unpack parameters
-            if ($stmt->execute()) {
-                return true;
-            } else {
-                echo "<script>alert('Error executing query: " . htmlspecialchars($stmt->error) . "');</script>";
-                // Log error for debugging
-                error_log("Error executing query: " . $stmt->error);
-                return false;
+    try {
+        // Determine current table based on role
+        $currentTable = ($newRole === 'Staff') ? 'staff' : 'users';
+        
+        // Begin transaction
+        $conn->begin_transaction();
+
+        // Get user data from current table
+        $getData = "SELECT * FROM $currentTable WHERE id = ?";
+        $stmt = $conn->prepare($getData);
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $userData = $result->fetch_assoc();
+
+        if (!$userData) {
+            // User not found in current table, check the other table
+            $otherTable = ($currentTable === 'staff') ? 'users' : 'staff';
+            $getData = "SELECT * FROM $otherTable WHERE id = ?";
+            $stmt = $conn->prepare($getData);
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $userData = $result->fetch_assoc();
+
+            if ($userData) {
+                // User found in other table, need to move them
+                $insertQuery = "INSERT INTO $currentTable 
+                              (Fname, Lname, MI, Suffix, Birthdate, Age, Address, 
+                               contact, Sex, email, password, status) 
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $conn->prepare($insertQuery);
+                $stmt->bind_param("sssssissssss", 
+                    $fname, 
+                    $lname, 
+                    $mi, 
+                    $suffix, 
+                    $userData['Birthdate'],
+                    $userData['age'],
+                    $userData['Address'],
+                    $userData['contact'],
+                    $userData['sex'],
+                    $userData['email'],
+                    $userData['password'],
+                    $userData['status']
+                );
+
+                if (!$stmt->execute()) {
+                    throw new Exception("Error inserting into new table: " . $stmt->error);
+                }
+
+                // Delete from old table
+                $deleteQuery = "DELETE FROM $otherTable WHERE id = ?";
+                $stmt = $conn->prepare($deleteQuery);
+                $stmt->bind_param("i", $userId);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("Error deleting from old table: " . $stmt->error);
+                }
+
+                $conn->commit();
+                echo "<script>
+                    alert('User role successfully changed to $newRole');
+                    window.location.reload();
+                </script>";
             }
         } else {
-            echo "<script>alert('Error preparing statement: " . htmlspecialchars($conn->error) . "');</script>";
-            // Log error for debugging
-            error_log("Error preparing statement: " . $conn->error);
-            return false;
-        }
-    }
-
-    // Step 1: Get the current role of the user from the database
-    $currentRoleQuery = "SELECT Role FROM users WHERE id = ?";
-    $stmt = $conn->prepare($currentRoleQuery);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $stmt->bind_result($currentRole);
-    $stmt->fetch();
-    $stmt->close();
-
-    // Check if the new role is different from the current role
-    if ($role !== $currentRole) {
-        // Proceed only if the role is different
-        if ($role === 'Staff') {
-            // If the user is moving to staff from general user
-            $copyQuery = "INSERT INTO staff (Fname, Lname, MI, Suffix, Role, email, password, age, address, contact, sex) 
-                          SELECT Fname, Lname, MI, Suffix, ?, email, password, age, address, contact, sex 
-                          FROM users WHERE id = ?";
-            $types = "si"; // Role (string) and user_id (integer)
-            echo "Copy Query: " . $copyQuery . "<br>"; // Debug: check query
-            $copySuccess = executeUpdate($conn, $copyQuery, [$role, $userId], $types);
-
-            if ($copySuccess) {
-                // Step 2: Delete the user from the `users` table after copying data to `staff`
-                $deleteQuery = "DELETE FROM users WHERE id = ?";
-                $deleteSuccess = executeUpdate($conn, $deleteQuery, [$userId], "i");
-
-                if ($deleteSuccess) {
-                    echo "<script>alert('User moved to staff successfully!'); closeEditModal();</script>";
-                } else {
-                    echo "<script>alert('Error deleting user from users table.');</script>";
-                }
-            } else {
-                echo "<script>alert('Error copying user data to staff table.');</script>";
+            // User found in current table, just update their information
+            $updateQuery = "UPDATE $currentTable 
+                           SET Fname = ?, Lname = ?, MI = ?, Suffix = ? 
+                           WHERE id = ?";
+            $stmt = $conn->prepare($updateQuery);
+            $stmt->bind_param("ssssi", $fname, $lname, $mi, $suffix, $userId);
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Error updating user information: " . $stmt->error);
             }
-        } else if ($role === 'General User') {
-            // If the user is moving back to general user from staff
-            $copyQuery = "INSERT INTO users (Fname, Lname, MI, Suffix, Role, email, password, age, address, contact, sex) 
-                          SELECT Fname, Lname, MI, Suffix, ?, email, password, age, address, contact, sex 
-                          FROM staff WHERE id = ?";
-            $types = "si"; // Role (string) and user_id (integer)
-            echo "Copy Query: " . $copyQuery . "<br>"; // Debug: check query
-            $copySuccess = executeUpdate($conn, $copyQuery, [$role, $userId], $types);
-
-            if ($copySuccess) {
-                // Step 3: Delete the user from the `staff` table after copying data to `users`
-                $deleteQuery = "DELETE FROM staff WHERE id = ?";
-                $deleteSuccess = executeUpdate($conn, $deleteQuery, [$userId], "i");
-
-                if ($deleteSuccess) {
-                    echo "<script>alert('User moved to general users successfully!'); closeEditModal();</script>";
-                } else {
-                    echo "<script>alert('Error deleting user from staff table.');</script>";
-                }
-            } else {
-                echo "<script>alert('Error copying user data to users table.');</script>";
-            }
+            
+            $conn->commit();
+            echo "<script>
+                alert('User information updated successfully');
+                window.location.reload();
+            </script>";
         }
-    } else {
-        // If the role has not changed, just update other fields (fname, lname, etc.)
-        $updateQuery = "UPDATE " . ($role === 'Staff' ? 'staff' : 'users') . " 
-                        SET Fname = ?, Lname = ?, MI = ?, Suffix = ?, Role = ? WHERE id = ?";
-        $types = "sssssi"; // 4 strings, 1 integer for role update
-        $updateSuccess = executeUpdate($conn, $updateQuery, [$fname, $lname, $mi, $suffix, $role, $userId], $types);
-
-        if ($updateSuccess) {
-            echo "<script>alert('User details updated successfully!'); closeEditModal();</script>";
-        } else {
-            echo "<script>alert('Error updating user details.');</script>";
+    } catch (Exception $e) {
+        if ($conn->connect_errno != 0) {
+            $conn->rollback();
         }
+        echo "<script>
+            alert('Error: " . addslashes($e->getMessage()) . "');
+            window.location.reload();
+        </script>";
     }
 }
 
@@ -431,28 +448,28 @@ $totalPages = ceil($totalRows / $rowsPerPage);
 
 // Main SQL query to fetch data with filters, sorting, and pagination
 $sql = "
-    SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, Role 
+    SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, Role, status 
     FROM (
 ";
 
 // Apply filter to select from either `users` or `staff`, or both if no specific filter is set
 if ($filter === 'General User') {
     $sql .= "
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'General User' AS Role 
+        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'General User' AS Role, status 
         FROM users
     ";
 } elseif ($filter === 'Staff') {
     $sql .= "
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'Staff' AS Role 
+        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'Staff' AS Role, status 
         FROM staff
     ";
 } else {
     // No specific filter, so combine both tables
     $sql .= "
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'General User' AS Role 
+        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'General User' AS Role, status 
         FROM users
         UNION ALL
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'Staff' AS Role 
+        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'Staff' AS Role, status 
         FROM staff
     ";
 }
@@ -521,6 +538,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle-status'])) {
     }
 }
 
+// Add this after your existing database connection code
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
+    $userId = intval($_POST['user_id']);
+    $role = $_POST['role'];
+    
+    // Determine which table to update based on role
+    $table = ($role === 'Staff') ? 'staff' : 'users';
+    
+    try {
+        // Get current status
+        $query = "SELECT status FROM $table WHERE id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($row = $result->fetch_assoc()) {
+            // Toggle the status
+            $newStatus = ($row['status'] === 'active') ? 'inactive' : 'active';
+            
+            // Update the status
+            $updateQuery = "UPDATE $table SET status = ? WHERE id = ?";
+            $updateStmt = $conn->prepare($updateQuery);
+            $updateStmt->bind_param("si", $newStatus, $userId);
+            
+            if ($updateStmt->execute()) {
+                echo json_encode(['success' => true, 'newStatus' => $newStatus]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to update status']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'error' => 'User not found']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
 
 ?>
 
@@ -611,7 +666,7 @@ function confirmLogout() {
 <!-- Sort Form -->
 <form id="sortForm" class="filter-form mt-5" style="margin-left: 10px;">
     <select name="sort" id="sort">
-        <option value="" selected>Select Sort</option>
+        <option value="" selected>Sort by</option>
         <option value="name_asc">Name (A to Z)</option>
         <option value="name_desc">Name (Z to A)</option>
     </select>
@@ -640,56 +695,37 @@ function confirmLogout() {
     </thead>
     <tbody>
     <?php
-    if ($result === false) {
-        echo "Error: " . htmlspecialchars($conn->error);
-    } else {
-        if ($result->num_rows > 0) {
-            $no = 1;
-            while ($row = $result->fetch_assoc()) {
-                $userId = $row['id'];
-                $fullName = htmlspecialchars($row['Fname']) . ' ';
-                if (!empty($row['MI'])) {
-                    $fullName .= htmlspecialchars(substr($row['MI'], 0, 1)) . '. ';
-                }
-                $fullName .= htmlspecialchars($row['Lname']);
-                if (!empty($row['Suffix'])) {
-                    $fullName .= ' ' . htmlspecialchars($row['Suffix']);
-                }
-
-                $role = isset($row['Role']) ? htmlspecialchars($row['Role']) : 'N/A';
-                $accountCreated = !empty($row['created_at']) ? new DateTime($row['created_at']) : null;
-                $formattedAccountCreated = $accountCreated ? $accountCreated->format('F d, Y') : 'N/A';
-
-                echo "<tr>
-                    <td data-label='No.'>" . $no . "</td>
-                    <td data-label='Name'>" . $fullName . "</td>
-                    <td data-label='Role'>" . $role . "</td>
-                    <td data-label='Account Created'>" . htmlspecialchars($formattedAccountCreated) . "</td>
-                    <td>
-                    
-
-                        <!-- Edit Button -->
-                        <button class='btn-edit' onclick='editUserModal(
-                            $userId,
-                            \"" . htmlspecialchars($row['Fname']) . "\",
-                            \"" . htmlspecialchars($row['Lname']) . "\",
-                            \"" . htmlspecialchars($row['MI'] ?? '') . "\",
-                            \"" . htmlspecialchars($row['Suffix'] ?? '') . "\",
-                            \"" . htmlspecialchars($role) . "\"
-                        )'>Edit</button>
-
-                        <!-- Delete Button -->
-                        <form method='POST' action='' style='display:inline'>
-                            <input type='hidden' name='user_id' value='$userId'>
-                            <input type='hidden' name='delete_user' value='1'>
-                            <button type='submit' class='btn-delete' onclick='return confirm(\"Are you sure you want to Deactivate this user?\");'>Deactivate</button>
-                        </form>
-                    </td>
-                </tr>";
-                $no++;
+    if ($result && $result->num_rows > 0) {
+        $no = 1;
+        while ($row = $result->fetch_assoc()) {
+            $userId = $row['id'];
+            $fullName = htmlspecialchars($row['Fname']) . ' ';
+            if (!empty($row['MI'])) {
+                $fullName .= htmlspecialchars(substr($row['MI'], 0, 1)) . '. ';
             }
-        } else {
-            echo "<tr><td colspan='5'>No users found.</td></tr>";
+            $fullName .= htmlspecialchars($row['Lname']);
+            if (!empty($row['Suffix'])) {
+                $fullName .= ' ' . htmlspecialchars($row['Suffix']);
+            }
+
+            $role = isset($row['Role']) ? htmlspecialchars($row['Role']) : 'N/A';
+            $accountCreated = !empty($row['created_at']) ? new DateTime($row['created_at']) : null;
+            $formattedAccountCreated = $accountCreated ? $accountCreated->format('F d, Y') : 'N/A';
+
+            echo "<tr>
+                <td>" . $no . "</td>
+                <td>" . $fullName . "</td>
+                <td>" . $role . "</td>
+                <td>" . $formattedAccountCreated . "</td>
+                <td>
+                    <button class='btn-edit' onclick='editUserModal(\"$userId\", \"$row[Fname]\", \"$row[Lname]\", \"$row[MI]\", \"$row[Suffix]\", \"$role\", \"$role\")'>Edit</button>
+                    <button class='btn-status " . (isset($row['status']) && $row['status'] === 'inactive' ? 'inactive' : '') . "' 
+                            onclick='toggleStatus(\"$userId\", \"$role\", this)'>
+                        " . (isset($row['status']) ? ucfirst($row['status']) : 'Active') . "
+                    </button>
+                </td>
+            </tr>";
+            $no++;
         }
     }
     ?>
@@ -759,48 +795,44 @@ function confirmLogout() {
 
         </div>
 <!-- Modal -->
-<div id="userModal" class="modal" style="display: none;">
+<div id="userModal" class="modal">
     <div class="addmodal-content">
-        <span class="close" onclick="hideModal()" style="cursor: pointer; font-size: 24px;">&times;</span>
+        <span class="close" onclick="hideModal()">&times;</span>
         <h2 id="add-user">Add New User</h2>
         <form method="POST" action="" onsubmit="return validateForm();">
-            
             <!-- Personal Info Page -->
             <div id="personalInfoPage" class="form-page">
-                <p class="section-description">Please provide users personal information.</p>
+                <p class="section-description">Please provide user's personal information.</p>
                 <div class="form-grid">
-                    <!-- Row 1 -->
                     <div class="form-group">
-                        <label for="fname">First Name:</label>
+                        <label for="fname">First Name</label>
                         <input type="text" id="fname" name="Fname" required>
                     </div>
                     <div class="form-group">
-                        <label for="lname">Last Name:</label>
+                        <label for="lname">Last Name</label>
                         <input type="text" id="lname" name="Lname" required>
                     </div>
                     <div class="form-group">
-                        <label for="mi">Middle Name:</label>
+                        <label for="mi">Middle Name</label>
                         <input type="text" id="mi" name="MI">
                     </div>
                     <div class="form-group">
-                        <label for="suffix">Suffix (Optional):</label>
+                        <label for="suffix">Suffix</label>
                         <input type="text" id="suffix" name="Suffix">
                     </div>
                 </div>
-                <div class="form-grid">
-                    <!-- Row 2 -->
-                    <div class="form-group">
-    <label for="birthdate">Birthdate:</label>
-    <input type="date" id="birthdate" name="Birthdate" required placeholder="Select your birthdate" onchange="calculateAge()">
-    <small id="ageError" style="color: red; display: none;">You must be at least 16 years old.</small>
-</div>
 
+                <div class="form-grid">
                     <div class="form-group">
-                        <label for="age">Age:</label>
-                        <input type="number" id="age" name="Age" required readonly>
+                        <label for="birthdate">Birthdate</label>
+                        <input type="date" id="birthdate" name="Birthdate" required onchange="calculateAge()">
                     </div>
                     <div class="form-group">
-                        <label for="sex">Sex:</label>
+                        <label for="age">Age</label>
+                        <input type="number" id="age" name="Age" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="sex">Sex</label>
                         <select id="sex" name="sex" required>
                             <option value="" disabled selected>Select Sex</option>
                             <option value="Male">Male</option>
@@ -808,20 +840,20 @@ function confirmLogout() {
                         </select>
                     </div>
                     <div class="form-group">
-    <label for="contact">Contact Number:</label>
-    <input type="text" id="contact" name="contact" required pattern="^09\d{9}$" title="Contact number must start with '09' and be exactly 11 digits long." onchange="validateContact()">
-</div>
-
+                        <label for="contact">Contact Number</label>
+                        <input type="text" id="contact" name="contact" required pattern="^09\d{9}$">
+                    </div>
                 </div>
+
                 <div class="form-group">
-                    <label for="address">Address:</label>
-                    <input type="text" id="address" name="Address" required>
+                    <label for="address">Address</label>
+                    <input type="text" id="address" name="Address" placeholder="House/Unit No., Street, Barangay, City/Municipality, Province" required>
                 </div>
             </div>
 
             <!-- Account Info Page -->
             <div id="accountInfoPage" class="form-page" style="display: none;">
-                <p class="section-description">Now, please provide users account details.</p>
+                <p class="section-description">Now, please provide user's account details.</p>
                 <div class="form-group">
                     <label for="role">Role:</label>
                     <select id="role" name="Role" required>
@@ -835,79 +867,26 @@ function confirmLogout() {
                     <input type="email" id="email" name="email" required>
                 </div>
                 <div class="form-group">
-    <label for="password">Password</label>
-    <div class="password-container">
-        <input type="password" name="password" id="password" required placeholder=" " />
-        <i class="eye-icon fas fa-eye-slash" title="Show Password" onclick="togglePasswordVisibility('password', this)"></i>
-    </div>
-</div>
-
+                    <label for="password">Password:</label>
+                    <div class="password-container">
+                        <input type="password" id="password" name="password" required>
+                        <i class="eye-icon fas fa-eye-slash" onclick="togglePasswordVisibility('password', this)"></i>
+                    </div>
+                </div>
             </div>
 
-            <!-- Buttons -->
-            <button type="button" onclick="nextPage()" id="nextButton">Next</button>
-            <button type="button" onclick="previousPage()" id="previousButton" style="display: none;">Previous</button>
-            <button type="submit" name="create_user" style="display: none;" id="submitButton">Add User</button>
-
+            <!-- Navigation Buttons -->
+            <div class="modal-buttons">
+                <button type="button" id="previousButton" onclick="previousPage()" style="display: none;">Previous</button>
+                <button type="button" id="nextButton" onclick="nextPage()">Next</button>
+                <button type="submit" id="submitButton" name="create_user" style="display: none;">Add User</button>
+            </div>
         </form>
     </div>
 </div>
 
-
-
 <style>
-    
-    /* Password Container to position icon correctly */
-    .password-container {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-
-
-.eye-icon {
-    position: absolute;
-    right: 5px;
-    top: 40%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    font-size: 18px; /* Adjust the size of the icon */
-}
-
-
-/* Input with padding for the icon */
-.password-container input {
-    padding-right: 30px; /* Add padding on the right to avoid text overlap with the icon */
-}
-
-/* Optional: Add additional padding to the form-group for better spacing */
-.form-group {
-    margin-bottom: 15px;
-}
-
-    /* Modal Background */
-.modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1050; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgba(0, 0, 0, 0.5); /* Black w/ opacity */
-}
-/* Modal Content */
-.addmodal-content {
-    max-height: 80vh; /* Adjust the height as needed */
-    overflow-y: auto; /* Enables vertical scrolling */
-    padding: 20px;
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Modal Background */
+/* Modal styles */
 .modal {
     display: none;
     position: fixed;
@@ -917,9 +896,141 @@ function confirmLogout() {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    overflow: auto;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Prevent background scroll */
 }
 
+.addmodal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh; /* Increased from 80vh for better visibility */
+    overflow-y: auto;
+    position: relative;
+    margin: 20px auto; /* Center the modal */
+    
+    /* Smooth scrolling */
+    scrollbar-width: thin;
+    scrollbar-color: #2B228A #f1f1f1;
+    
+    /* Custom scrollbar for webkit browsers */
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background: #2B228A;
+        border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb:hover {
+        background: #1a1552;
+    }
+}
+
+/* Form styles */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+/* Password field styles */
+.password-container {
+    position: relative;
+}
+
+.eye-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #666;
+}
+
+/* Button styles */
+.modal-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.modal-buttons button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+#nextButton, #submitButton {
+    background-color: #2B228A;
+    color: white;
+}
+
+#previousButton {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Close button */
+.close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+}
+
+/* Section description */
+.section-description {
+    margin-bottom: 1.5rem;
+    color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .addmodal-content {
+        width: 95%;
+        padding: 1.5rem;
+    }
+}
 </style>
 <!-- Edit User Modal -->
 <div id="editUserModal" class="modal">
@@ -968,104 +1079,61 @@ function confirmLogout() {
         <!-- JavaScript for modal functionality -->
         <script>
      
-$(document).ready(function () {
-    $('#userTable').DataTable({
+$(document).ready(function() {
+    var table = $('#userTable').DataTable({
         dom: 'Bfrtip',
         buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        order: [[0, 'asc']], // Sort by first column (No.) by default
+        pageLength: 10,
+        responsive: true,
+        searching: false,
+        paging:false,
+            info: false,
+        columnDefs: [
             {
-                extend: 'copy',
-                className: 'btn btn-primary',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Exclude the last column (Actions)
-                }
-            },
-            {
-                extend: 'csv',
-                className: 'btn btn-success',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Exclude the last column (Actions)
-                }
-            },
-            {
-                extend: 'excel',
-                className: 'btn btn-info',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Exclude the last column (Actions)
-                }
-            },
-            {
-                extend: 'pdf',
-                className: 'btn btn-danger',
-                customize: function (doc) {
-                    doc.content[1].table.widths = ['10%', '30%', '30%', '30%']; // Adjust column widths
-                    doc.content[1].table.body[0] = [
-                        { text: 'No.', bold: true },
-                        { text: 'Name', bold: true },
-                        { text: 'Role', bold: true },
-                        { text: 'Account Created', bold: true }
-                    ]; // Modify the table header in PDF
-                },
-                exportOptions: {
-                    columns: ':not(:last-child)' // Exclude the last column (Actions)
-                }
-            },
-            {
-                extend: 'print',
-                className: 'btn btn-warning',
-                title: '', // Empty title to remove it
-                customize: function (win) {
-                    var doc = win.document;
-
-                    // Add a formal header (Title and Date)
-                    $(doc.body).prepend(
-                        '<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Users List</h1>' +
-                        '<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>'
-                    );
-
-                    // Style the page for print
-                    $(doc.body).css({
-                        fontFamily: 'Arial, sans-serif',
-                        fontSize: '12pt',
-                        color: '#333333',
-                        lineHeight: '1.6',
-                        backgroundColor: '#ffffff',
-                    });
-
-                    // Style the table
-                    $(doc.body).find('table').css({
-                        width: '100%',
-                        borderCollapse: 'collapse',
-                        marginTop: '20px',
-                        border: '1px solid #dddddd',
-                    });
-                    $(doc.body).find('table th').css({
-                        backgroundColor: '#f3f3f3',
-                        color: '#000000',
-                        fontSize: '14pt',
-                        padding: '8px',
-                        border: '1px solid #dddddd',
-                        textAlign: 'left',
-                    });
-                    $(doc.body).find('table td').css({
-                        fontSize: '12pt',
-                        padding: '8px',
-                        border: '1px solid #dddddd',
-                        textAlign: 'left',
-                    });
-
-                    // Optionally add footer
-                    $(doc.body).append('<footer style="position:fixed; bottom:10px; width:100%; text-align:center; font-size:10pt;">Page ' + $(win).find('.paginate_button').text() + '</footer>');
-                },
-                exportOptions: {
-                    columns: ':not(:last-child)' // Exclude the last column (Actions)
-                }
+                targets: -1, // Last column (Actions)
+                orderable: false,
+                searchable: false
             }
         ],
-        responsive: false,
-        searching: false,
-        paging: false,
-        info: false,
-        autoWidth: false
+        language: {
+            search: "Search:",
+            lengthMenu: "Show _MENU_ entries",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            paginate: {
+                first: "First",
+                last: "Last",
+                next: "Next",
+                previous: "Previous"
+            }
+        }
+    });
+
+    // Add filter functionality
+    $('#filter').on('change', function() {
+        var filterValue = $(this).val();
+        if (filterValue === 'all') {
+            table.column(2).search('').draw(); // Clear filter
+        } else {
+            table.column(2).search(filterValue).draw(); // Filter by Role column
+        }
+    });
+
+    // Add sort functionality
+    $('#sort').on('change', function() {
+        var sortValue = $(this).val();
+        switch(sortValue) {
+            case 'name_asc':
+                table.order([1, 'asc']).draw(); // Sort by Name column ascending
+                break;
+            case 'name_desc':
+                table.order([1, 'desc']).draw(); // Sort by Name column descending
+                break;
+            default:
+                table.order([0, 'asc']).draw(); // Default sort by No. column
+        }
     });
 });
 
@@ -1236,7 +1304,6 @@ function previousPage() {
     document.getElementById("submitButton").style.display = "none";
 }
     
-
 function togglePasswordVisibility(fieldId, icon) {
     var field = document.getElementById(fieldId);
     if (field.type === "password") {

@@ -44,56 +44,6 @@ if (isset($_SESSION['id'])) {
 }
 
 
-// Handle user update request (edit user)
-if (isset($_POST['edit_user'])) {
-    $userId = intval($_POST['user_id']);
-    $Fname = trim($_POST['Fname']);
-    $Lname = trim($_POST['Lname']);
-    $MI = trim($_POST['MI']);
-    $Age = intval($_POST['Age']);
-    $Address = trim($_POST['Address']);
-    $contact = trim($_POST['contact']);
-    $Sex = $_POST['Sex'];
-
-    // Prepare the SQL query to update the user
-    $stmt = $conn->prepare("UPDATE users SET fname = ?, lname = ?, mi = ?, age = ?, address = ?, contact = ?, sex = ? WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("sssisssi", $Fname, $Lname, $MI, $Age, $Address, $contact, $Sex, $userId);
-        if ($stmt->execute()) {
-            echo "<script>alert('User updated successfully!');</script>";
-        } else {
-            echo "<script>alert('Error: " . $stmt->error . "');</script>";
-        }
-        $stmt->close();
-    } else {
-        echo "<script>alert('Error preparing statement: " . $conn->error . "');</script>";
-    }
-}
-
-// Fetch user data from the database to set session variables
-if (isset($_SESSION['id'])) {
-    $userId = $_SESSION['id'];
-
-    $sql = "SELECT * FROM users WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        // Set user session variables
-        $_SESSION['Fname'] = $user['fname'];
-        $_SESSION['Lname'] = $user['lname'];
-        $_SESSION['MI'] = $user['mi'];
-        $_SESSION['Age'] = $user['age'];
-        $_SESSION['Address'] = $user['address'];
-        $_SESSION['contact'] = $user['contact'];
-        $_SESSION['Sex'] = $user['sex'];
-    }
-    $stmt->close();
-}
-
 // Fetch announcements
 $sql = "SELECT * FROM announce WHERE is_displayed = 1";
 $announcements = [];
@@ -147,6 +97,9 @@ $totalPages = ceil($totalRooms / $limit);
 
 // Check if the form is submitted via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Debug logging
+    error_log("POST data received: " . print_r($_POST, true));
+    
     // Capture form data
     $roomId = isset($_POST['room_id']) ? intval($_POST['room_id']) : null;
     $comments = isset($_POST['comments']) ? trim($_POST['comments']) : '';
@@ -159,119 +112,269 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Ensure user is logged in
         $userId = $_SESSION['id'] ?? null;
         if (!$userId) {
-            echo "<script>alert('User not logged in. Please log in to apply.') ;window.history.back();</script>";
+            echo "<script>alert('User not logged in. Please log in to apply.');window.history.back();</script>";
             exit;
         }
 
-        // Fetch the old room number based on the current user
-        $stmt = $conn->prepare("SELECT r.room_number FROM roomassignments AS ra JOIN rooms AS r ON ra.room_id = r.room_id WHERE ra.user_id = ?");
+        // Fetch the old room ID and number based on the current user
+        $stmt = $conn->prepare("SELECT ra.room_id, r.room_number 
+                               FROM roomassignments ra 
+                               JOIN rooms r ON ra.room_id = r.room_id 
+                               WHERE ra.user_id = ? 
+                               ORDER BY ra.assignment_date DESC 
+                               LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("i", $userId);
             $stmt->execute();
-            $stmt->bind_result($oldRoomNumber); // Now we're fetching room_number
-            $stmt->fetch();
-            $stmt->close();
-        } else {
-            echo "<script>alert('Error: Could not prepare the statement to fetch old room number.');window.history.back();</script>";
-            exit;
-        }
-
-        // Fetch the room number for the selected room (new room)
-        $stmt = $conn->prepare("SELECT r.room_number FROM rooms AS r WHERE r.room_id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $roomId); // room_id of the new room
-            $stmt->execute();
-            $stmt->bind_result($newRoomNumber); // Fetch the room number of the new room
-            $stmt->fetch();
-            $stmt->close();
-        } else {
-            echo "<script>alert('Error: Could not prepare the statement to fetch new room number.');window.history.back();</script>";
-            exit;
-        }
-
-        // Check if the selected room is the same as the current room
-        if ($oldRoomNumber === $newRoomNumber) {
-            echo "<script>alert('You are already assigned to this room. Please select a different room.');window.history.back();</script>";
-            exit;
-        }
-
-        // Check for existing reassignment requests
-        $stmt = $conn->prepare("SELECT status FROM room_reassignments WHERE user_id = ? ORDER BY reassignment_date DESC LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $stmt->bind_result($existingStatus);
-            $stmt->fetch();
-            $stmt->close();
-
-            // Allow reassignment if the last request was approved or rejected
-            if ($existingStatus === 'pending') {
-                echo "<script>alert('You already have a reassignment request waiting for approval.');window.history.back();</script>";
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows === 0) {
+                echo "<script>alert('No current room assignment found.');window.history.back();</script>";
+                $stmt->close();
                 exit;
             }
+            
+            $currentRoom = $result->fetch_assoc();
+            $oldRoomId = $currentRoom['room_id'];
+            $oldRoomNumber = $currentRoom['room_number'];
+            $stmt->close();
         } else {
-            echo "<script>alert('Error: Could not prepare the statement to check existing requests.');window.history.back();</script>";
+            echo "<script>alert('Error: Could not fetch current room assignment.');window.history.back();</script>";
             exit;
         }
 
-        // If no comments provided, set it to "No comment"
-        if (empty($comments)) {
-            $comments = "No comment";
+        // Fetch the new room details
+        $stmt = $conn->prepare("SELECT room_number, status FROM rooms WHERE room_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $roomId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows === 0) {
+                echo "<script>alert('Selected room does not exist.');window.history.back();</script>";
+                $stmt->close();
+                exit;
+            }
+            
+            $newRoom = $result->fetch_assoc();
+            $newRoomNumber = $newRoom['room_number'];
+            
+            // Check if room is under maintenance
+            if ($newRoom['status'] === 'maintenance') {
+                echo "<script>alert('This room is under maintenance and cannot be selected.');window.history.back();</script>";
+                $stmt->close();
+                exit;
+            }
+            
+            $stmt->close();
+        } else {
+            echo "<script>alert('Error: Could not fetch new room details.');window.history.back();</script>";
+            exit;
         }
 
-        // Insert into the database
-        $stmt = $conn->prepare("INSERT INTO room_reassignments (new_room_id, old_room_id, user_id, comment, reassignment_date, status) VALUES (?, ?, ?, ?, NOW(), 'pending')");
+        // Check if trying to reassign to same room
+        if ($oldRoomId === $roomId) {
+            echo "<script>alert('You are already assigned to this room.');window.history.back();</script>";
+            exit;
+        }
+
+        // Check for existing pending reassignment requests
+        $stmt = $conn->prepare("SELECT reassignment_id FROM room_reassignments 
+                               WHERE user_id = ? AND status = 'pending'");
         if ($stmt) {
-            $stmt->bind_param("iiis", $roomId, $oldRoomId, $userId, $comments);
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows > 0) {
+                echo "<script>alert('You already have a pending reassignment request.');window.history.back();</script>";
+                $stmt->close();
+                exit;
+            }
+            $stmt->close();
+        }
 
+        // Insert the reassignment request
+        $stmt = $conn->prepare("INSERT INTO room_reassignments 
+                               (user_id, old_room_id, new_room_id, comment, status) 
+                               VALUES (?, ?, ?, ?, 'pending')");
+        if ($stmt) {
+            $stmt->bind_param("iiis", $userId, $oldRoomId, $roomId, $comments);
+            
             if ($stmt->execute()) {
-                // Log the activity for room reassignment
+                // Log the activity
                 $activityType = "Room Reassignment Request";
-                $activityDetails = "Reassigned from room $oldRoomNumber to room $newRoomNumber. Reasons: $comments";
-
-                // Insert activity log
-                $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)");
+                $activityDetails = "Requested reassignment from Room $oldRoomNumber to Room $newRoomNumber. Reason: $comments";
+                
+                $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+                                         VALUES (?, ?, ?)");
                 if ($logStmt) {
                     $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
                     $logStmt->execute();
                     $logStmt->close();
                 }
 
-                echo "<script>alert('Application submitted successfully!');</script>";
-                echo "<script>window.location.href = '" . $_SERVER['PHP_SELF'] . "';</script>";
+                echo "<script>
+                    alert('Reassignment request submitted successfully!');
+                    window.location.href = '" . $_SERVER['PHP_SELF'] . "';
+                </script>";
                 exit;
             } else {
-                echo "<script>alert('Error: " . htmlspecialchars($stmt->error) . "');</script>";
+                echo "<script>alert('Error submitting request: " . htmlspecialchars($stmt->error) . "');window.history.back();</script>";
             }
-
             $stmt->close();
         } else {
-            echo "<script>alert('Error: Could not prepare the statement for insertion.');</script>";
+            echo "<script>alert('Error preparing request: " . htmlspecialchars($conn->error) . "');window.history.back();</script>";
         }
     } else {
-        echo "<script>alert('Invalid room ID. Please try again.');</script>";
+        echo "<script>alert('Invalid room ID provided.');window.history.back();</script>";
     }
 }
 
+// Move connection close to the end of the file
+// $conn->close(); // This should be the last line before the HTML starts
 
-// Close the database connection
-// Query to fetch rooms from the database with limit and offset for pagination
-$sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms LIMIT $limit OFFSET $offset";
-$result = $conn->query($sql);
-
+// Move the room query here and keep connection open
 $sql = "SELECT 
-            rooms.room_id, 
-            room_number, 
-            room_monthlyrent, 
-            capacity, 
-            room_desc, 
-            room_pic, 
-            status,
-            (SELECT COUNT(*) FROM roomassignments WHERE room_id = rooms.room_id) AS current_occupants 
-        FROM 
-            rooms";
+    r.room_id, 
+    r.room_number, 
+    r.room_desc, 
+    r.capacity, 
+    r.room_monthlyrent, 
+    r.status, 
+    r.room_pic,
+    (SELECT COUNT(*) FROM roomassignments WHERE room_id = r.room_id) AS current_occupants 
+FROM rooms r";
+
 $result = $conn->query($sql);
-$conn->close();
+
+if ($result === false) {
+    error_log("Query Error: " . $conn->error);
+} 
+
+// Process POST request for room reassignment
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
+    // Debug logging
+    error_log("POST data received: " . print_r($_POST, true));
+    
+    // Capture form data with additional validation
+    $roomId = isset($_POST['room_id']) ? intval($_POST['room_id']) : null;
+    $comments = isset($_POST['comments']) ? trim($_POST['comments']) : '';
+
+    // Debug logging
+    error_log("Processed roomId: " . var_export($roomId, true));
+
+    // Enhanced validation
+    if (!$roomId || $roomId <= 0) {
+        echo "<script>alert('Invalid room ID: Room ID must be a positive number.');window.history.back();</script>";
+        exit;
+    }
+
+    // Verify room exists and is available
+    $checkRoom = $conn->prepare("SELECT room_id, status FROM rooms WHERE room_id = ?");
+    if ($checkRoom) {
+        $checkRoom->bind_param("i", $roomId);
+        $checkRoom->execute();
+        $result = $checkRoom->get_result();
+        
+        if ($result->num_rows === 0) {
+            echo "<script>alert('Invalid room ID: Room does not exist.');window.history.back();</script>";
+            $checkRoom->close();
+            exit;
+        }
+
+        $roomData = $result->fetch_assoc();
+        if ($roomData['status'] === 'maintenance') {
+            echo "<script>alert('This room is under maintenance and cannot be selected.');window.history.back();</script>";
+            $checkRoom->close();
+            exit;
+        }
+        $checkRoom->close();
+    }
+
+    // Ensure user is logged in
+    $userId = $_SESSION['id'] ?? null;
+    if (!$userId) {
+        echo "<script>alert('User not logged in. Please log in to apply.');window.history.back();</script>";
+        exit;
+    }
+
+    // Get current room assignment
+    $stmt = $conn->prepare("SELECT ra.room_id, r.room_number 
+                           FROM roomassignments ra 
+                           JOIN rooms r ON ra.room_id = r.room_id 
+                           WHERE ra.user_id = ? 
+                           ORDER BY ra.assignment_date DESC 
+                           LIMIT 1");
+    
+    if (!$stmt) {
+        error_log("Error preparing statement: " . $conn->error);
+        echo "<script>alert('Database error. Please try again later.');window.history.back();</script>";
+        exit;
+    }
+
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        echo "<script>alert('No current room assignment found. Please contact administrator.');window.history.back();</script>";
+        $stmt->close();
+        exit;
+    }
+
+    $currentAssignment = $result->fetch_assoc();
+    $oldRoomId = $currentAssignment['room_id'];
+    $stmt->close();
+
+    // Check for pending reassignment requests
+    $checkPending = $conn->prepare("SELECT reassignment_id FROM room_reassignments 
+                                  WHERE user_id = ? AND status = 'pending'");
+    $checkPending->bind_param("i", $userId);
+    $checkPending->execute();
+    $pendingResult = $checkPending->get_result();
+    
+    if ($pendingResult->num_rows > 0) {
+        echo "<script>alert('You already have a pending room reassignment request.');window.history.back();</script>";
+        $checkPending->close();
+        exit;
+    }
+    $checkPending->close();
+
+    // Insert reassignment request
+    $stmt = $conn->prepare("INSERT INTO room_reassignments (user_id, old_room_id, new_room_id, comment, status) 
+                           VALUES (?, ?, ?, ?, 'pending')");
+    
+    if (!$stmt) {
+        error_log("Error preparing insert statement: " . $conn->error);
+        echo "<script>alert('Database error. Please try again later.');window.history.back();</script>";
+        exit;
+    }
+
+    $stmt->bind_param("iiis", $userId, $oldRoomId, $roomId, $comments);
+    
+    if ($stmt->execute()) {
+        echo "<script>alert('Room reassignment request submitted successfully!');window.location.href = '" . $_SERVER['PHP_SELF'] . "';</script>";
+        exit;
+    } else {
+        error_log("Error executing insert: " . $stmt->error);
+        echo "<script>alert('Error submitting request. Please try again.');window.history.back();</script>";
+    }
+    $stmt->close();
+}
+
+// Debug: Print the SQL query
+echo "<!-- SQL Query: " . htmlspecialchars($sql) . " -->";
+
+if ($result === false) {
+    echo "Query Error: " . $conn->error;
+} else {
+    // Debug: Print the first row
+    $firstRow = $result->fetch_assoc();
+    echo "<!-- First Row Data: " . print_r($firstRow, true) . " -->";
+    // Reset the result pointer
+    $result->data_seek(0);
+}
 ?>
 
 
@@ -280,7 +383,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Home</title>
 
 
 <!-- Font Awesome CSS for icons -->
@@ -290,7 +393,641 @@ $conn->close();
 <!-- Your custom CSS (placed last to ensure it overrides Bootstrap) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+<style>
+    .main-content{
+        padding-top: 20;
+    }
+    /* Announcement Box Styling */
+    .announcement-box {
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+        margin: 20px 30px; /* Adjusted margin */
+        max-width: calc(100% - 60px); /* Account for left/right margin */
+    }
 
+    .announcement-box h2 {
+        color: #2c3e50;
+        font-size: 28px;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e74c3c;
+    }
+
+    .announcement-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 10px;
+    }
+
+    .announcement-item {
+        background: #ffffff;
+        border: none;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 0; /* Remove bottom margin */
+    }
+
+    .announcement-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #3498db;
+    }
+
+    .announcement-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .announcement-item h3 {
+        color: #2c3e50;
+        font-size: 20px;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .announcement-item p {
+        color: #555;
+        line-height: 1.6;
+        margin-bottom: 12px;
+    }
+
+    /* Updated Room Card Styling */
+    .room-card {
+        width: calc((100% - 60px) / 3); /* Exactly 3 cards per row with 30px gaps */
+        margin: 0; /* Remove margin as we're using gap */
+        min-width: 300px;
+    }
+
+    .card {
+        height: 100%;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        background: #fff;
+    }
+
+    .card-img-top {
+        height: 220px;
+        object-fit: cover;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+
+    .card-body {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-title {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .room-price {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .status-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    /* Container adjustments */
+    .container {
+        max-width: 1400px;
+        padding: 0 30px; /* Consistent with announcement box */
+        margin: 30px auto; /* Add top/bottom margin */
+    }
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px; /* Consistent gap between cards */
+        justify-content: flex-start;
+    }
+
+    .col-md-3 {
+        padding: 10px; /* Even spacing between cards */
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+        .room-card {
+            width: calc((100% - 30px) / 2); /* 2 cards per row */
+        }
+    }
+
+    @media (max-width: 768px) {
+        .room-card {
+            width: 100%; /* 1 card per row */
+        }
+        
+        .container {
+            padding: 0 15px;
+        }
+        
+        .announcement-box {
+            margin: 20px 15px;
+            padding: 20px;
+        }
+    }
+
+    .apply-btn {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .apply-btn:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-2px);
+    }
+
+    .btn-warning, .btn-danger {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+
+    /* Status Badge */
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+
+    .status-available {
+        background-color: #2ecc71;
+        color: white;
+    }
+
+    .status-occupied {
+        background-color: #e74c3c;
+        color: white;
+    }
+
+    .status-maintenance {
+        background-color: #f1c40f;
+        color: white;
+    }
+
+    /* Room Box Styling */
+    .room-box {
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+        margin: 20px 30px; /* Adjusted margin */
+        max-width: calc(100% - 60px); /* Account for left/right margin */
+    }
+
+    .room-box h2 {
+        color: #2c3e50;
+        font-size: 28px;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e74c3c;
+    }
+
+    .room-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 10px;
+    }
+
+    .room-item {
+        background: #ffffff;
+        border: none;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 0; /* Remove bottom margin */
+    }
+
+    .room-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #3498db;
+    }
+
+    .room-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .room-item h3 {
+        color: #2c3e50;
+        font-size: 20px;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .room-item p {
+        color: #555;
+        line-height: 1.6;
+        margin-bottom: 12px;
+    }
+
+    .room-image {
+        position: relative;
+    }
+
+    .room-image img {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+
+    .status-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    .room-details {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .room-price {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .occupancy {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .occupancy i {
+        margin-right: 5px;
+    }
+
+    .description {
+        margin-bottom: 12px;
+    }
+
+    .btn-maintenance {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-maintenance:hover {
+        background: linear-gradient(135deg, #c0392b, #992d22);
+        transform: translateY(-2px);
+    }
+
+    .btn-apply {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-apply:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-2px);
+    }
+
+    .btn-occupied {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-occupied:hover {
+        background: linear-gradient(135deg, #c0392b, #992d22);
+        transform: translateY(-2px);
+    }
+
+    /* Room Header with Filter */
+    .room-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #3498db;
+    }
+
+    .room-header h2 {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .filter-container {
+        min-width: 200px;
+    }
+
+    .form-select {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 2px solid #3498db;
+        background-color: white;
+        color: #2c3e50;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .form-select:hover {
+        border-color: #2980b9;
+    }
+
+    .form-select:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    @media (max-width: 768px) {
+        .room-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .filter-container {
+            width: 100%;
+        }
+    }
+
+    /* Modal Styles */
+    .modal-content {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        padding: 20px;
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .modal-title i {
+        margin-right: 10px;
+    }
+
+    .btn-close {
+        color: white;
+        opacity: 1;
+    }
+
+    .modal-body {
+        padding: 25px;
+    }
+
+    /* Room Details Section */
+    .room-details-section {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .detail-item i {
+        color: #3498db;
+        font-size: 1.2rem;
+        margin-top: 3px;
+    }
+
+    .detail-item label {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 2px;
+    }
+
+    .detail-item p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    /* Reasons Section */
+    .reasons-section {
+        margin-bottom: 20px;
+    }
+
+    .reasons-section label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .reasons-section textarea {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .reasons-section textarea:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        outline: none;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+        border-top: 1px solid #eee;
+        padding: 20px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn i {
+        margin-right: 8px;
+    }
+
+    .btn-secondary {
+        background-color: #e0e0e0;
+        border: none;
+        color: #333;
+    }
+
+    .btn-secondary:hover {
+        background-color: #d0d0d0;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-1px);
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .room-details-section {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .modal-dialog {
+            margin: 10px;
+        }
+    }
+
+    /* Room Description Section */
+    .room-description-section {
+        margin-bottom: 20px;
+    }
+
+    .room-description-section label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .room-description-section textarea {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .room-description-section textarea:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        outline: none;
+    }
+
+    /* Profile Button Styling */
+    .profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-radius: 20px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .profile-btn:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+
+    .profile-btn i {
+        font-size: 1.1rem;
+    }
+
+    .profile-btn span {
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    /* Update existing topbar styles if needed */
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 30px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+</style>
 </head>
 <body>
 
@@ -328,19 +1065,11 @@ function confirmLogout() {
     <div class="topbar">
         <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
         
-
-        <!-- Button to trigger modal with dynamic data -->
-        <a href="profile.php" class="editUserModal">
-    <i class="fa fa-user"></i>
-</a>
-
-
-    
-
-
-        <!-- Modal Content -->
-        
-              
+        <!-- Profile Button -->
+        <a href="profile.php" class="profile-btn">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
     </div>
 
     <!-- ANNOUNCEMENT -->
@@ -366,94 +1095,84 @@ function confirmLogout() {
 
         
 <div class="container">
-<!-- Filter Dropdown -->
-<div class="filter-dropdown mb-4 text-start">
-    <label for="statusFilter" class="me-2">Filter by Status:</label>
-    <select id="statusFilter" class="form-select d-inline-block w-auto" onchange="filterRooms()">
-        <option value="">All</option>
-        <?php 
-        $statuses = ['Available', 'Occupied', 'Maintenance']; 
-        foreach ($statuses as $status): ?>
-            <option value="<?php echo htmlspecialchars($status); ?>">
-                <?php echo htmlspecialchars($status); ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</div>
-
-
-<!-- Room List -->
-<div class="container">
-    <div class="row justify-content-center">
-    <?php
-if ($result === false) {
-    echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
-} elseif ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $currentOccupants = $row['current_occupants'] ?? 0; 
-        $totalCapacity = $row['capacity'];
-
-        // Determine room status
-        if ($currentOccupants >= $totalCapacity) {
-            $status = 'Occupied';
-        } elseif (strtolower($row['status']) === 'maintenance') {
-            $status = 'Maintenance';
-        } else {
-            $status = 'Available';
-        }
-        ?>
-        <!-- Room Card -->
-        <div class="col-md-3 room-card mb-4 me-3" data-status="<?php echo htmlspecialchars($status); ?>">
-            <div class="card h-100">
-                <?php if (!empty($row['room_pic']) && file_exists("../uploads/" . $row['room_pic'])): ?>
-                    <img src="<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>" 
-                         alt="Room Image" 
-                         class="card-img-top" 
-                         style="cursor: pointer;" 
-                         onclick="openModal('<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>')">
-                <?php else: ?>
-                    <img src="path/to/default/image.jpg" alt="No Image Available" class="card-img-top"> <!-- Fallback image -->
-                <?php endif; ?>
-
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title">Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
-                    <p class="room-price">
-                        Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly
-                    </p>
-                    <p>Capacity: 
-                        <?php echo htmlspecialchars($currentOccupants) . '/' . htmlspecialchars($totalCapacity); ?> people
-                    </p>
-                    <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
-                    <p>Status: <?php echo htmlspecialchars($status); ?></p>
-
-                    <div class="mt-auto">
-                        <?php if ($status === 'Maintenance'): ?>
-                            <button class="btn btn-warning" disabled>Under Maintenance</button>
-                        <?php elseif ($currentOccupants < $totalCapacity): ?>
-                            <button type="submit" class="btn  apply-btn " data-bs-toggle="modal" data-bs-target="#applyModal"
-    data-room-id="<?php echo htmlspecialchars($row['room_id'] ?? ''); ?>"
-    data-room-number="<?php echo htmlspecialchars($row['room_number'] ?? ''); ?>"
-    data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent'] ?? ''); ?>"
-    data-room-capacity="<?php echo htmlspecialchars($row['capacity'] ?? ''); ?>"
-    data-room-status="<?php echo htmlspecialchars($row['status'] ?? ''); ?>">
-    Request Reassigment
-</button>
-
-
-                        <?php else: ?>
-                            <button class="btn btn-danger" disabled>Fully Occupied</button>
-                        <?php endif; ?>
-                    </div>
-                </div>
+    <!-- Room Cards Container -->
+    <div class="room-box">
+        <div class="room-header">
+            <h2><i class="fas fa-door-open"></i> Available Rooms</h2>
+            <div class="filter-container">
+                <select id="statusFilter" class="form-select" onchange="filterRooms()">
+                    <option value="">All Rooms</option>
+                    <option value="available">Available</option>
+                    <option value="occupied">Occupied</option>
+                    <option value="maintenance">Maintenance</option>
+                </select>
             </div>
         </div>
-        <?php
-    }
-} else {
-    echo "<p class='text-center'>No rooms available.</p>";
-}
-?>
- 
+        <div class="room-container">
+            <?php
+            if ($result === false) {
+                echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
+            } elseif ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $currentOccupants = $row['current_occupants'] ?? 0; 
+                    $totalCapacity = $row['capacity'];
+
+                    // Determine room status
+                    if ($currentOccupants >= $totalCapacity) {
+                        $status = 'Occupied';
+                    } elseif (strtolower($row['status']) === 'maintenance') {
+                        $status = 'Maintenance';
+                    } else {
+                        $status = 'Available';
+                    }
+                    ?>
+                    <div class="room-item">
+                        <div class="room-image">
+                            <?php if (!empty($row['room_pic']) && file_exists("../uploads/" . $row['room_pic'])): ?>
+                                <img src="<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>" 
+                                     alt="Room Image" 
+                                     onclick="openModal('<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>')">
+                            <?php else: ?>
+                                <img src="path/to/default/image.jpg" alt="No Image Available">
+                            <?php endif; ?>
+                            <div class="status-badge <?php echo 'status-'.strtolower($status); ?>">
+                                <?php echo htmlspecialchars($status); ?>
+                            </div>
+                        </div>
+                        <div class="room-details">
+                            <h3>Room <?php echo htmlspecialchars($row['room_number']); ?></h3>
+                            <p class="room-price">₱<?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
+                            <p class="occupancy">
+                                <i class="fas fa-users"></i>
+                                <?php echo htmlspecialchars($currentOccupants) . '/' . htmlspecialchars($totalCapacity); ?> people
+                            </p>
+                            <p class="description"><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                            
+                            <?php if ($status === 'Maintenance'): ?>
+                                <button class="btn-maintenance" disabled>Under Maintenance</button>
+                            <?php elseif ($currentOccupants < $totalCapacity): ?>
+                                <button class="btn-apply" data-bs-toggle="modal" data-bs-target="#applyModal"
+                                    data-room-id="<?php echo htmlspecialchars($row['room_id']); ?>"
+                                    data-room-number="<?php echo htmlspecialchars($row['room_number']); ?>"
+                                    data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent']); ?>"
+                                    data-room-capacity="<?php echo htmlspecialchars($row['capacity']); ?>"
+                                    data-room-desc="<?php echo htmlspecialchars($row['room_desc']); ?>"
+                                    data-current-occupants="<?php echo htmlspecialchars($currentOccupants); ?>"
+                                    data-room-status="<?php echo htmlspecialchars($row['status']); ?>">
+                                    Request Reassignment
+                                </button>
+                            <?php else: ?>
+                                <button class="btn-occupied" disabled>Fully Occupied</button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php
+                }
+            } else {
+                echo "<p class='text-center'>No rooms available.</p>";
+            }
+            ?>
+        </div>
     </div>
 </div>
 
@@ -461,24 +1180,6 @@ if ($result === false) {
     </div>
    
 
-    <!-- Pagination Links -->
-    <div class="pagination">
-         <!-- Pagination Links -->
-    <div id="pagination">
-        <!-- Previous Page Button -->
-        <button <?php if ($page <= 1) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page - 1; ?>'">
-            Previous
-    </button>
-
-        <!-- Page Indicator -->
-        <span id="pageIndicator">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
-
-        <!-- Next Page Button -->
-        <button <?php if ($page >= $totalPages) { echo 'disabled'; } ?> onclick="window.location.href='?page=<?php echo $page + 1; ?>'">
-            Next
-        </button>
-    </div>
-</div>
 
 
             
@@ -487,38 +1188,76 @@ if ($result === false) {
     
     <!-- Modal HTML Structure -->
 <div class="modal fade" id="applyModal" tabindex="-1" aria-labelledby="applyModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="applyModalLabel">Room Reassign</h5>
+                <h5 class="modal-title" id="applyModalLabel">
+                    <i class="fas fa-exchange-alt"></i> Room Reassignment Request
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="applyForm" action="user-dashboard.php" method="POST">
-                    <!-- Hidden input for room_id -->
+                <form id="applyForm" method="POST">
                     <input type="hidden" name="room_id" id="room_id_input">
                     
-                    <!-- Room Information (populated dynamically) -->
-                    <div class="form-group mb-3">
-                        <p><strong>Room Number:</strong> <span id="modalRoomNumber"></span></p>
-                    </div>
-                    <div class="form-group mb-3">
-                        <p><strong>Rent Price:</strong> <span id="modalRoomPrice"></span></p>
-                    </div>
-                    <div class="form-group mb-3">
-                        <p><strong>Capacity:</strong> <span id="modalRoomCapacity"></span></p>
-                    </div>
-                    <div class="form-group mb-3">
-                        <p><strong>Status:</strong> <span id="modalRoomStatus"></span></p>
+                    <!-- Room Details Section -->
+                    <div class="room-details-section">
+                        <div class="detail-item">
+                            <i class="fas fa-door-open"></i>
+                            <div>
+                                <label>Room Number:</label>
+                                <p id="modalRoomNumber"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <div>
+                                <label>Monthly Rent:</label>
+                                <p id="modalRoomPrice"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <i class="fas fa-users"></i>
+                            <div>
+                                <label>Capacity:</label>
+                                <p id="modalRoomCapacity"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <i class="fas fa-info-circle"></i>
+                            <div>
+                                <label>Status:</label>
+                                <p id="modalRoomStatus"></p>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Optional Comments -->
-                    <div class="form-group mb-3">
-    <label for="comments">Reasons:</label>
-    <textarea id="comments" name="comments" class="form-control" required></textarea>
-</div>
+                    <!-- Reasons Textarea -->
+                    <div class="form-group mt-3">
+                        <label for="comments">
+                            <i class="fas fa-comment-alt"></i> Reason for Reassignment
+                        </label>
+                        <textarea 
+                            id="comments" 
+                            name="comments" 
+                            class="form-control" 
+                            required
+                            placeholder="Please explain why you want to be reassigned to this room..."
+                            rows="4"
+                        ></textarea>
+                    </div>
 
-                    <button type="submit" class="btn btn-primary">Submit Application</button>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Submit Request
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -557,7 +1296,6 @@ document.querySelectorAll('.apply-btn').forEach(button => {
         document.getElementById('modalRoomNumber').textContent = roomNumber;
         document.getElementById('modalRoomPrice').textContent = `₱${roomPrice}`;
         document.getElementById('modalRoomCapacity').textContent = roomCapacity;
-        document.getElementById('modalRoomStatus').textContent = roomStatus;
     });
 });
 
@@ -576,21 +1314,20 @@ function closeModal() {
         document.getElementById('imageModal').style.display = 'none';
     }
     function filterRooms() {
-    var filterValue = document.getElementById('statusFilter').value.toLowerCase();
-    var roomCards = document.querySelectorAll('.room-card');
+        const filterValue = document.getElementById('statusFilter').value.toLowerCase();
+        const roomItems = document.querySelectorAll('.room-item');
 
-    roomCards.forEach(function(card) {
-        // Get the status from data-status attribute
-        var status = card.getAttribute('data-status').toLowerCase();
-        
-        // Check if the card should be displayed
-        if (filterValue === "" || status === filterValue) {
-            card.style.display = ""; // Show card
-        } else {
-            card.style.display = "none"; // Hide card
-        }
-    });
-}
+        roomItems.forEach(item => {
+            const statusBadge = item.querySelector('.status-badge');
+            const status = statusBadge.textContent.toLowerCase().trim();
+
+            if (filterValue === '' || status === filterValue) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
 
  
        // Function to open the edit modal and populate the form
@@ -636,6 +1373,35 @@ function closeModal() {
                 icon.classList.remove('fa-bars');
                 icon.classList.add('fa-times');
             }
+        });
+    </script>
+
+    <!-- Add this JavaScript code after your existing scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // When the modal is about to be shown
+            const applyModal = document.getElementById('applyModal');
+            applyModal.addEventListener('show.bs.modal', function (event) {
+                // Button that triggered the modal
+                const button = event.relatedTarget;
+                
+                // Extract data from data-* attributes
+                const roomId = button.getAttribute('data-room-id');
+                const roomNumber = button.getAttribute('data-room-number');
+                const roomPrice = parseFloat(button.getAttribute('data-room-price')).toFixed(2);
+                const roomCapacity = button.getAttribute('data-room-capacity');
+                const currentOccupants = button.getAttribute('data-current-occupants');
+                const roomStatus = button.getAttribute('data-room-status');
+                const roomDesc = button.getAttribute('data-room-desc');
+
+                // Update the modal's content
+                const modal = this;
+                modal.querySelector('#room_id_input').value = roomId;
+                modal.querySelector('#modalRoomNumber').textContent = `Room ${roomNumber}`;
+                modal.querySelector('#modalRoomPrice').textContent = `₱${roomPrice} / Monthly`;
+                modal.querySelector('#modalRoomCapacity').textContent = `${currentOccupants}/${roomCapacity} people`;
+                modal.querySelector('#modalRoomStatus').textContent = roomStatus;
+            });
         });
     </script>
 </body>

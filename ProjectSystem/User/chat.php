@@ -133,7 +133,7 @@ function getMessages($conn, $receiverId = 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../Admin/Css_Admin/dashboard.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="icon" href="img-icon/chats.png" type="image/png">
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
@@ -624,7 +624,160 @@ function getMessages($conn, $receiverId = 0) {
             display: none;
         }
     }
+    
     </style>
+    <style>
+    /* Members List Container */
+    #messageDetails {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 25px;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+    }
+
+    #messageDetails h4 {
+        color: #2c3e50;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f1f1f1;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 1;
+    }
+
+    /* Member Item Styling */
+    .member-item {
+        transition: all 0.3s ease;
+        border: 1px solid #edf2f7;
+        background: white;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .member-item:hover {
+        background-color: #f8fafc;
+        transform: translateX(5px);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .member-item:active {
+        transform: translateX(3px);
+    }
+
+    /* Member Info Layout */
+    .member-info {
+        margin-left: 15px;
+        flex: 1;
+    }
+
+    .member-info strong {
+        display: block;
+        color: #1a202c;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+
+    /* Status Indicator */
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 12px;
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .status-indicator.active {
+        background-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+        animation: pulse 2s infinite;
+    }
+
+    .status-indicator.inactive {
+        background-color: #9ca3af;
+        box-shadow: 0 0 0 4px rgba(156, 163, 175, 0.15);
+    }
+
+    /* Badge Styling */
+    .badge {
+        font-size: 0.7rem;
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-primary {
+        background-color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .badge-success {
+        background-color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.1);
+    }
+
+    .badge-info {
+        background-color: #6366f1;
+        border: 1px solid rgba(99, 102, 241, 0.1);
+    }
+
+    /* Pulse Animation for Active Status */
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+
+    /* Scrollbar Styling */
+    #messageDetails::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #messageDetails::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
+
+    #messageDetails::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    #messageDetails::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        #messageDetails {
+            padding: 20px;
+        }
+
+        .member-item {
+            padding: 12px;
+        }
+
+        .member-info strong {
+            font-size: 0.9rem;
+        }
+    }
+</style>
 </head>
 <body>
     <!-- Sidebar -->

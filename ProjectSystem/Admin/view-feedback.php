@@ -15,40 +15,41 @@ if ($conn->connect_error) {
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Check if feedback_id is set in POST data
     if (isset($_POST['feedback_id'])) {
-        // Sanitize input
         $feedback_id = intval($_POST['feedback_id']);
-
-        // Delete feedback query
+        
+        // Debug line - you can remove this after confirming it works
+        error_log("Attempting to delete feedback ID: " . $feedback_id);
+        
         $sql = "DELETE FROM roomfeedback WHERE id = ?";
-
-        // Prepare and execute the query
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $feedback_id);
-
+        
         if ($stmt->execute()) {
-            // Directly set JavaScript alert and redirect to view-feedback.php
-            echo "<script>alert('Feedback deleted successfully!'); window.location.href = 'view-feedback.php';</script>";
+            // Add debug line
+            error_log("Successfully deleted feedback ID: " . $feedback_id);
+            header("Location: view-feedback.php");
+            exit();
         } else {
-            // Directly set JavaScript alert for error and redirect to view-feedback.php
-            echo "<script>alert('Error deleting feedback: " . $stmt->error . "'); window.location.href = 'view-feedback.php';</script>";
+            // Add error logging
+            error_log("Error deleting feedback: " . $conn->error);
+            echo "Error deleting record: " . $conn->error;
         }
-
-        // Close the statement
         $stmt->close();
-    } else {
-        // Directly set JavaScript alert for missing feedback ID and redirect to view-feedback.php
-        echo "<script>alert('Invalid request: Feedback ID missing.'); window.location.href = 'view-feedback.php';</script>";
     }
 }
 
-$sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
-                f.feedback, f.submitted_at
-        FROM rooms r
-        LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
-        LEFT JOIN users u ON ra.user_id = u.id
-        INNER JOIN roomfeedback f ON u.id = f.user_id";
+$sql = "SELECT 
+    f.id AS feedback_id,
+    r.room_number,
+    CONCAT(u.fname, ' ', u.lname) AS resident_name,
+    f.feedback,
+    f.submitted_at
+FROM roomfeedback f
+LEFT JOIN users u ON f.user_id = u.id
+LEFT JOIN roomassignments ra ON f.assignment_id = ra.assignment_id
+LEFT JOIN rooms r ON ra.room_id = r.room_id
+ORDER BY f.submitted_at DESC";
 
 
 
@@ -126,34 +127,48 @@ function confirmLogout() {
     <div class="container">
 
     <div class="d-flex justify-content-start">
-    <a href="dashboard.php" class="btn " onclick="window.location.reload();">
-    <i class="fas fa-arrow-left fa-2x me-1"></i></a>
+    <a href="dashboard.php" class="btn btn-back">
+        <i class="fas fa-arrow-left fa-2x me-1"></i>
+    </a>
 </div>
 <!-- HTML Form with Search and Filter -->
 <!-- Search and Filter Section -->
-<div class="container mt-1">
-   <!-- Search and Filter Section -->
-<!-- Search and Filter Section -->
-<div class="row mb-4">
-    <div class="col-12 col-md-8">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
-    </div>
-    <div class="col-6 col-md-2">
-        <select id="filterSelect" class="form-select">
-            <option value="all" selected>Filter by</option>
-            <option value="resident">Resident</option>
-            <option value="room_number">Room Number</option>
-            <option value="feedback">Feedback</option>
-        </select>
-    </div>
-    <div class="col-5 col-md-2 mb-3">
-        <select id="sortSelect" class="form-select" style="width: 100%;">
-            <option value="all" selected>Sort by</option>
-            <option value="resident_asc">Resident (A to Z)</option>
-            <option value="resident_desc">Resident (Z to A)</option>
-            <option value="room_asc">Room (Low to High)</option>
-            <option value="room_desc">Room (High to Low)</option>
-        </select>
+<div class="container">
+    <div class="row mb-1">
+        <!-- Search Input -->
+        <div class="col-12 col-md-6">
+            <form method="GET" action="" class="search-form">
+                <div class="input-group">
+                    <input type="text" id="searchInput" class="form-control custom-input-small" 
+                        placeholder="Search for room details..." 
+                        value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                </div>
+            </form>
+        </div>
+
+        <!-- Filter Dropdown -->
+        <div class="col-6 col-md-2 mt-2">
+            <select id="filterSelect" class="form-select">
+                <option value="all" selected>Filter by</option>
+                <option value="resident">Resident</option>
+                <option value="room_number">Room Number</option>
+                <option value="feedback">Feedback</option>
+            </select>
+        </div>
+
+        <!-- Sort Dropdown -->
+        <div class="col-6 col-md-2 mt-2">
+            <select id="sortSelect" class="form-select">
+                <option value="all" selected>Sort by</option>
+                <option value="resident_asc">Resident (A to Z)</option>
+                <option value="resident_desc">Resident (Z to A)</option>
+                <option value="room_asc">Room (Low to High)</option>
+                <option value="room_desc">Room (High to Low)</option>
+            </select>
+        </div>
     </div>
 </div>
 
@@ -162,107 +177,245 @@ function confirmLogout() {
 <?php
 if ($result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
-        echo "<div class='col-12 col-md-4 mb-4'>"; // Card container
-        echo "<div class='card h-100 position-relative'>"; // Add relative position for the card
+        echo "<div class='col-12 col-md-4 mb-4'>";
+        echo "<div class='card h-100 feedback-card'>";
         
-        // Delete button as an icon
-        echo "<form method='POST' action='view-feedback.php' class='delete-form position-absolute' style='top: 10px; right: 10px;' onsubmit='return confirm(\"Are you sure you want to delete this feedback?\");'>";
+        // Delete button with improved styling
+        echo "<form method='POST' action='" . htmlspecialchars($_SERVER['PHP_SELF']) . "' class='delete-form'>";
         echo "<input type='hidden' name='feedback_id' value='" . htmlspecialchars($row['feedback_id']) . "'>";
-        echo "<button type='submit' class='btn btn-link text-danger delete-btn p-0' title='Delete Feedback'>";
-        echo "<i class='bi bi-x-circle' style='font-size: 1.5rem;'></i>"; // Bootstrap icon for delete
+        echo "<button type='submit' class='btn delete-btn' 
+              onclick='return confirm(\"Are you sure you want to delete this feedback?\");'>";
+        echo "<i class='bi bi-x-circle'></i>";
         echo "</button>";
         echo "</form>";
         
-        echo "<div class='card-body'>";
+        echo "<div class='card-body d-flex flex-column'>";
+        echo "<div class='header-section'>";
         echo "<h5 class='card-title'>" . htmlspecialchars($row['resident_name']) . "</h5>";
-        echo "<h6 class='card-subtitle mb-2 text-muted'>Room " . htmlspecialchars($row['room_number']) . "</h6>";
+        echo "<h6 class='card-subtitle'>Room " . htmlspecialchars($row['room_number']) . "</h6>";
+        echo "</div>";
+        echo "<div class='feedback-content'>";
         echo "<p class='card-text'>" . htmlspecialchars($row['feedback']) . "</p>";
-        echo "<p class='card-text'><small class='text-muted'>Submitted on: " . htmlspecialchars($row['submitted_at']) . "</small></p>";
-        echo "</div>"; // Close card-body
+        echo "</div>";
+        echo "<div class='timestamp mt-auto'>";
+        echo "<small>Submitted on: " . htmlspecialchars($row['submitted_at']) . "</small>";
+        echo "</div>";
+        echo "</div>";
         
-        echo "</div>"; // Close card
-        echo "</div>"; // Close column
+        echo "</div>";
+        echo "</div>";
     }
 } else {
-    echo "<div class='col-12 text-center'><p>No feedback found.</p></div>";
+    echo "<div class='col-12 text-center'><p class='no-feedback'>No feedback found.</p></div>";
 }
 ?>
 <style>
-    /* General container styling for card layout */
-.col-8.col-md-4 {
-    display: flex;
-    justify-content: center;
-}
+    /* Container spacing */
+    .container.mt-1 {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
 
-/* Card styling */
-.card {
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+    /* Search and filter controls */
+    .custom-input-small {
+        height: 38px;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+    }
 
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.2);
-}
+    .form-select {
+        height: 38px;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        background-color: white;
+    }
 
-/* Card body styling */
-.card-body {
-    padding: 10px;
-    background-color: #fdfdfd;
-}
+    /* Card grid layout */
+    .col-12.col-md-4.mb-4 {
+        padding: 10px;
+    }
 
-/* Card title */
-.card-title {
-    font-size: 18px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 10px;
-}
+    /* Enhanced card styling */
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        background: white;
+        height: 100%;
+        position: relative;
+    }
 
-/* Card subtitle */
-.card-subtitle {
-    font-size: 14px;
-    color: #888;
-    margin-bottom: 15px;
-}
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+    }
 
-/* Card text */
-.card-text {
-    font-size: 14px;
-    color: #555;
-    margin-bottom: 10px;
-}
+    /* Card content styling */
+    .card-body {
+        padding: 1.5rem;
+    }
 
-/* Text for date */
-.card-text small {
-    font-size: 12px;
-    color: #aaa;
-}
+    .card-title {
+        color: #2B228A;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        padding-right: 30px; /* Space for delete button */
+    }
 
-/* Button styling */
-.btn-danger {
-    background-color: #e74c3c;
-    border: none;
-    color: #fff;
-    padding: 8px 12px;
-    font-size: 14px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
+    .card-subtitle {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
 
-.btn-danger:hover {
-    background-color: #c0392b;
-}
+    .card-text {
+        color: #495057;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
 
-.btn-danger:focus {
-    outline: none;
-    box-shadow: 0px 0px 5px rgba(231, 76, 60, 0.5);
-}
+    .card-text small {
+        color: #868e96;
+        font-size: 0.85rem;
+    }
 
+    /* Delete button styling */
+    .delete-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        opacity: 1;
+        transition: opacity 0.2s ease;
+    }
+
+    .card:hover .delete-btn {
+        opacity: 1;
+    }
+
+    .delete-btn i {
+        color: #dc3545;
+        transition: color 0.2s ease;
+    }
+
+    .delete-btn:hover i {
+        color: #c82333;
+    }
+
+    /* Back button styling */
+    .btn-back {
+        color: #2B228A;
+        transition: transform 0.2s ease;
+        margin-bottom: 1rem;
+    }
+
+    .btn-back:hover {
+        transform: translateX(-5px);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .col-12.col-md-4.mb-4 {
+            padding: 10px 5px;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .delete-btn {
+            opacity: 1;
+        }
+    }
+
+    .feedback-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        background: #ffffff;
+    }
+
+    .feedback-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .header-section {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        color: #2B228A;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+        padding-right: 35px;
+    }
+
+    .card-subtitle {
+        color: #666;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .feedback-content {
+        flex-grow: 1;
+        padding: 10px 0;
+    }
+
+    .feedback-content .card-text {
+        color: #444;
+        line-height: 1.6;
+        margin-bottom: 15px;
+    }
+
+    .timestamp {
+        color: #888;
+        font-size: 0.85rem;
+        border-top: 1px solid #eee;
+        padding-top: 12px;
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 0;
+        background: none;
+        border: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .feedback-card:hover .delete-btn {
+        opacity: 1;
+    }
+
+    .delete-btn i {
+        color: #dc3545;
+        font-size: 1.25rem;
+        transition: color 0.2s ease;
+    }
+
+    .delete-btn:hover i {
+        color: #c82333;
+    }
+
+    .no-feedback {
+        color: #666;
+        font-size: 1.1rem;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        text-align: center;
+    }
 </style>
 </div>
 

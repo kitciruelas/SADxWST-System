@@ -146,7 +146,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Custom CSS -->
-<link rel="stylesheet" href="Css_Admin/dashboard.css">
+<link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
 
 </head>
 <body>
@@ -187,10 +187,51 @@ function confirmLogout() {
     <div class="topbar">
         <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
 
-    <!-- Button to trigger modal with dynamic data -->
-    <a href="admin-profile.php" class="editUserModal">
-    <i class="fa fa-user fa-2x"></i>
-</a>
+        <a href="admin-profile.php" class="profile-btn">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
+</a><style>
+      /* Update existing topbar styles if needed */
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 30px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          /* Profile Button Styling */
+    .profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-radius: 20px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .profile-btn:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+
+    .profile-btn i {
+        font-size: 1.1rem;
+    }
+
+    .profile-btn span {
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    }
+</style>
 
       
 
@@ -311,6 +352,7 @@ function confirmLogout() {
 </div>
 
 <style>
+    
 .analytics-card {
     background: white;
     border-radius: 16px;

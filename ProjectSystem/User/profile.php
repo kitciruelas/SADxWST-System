@@ -247,7 +247,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
 
-    <link rel="stylesheet" href="Css_user/visitor-logs.css"> <!-- I-load ang custom CSS sa huli -->
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -758,24 +758,34 @@ function confirmLogout() {
           </div>
       </div>
 
-
 <!-- Edit Profile Modal -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editProfileModalLabel">Edit Profile</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editProfileModalLabel">
+          <i class="fas fa-user-edit me-2"></i>Edit Profile
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       
       <div class="modal-body">
-        <form id="editProfileForm" action="profile.php" method="POST" enctype="multipart/form-data">
-          <!-- Upload New Profile Picture -->
-          <div class="mb-3">
-            <label for="profilePic" class="form-label">Upload New Profile Picture</label>
-            <input type="file" class="form-control" name="profilePic" accept="image/*" />
+        <form id="editProfileForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST" enctype="multipart/form-data">
+          <!-- Profile Picture Preview -->
+          <div class="text-center mb-4">
+            <div class="profile-preview-container">
+              <img id="profilePreview" src="<?php echo !empty($user['profile_pic']) ? htmlspecialchars($user['profile_pic']) : '../assets/default-avatar.png'; ?>" 
+                   class="rounded-circle preview-img" style="width: 150px; height: 150px; object-fit: cover;">
+            </div>
+            <div class="mt-2">
+              <label for="profilePic" class="btn btn-outline-primary">
+                <i class="fas fa-camera me-2"></i>Change Photo
+              </label>
+              <input type="file" class="d-none" id="profilePic" name="profilePic" accept="image/*" onchange="previewImage(this)">
+            </div>
           </div>
-          
+
+          <!-- Rest of the form fields remain the same -->
           <!-- First Row -->
           <div class="row mb-3">
             <div class="col-md-6">
@@ -833,83 +843,366 @@ function confirmLogout() {
             <input type="text" class="form-control" name="address" value="<?php echo htmlspecialchars($user['address']); ?>" required />
           </div>
           
-          <!-- Submit Button -->
-          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-2"></i>Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+          </div>
         </form>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal for updating account info -->
+<!-- Edit Account Modal -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="accountInfoForm" action="profile.php" method="POST">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editAccountModalLabel">Edit Account Credentials</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Email with icon -->
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text"></i></span>
-                            <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required />
-                        </div>
-                    </div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editAccountModalLabel">
+          <i class="fas fa-lock me-2"></i>Edit Account Information
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="editAccountForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
+          <!-- Email Field -->
+          <div class="mb-4">
+            <label for="email" class="form-label">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+              <input type="email" class="form-control" id="email" name="email" 
+                     value="<?php echo htmlspecialchars($user['email']); ?>" required>
+            </div>
+          </div>
 
-                    <!-- Password with icon and toggle -->
-                    <div class="mb-3">
-                        <label for="password" class="form-label">New Password</label>
-                        <div class="input-group">
-                            <span class="input-group-text"></i></span>
-                            <input type="password" class="form-control" name="password" id="password" placeholder="Leave blank if you do not want to change" />
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
-                                <i class="fas fa-eye" id="password-toggle-icon"></i>
-                            </button>
-                        </div>
-                    </div>
 
-                    <!-- Confirm Password with icon and toggle -->
-                    <div class="mb-3">
-                        <label for="confirmPassword" class="form-label">Confirm Password</label>
-                        <div class="input-group">
-                            <span class="input-group-text"></i></span>
-                            <input type="password" class="form-control" name="confirmPassword" id="confirmPassword" placeholder="Leave blank if you do not want to change" />
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirmPassword')">
-                                <i class="fas fa-eye" id="confirmPassword-toggle-icon"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Account</button>
-                </div>
-            </form>
-        </div>
+
+<!-- New Password Field -->
+<div class="mb-4">
+  <label for="password" class="form-label">New Password</label>
+  <div class="input-group">
+    <span class="input-group-text"><i class="fas fa-key"></i></span>
+    <input type="password" class="form-control" id="password" name="password" 
+           placeholder="Leave blank to keep current password"
+           minlength="6">
+    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+      <i class="fas fa-eye"></i>
+    </button>
+  </div>
+  <div id="passwordStrength" class="mt-2 d-none">
+    <div class="progress" style="height: 5px;">
+      <div class="progress-bar" role="progressbar" style="width: 0%"></div>
     </div>
+    <small class="text-muted">Password strength: <span id="strengthText">None</span></small>
+  </div>
+  <div class="password-requirements mt-2">
+    <small class="text-muted d-block">Password must contain:</small>
+    <ul class="list-unstyled">
+      <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>At least 6 characters</small></li>
+      <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One uppercase letter (A-Z)</small></li>
+      <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One lowercase letter (a-z)</small></li>
+      <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One number (0-9)</small></li>
+      <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One special character (!@#$%^&*)</small></li>
+    </ul>
+  </div>
 </div>
 
-<!-- Add this JavaScript for password toggle functionality -->
+
+          <!-- Confirm Password Field -->
+          <div class="mb-4">
+            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-lock"></i></span>
+              <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" 
+                     placeholder="Leave blank to keep current password"
+                     minlength="6">
+              <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-2"></i>Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Updated JavaScript with password strength check -->
 <script>
-function togglePassword(inputId) {
-    const passwordInput = document.getElementById(inputId);
-    const toggleIcon = document.getElementById(inputId + '-toggle-icon');
-    
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleIcon.classList.remove('fa-eye');
-        toggleIcon.classList.add('fa-eye-slash');
-    } else {
-        passwordInput.type = 'password';
-        toggleIcon.classList.remove('fa-eye-slash');
-        toggleIcon.classList.add('fa-eye');
+// ... existing code ...
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Password strength checker with requirement validation
+    function checkPasswordStrength(password) {
+        let strength = 0;
+        const requirements = {
+            length: password.length >= 6,
+            lowercase: /[a-z]/.test(password),
+            uppercase: /[A-Z]/.test(password),
+            numbers: /[0-9]/.test(password),
+            special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+        };
+        
+        // Update requirement indicators
+        const requirementsList = document.querySelectorAll('.password-requirements li');
+        requirementsList[0].classList.toggle('text-success', requirements.length);
+        requirementsList[1].classList.toggle('text-success', requirements.uppercase);
+        requirementsList[2].classList.toggle('text-success', requirements.lowercase);
+        requirementsList[3].classList.toggle('text-success', requirements.numbers);
+        requirementsList[4].classList.toggle('text-success', requirements.special);
+        
+        // Update icons
+        requirementsList.forEach(item => {
+            const icon = item.querySelector('i');
+            if (item.classList.contains('text-success')) {
+                icon.classList.remove('fa-circle');
+                icon.classList.add('fa-check-circle');
+            } else {
+                icon.classList.remove('fa-check-circle');
+                icon.classList.add('fa-circle');
+            }
+        });
+        
+        // Calculate strength
+        Object.values(requirements).forEach(req => {
+            if (req) strength += 20;
+        });
+        
+        return strength;
+    }
+
+// ... rest of existing code ...
+    // Update password strength indicator
+    const passwordInput = document.getElementById('password');
+    const strengthDiv = document.getElementById('passwordStrength');
+    const progressBar = strengthDiv.querySelector('.progress-bar');
+    const strengthText = document.getElementById('strengthText');
+
+    passwordInput.addEventListener('input', function() {
+        if (this.value) {
+            strengthDiv.classList.remove('d-none');
+            const strength = checkPasswordStrength(this.value);
+            progressBar.style.width = strength + '%';
+            
+            // Update progress bar color and text
+            if (strength < 40) {
+                progressBar.className = 'progress-bar bg-danger';
+                strengthText.textContent = 'Weak';
+            } else if (strength < 80) {
+                progressBar.className = 'progress-bar bg-warning';
+                strengthText.textContent = 'Medium';
+            } else {
+                progressBar.className = 'progress-bar bg-success';
+                strengthText.textContent = 'Strong';
+            }
+        } else {
+            strengthDiv.classList.add('d-none');
+        }
+    });
+
+    // Toggle password visibility
+    function togglePasswordVisibility(inputId, buttonId) {
+        const input = document.getElementById(inputId);
+        const button = document.getElementById(buttonId);
+        
+        button.addEventListener('click', function() {
+            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+            input.setAttribute('type', type);
+            
+            // Toggle eye icon
+            const icon = button.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Initialize password toggles
+    togglePasswordVisibility('password', 'togglePassword');
+    togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
+
+    // Form validation
+    const editAccountForm = document.getElementById('editAccountForm');
+    if (editAccountForm) {
+        editAccountForm.addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password) {  // Only validate if a new password is being set
+                if (password.length < 6) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Password must be at least 6 characters long!',
+                        icon: 'error',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Passwords do not match!',
+                        icon: 'error',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+            }
+
+            // Show loading state
+            Swal.fire({
+                title: 'Updating Account',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        });
+    }
+});
+</script>
+
+<!-- Add these additional styles -->
+<style>
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
+}
+
+.input-group .form-control {
+    border-left: none;
+}
+
+.input-group .form-control:focus {
+    border-color: #ced4da;
+    box-shadow: none;
+}
+
+.input-group .btn-outline-secondary {
+    border-color: #ced4da;
+    color: #6c757d;
+}
+
+.input-group .btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+.modal-content {
+    border-radius: 0.5rem;
+}
+
+.modal-header {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+</style>
+
+<!-- Add this JavaScript after your existing scripts -->
+<script>
+// Function to preview uploaded image
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profilePreview').src = e.target.result;
+        }
+        reader.readAsDataURL(input.files[0]);
     }
 }
+
+// Initialize Bootstrap modal
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all modals
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        new bootstrap.Modal(modal);
+    });
+
+    // Handle edit profile button click
+    const editProfileBtn = document.querySelector('[data-bs-target="#editProfileModal"]');
+    if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', function() {
+            const editProfileModal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+            editProfileModal.show();
+        });
+    }
+
+    // Handle form submission
+    const editProfileForm = document.getElementById('editProfileForm');
+    if (editProfileForm) {
+        editProfileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            Swal.fire({
+                title: 'Updating Profile',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Submit form
+            this.submit();
+        });
+    }
+});
 </script>
+
+<!-- Add these styles -->
+<style>
+.preview-img {
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.preview-img:hover {
+    transform: scale(1.05);
+}
+
+.modal-header {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.modal-footer {
+    border-top: 2px solid #dee2e6;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+</style>
 
 <!-- Modal Structure -->
 <div class="modal fade" id="userProfileModal" tabindex="-1" role="dialog" aria-labelledby="userProfileModalLabel" aria-hidden="true">
@@ -1149,5 +1442,6 @@ document.addEventListener('DOMContentLoaded', function() {
             display: block;
         }
     </style>
+    
 </body>
 </html>

@@ -362,7 +362,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     }
     $stmt->close();
 }
-
 // Debug: Print the SQL query
 echo "<!-- SQL Query: " . htmlspecialchars($sql) . " -->";
 
@@ -388,7 +387,7 @@ if ($result === false) {
 
 <!-- Font Awesome CSS for icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-<link href="Css_user/users-dashboard.css" rel="stylesheet">
+<link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
 
 <!-- Your custom CSS (placed last to ensure it overrides Bootstrap) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -420,6 +419,7 @@ if ($result === false) {
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 20px;
         padding: 10px;
+        text-align: center; /* Center text content */
     }
 
     .announcement-item {
@@ -429,7 +429,11 @@ if ($result === false) {
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         transition: all 0.3s ease;
-        margin-bottom: 0; /* Remove bottom margin */
+        margin-bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center items vertically */
+        justify-content: center; /* Center items horizontally */
     }
 
     .announcement-item::before {
@@ -452,12 +456,14 @@ if ($result === false) {
         font-size: 20px;
         margin-bottom: 15px;
         font-weight: 600;
+        text-align: center; /* Center heading */
     }
 
     .announcement-item p {
         color: #555;
         line-height: 1.6;
         margin-bottom: 12px;
+        text-align: center; /* Center paragraphs */
     }
 
     /* Updated Room Card Styling */

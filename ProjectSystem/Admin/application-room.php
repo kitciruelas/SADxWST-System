@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($newStatus === 'approved' || $newStatus === 'rejected') {
                 // Fetch user details for email
                 $userQuery = "
-                    SELECT u.email, u.fname, u.lname, r.room_number 
+                    SELECT u.email, u.fname, u.lname, r.room_number, rr.user_id, rr.new_room_id 
                     FROM room_reassignments rr
                     JOIN users u ON rr.user_id = u.id
                     LEFT JOIN rooms r ON rr.new_room_id = r.room_id
@@ -142,23 +142,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($userResult) {
                     if ($newStatus === 'approved') {
-                        // Use existing sendReassignmentEmail function
-                        $emailSent = sendReassignmentEmail(
-                            $userResult['email'],
-                            $userResult['fname'],
-                            $userResult['lname'],
-                            $userResult['room_number']
-                        );
+                        // Update roomassignments table
+                        $updateAssignmentQuery = "
+                            UPDATE roomassignments 
+                            SET room_id = ?, assignment_date = CURRENT_DATE
+                            WHERE user_id = ?
+                        ";
+                        $updateAssignmentStmt = $conn->prepare($updateAssignmentQuery);
+                        $updateAssignmentStmt->bind_param("ii", $userResult['new_room_id'], $userResult['user_id']);
+                        
+                        if ($updateAssignmentStmt->execute()) {
+                            // Send approval email
+                            $emailSent = sendReassignmentEmail(
+                                $userResult['email'],
+                                $userResult['fname'],
+                                $userResult['lname'],
+                                $userResult['room_number']
+                            );
+                            
+                            if (!$emailSent) {
+                                echo "<script>alert('Room updated but email notification failed.');</script>";
+                            }
+                        } else {
+                            echo "<script>alert('Error updating room assignment: " . $updateAssignmentStmt->error . "');</script>";
+                        }
+                        $updateAssignmentStmt->close();
                     } else { // rejected
                         $emailSent = sendRejectionEmail(
                             $userResult['email'],
                             $userResult['fname'],
                             $userResult['lname']
                         );
-                    }
-
-                    if (!$emailSent) {
-                        echo "<script>alert('Status updated but email notification failed.');</script>";
+                        
+                        if (!$emailSent) {
+                            echo "<script>alert('Status updated but rejection email failed.');</script>";
+                        }
                     }
                 }
             }
@@ -243,8 +261,118 @@ $conn->close();
 
 <!-- Bootstrap JS (optional, if you're using Bootstrap components) -->
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<style>
+    .container {
+        background-color: transparent;
+    }
 
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
 
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
 
 </head>
 <body>
@@ -298,35 +426,46 @@ function confirmLogout() {
 </div>
 <div class="container mt-1">
 <!-- Search and Filter Section -->
-<div class="row mb-4">
-    <div class="col-12 col-md-8">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+<div class="row mb-1">
+    <!-- Search Input -->
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control custom-input-small" 
+                    placeholder="Search for room details..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    <div class="col-6 col-md-2">
+
+    <!-- Filter Dropdown -->
+    <div class="col-6 col-md-2 mt-1">
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
             <option value="resident">Resident</option>
-            <!-- <option value="old_room_number">Old Room</option>-->
             <option value="new_room">Reassign Room</option>
             <option value="monthly_rent">Monthly Rent</option>
             <option value="status">Status</option>
         </select>
     </div>
-    <div class="col-5 col-md-2">
-    <!-- Sort Dropdown -->
-    <select id="sortSelect" class="form-select" style="width: 100%;">
-    <option value="all" selected>Sort by</option>
-        <option value="resident_asc">Resident (A to Z)</option>
-        <option value="resident_desc">Resident (Z to A)</option>
-       <!--   <option value="old_room_asc">Old Room (Low to High)</option>
-        <option value="old_room_desc">Old Room (High to Low)</option>-->
-        <option value="new_room_asc">Request Reassigment (Low to High)</option>
-        <option value="new_room_desc">Request Reassigment (High to Low)</option>
-        <option value="status_asc">Status (A to Z)</option>
-        <option value="status_desc">Status (Z to A)</option>
-    </select>
-</div>
 
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 mt-1">
+        <select id="sortSelect" class="form-select">
+            <option value="" selected>Sort by</option>
+            <option value="resident_asc">Resident (A to Z)</option>
+            <option value="resident_desc">Resident (Z to A)</option>
+            <option value="new_room_asc">Request Reassignment (Low to High)</option>
+            <option value="new_room_desc">Request Reassignment (High to Low)</option>
+            <option value="status_asc">Status (A to Z)</option>
+            <option value="status_desc">Status (Z to A)</option>
+        </select>
+    </div>
+
+  
 </div>
 
    <!-- Table Section -->

@@ -177,6 +177,119 @@ if (isset($_GET['error'])) {
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
+
 
 </head>
 <body>
@@ -225,31 +338,39 @@ function confirmLogout() {
     <div class="container mt-1">
     <div class="row mb-1">
     <div class="col-12 col-md-6">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for payment details..." onkeyup="filterTable()">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for payment details..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
+                    onkeyup="filterTable()">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    
-    <div class="col-6 col-md-2">
-        <select id="filterSelect" class="form-select" onchange="filterTable()">
-            <option value="all" selected>Filter by</option>
+
+    <div class="col-6 col-md-2 mt-2">
+        <select name="filter" id="filterSelect" class="form-select" onchange="filterTable()">
+            <option value="all">Filter by</option>
             <option value="amount">Amount</option>
             <option value="status">Status</option>
         </select>
     </div>
 
-    <div class="col-6 col-md-2">
-    <select name="sort" class="form-select" id="sort" onchange="applySort()">
-            <option value="" selected>Select Sort</option>
-   
-        <option value="amount_asc">Amount (Low to High)</option>
-        <option value="amount_desc">Amount (High to Low)</option>
-        <option value="payment_date_asc">Payment Date (Oldest to Newest)</option>
-        <option value="payment_date_desc">Payment Date (Newest to Oldest)</option>
-    </select>
-</div>
+    <div class="col-6 col-md-2 mt-2">
+        <select name="sort" class="form-select" id="sort" onchange="applySort()">
+            <option value="" selected>Sort by</option>
+            <option value="amount_asc">Amount (Low to High)</option>
+            <option value="amount_desc">Amount (High to Low)</option>
+            <option value="payment_date_asc">Payment Date (Oldest to Newest)</option>
+            <option value="payment_date_desc">Payment Date (Newest to Oldest)</option>
+        </select>
+    </div>
 
-    <div class="col-6 col-md-2">
-        <!-- Button to trigger modal -->
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
+    <div class="col-6 col-md-2 mt-2">
+        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
             Add Rent Payment
         </button>
     </div>

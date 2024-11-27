@@ -10,7 +10,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 include '../config/config.php'; // Ensure this is correct
 
 if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
+    showErrorMessage("Database connection failed: " . mysqli_connect_error());
 }
 
 // Initialize variable for error message
@@ -118,6 +118,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         $table = ($role === 'Staff') ? 'staff' : 'users';
         
+        // Calculate age before insertion
+        $birthdateObj = new DateTime($birthdate);
+        $today = new DateTime();
+        $age = $birthdateObj->diff($today)->y;
+        
+        // Validate age
+        if ($age < 16) {
+            echo "<script>
+                alert('User must be at least 16 years old.');
+            </script>";
+            exit;
+        }
+        
         $sql = "INSERT INTO $table (Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, email, password) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
@@ -128,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
                 $mi, 
                 $suffix, 
                 $birthdate,
-                $age,
+                $age, // Now passing the calculated age
                 $address, 
                 $contact, 
                 $sex, 
@@ -143,10 +156,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
                     alert('User added successfully! A confirmation email has been sent.');
                     window.location.href = 'manageuser.php';
                 </script>";
+                exit;
             } else {
-                $errorMessage = "Error creating user: " . $stmt->error;
+                echo "<script>
+                    alert('Error creating user: " . addslashes($stmt->error) . "');
+                </script>";
+                exit;
             }
-            $stmt->close();
         } else {
             $errorMessage = "Error preparing statement: " . $conn->error;
         }
@@ -154,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_user'])) {
 
     // Display error message if any
     if ($errorMessage) {
-        echo "<script>alert('" . addslashes($errorMessage) . "');</script>";
+        showErrorMessage($errorMessage);
     }
 }
 
@@ -225,17 +241,35 @@ function sendRegistrationEmail($userEmail, $firstName, $lastName, $password, $ro
     
         // Send email
         if ($mail->send()) {
-            echo 'Registration email has been sent.';
+            echo "<script>
+                alert('Registration email has been sent successfully.');
+                if (!window.location.hash) {
+                    window.location.hash = 'processed';
+                }
+            </script>";
         } else {
-            echo 'Failed to send registration email.';
+            echo "<script>
+                alert('Failed to send registration email: " . addslashes($mail->ErrorInfo) . "');
+                window.location.href = window.location.pathname;
+            </script>";
         }
     } catch (Exception $e) {
         // Log detailed error for debugging
         error_log("Mailer Error: {$mail->ErrorInfo}");
-        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+        
+        // Use a helper function to show alert and redirect
+        showErrorMessage("Failed to send email. Please try again later.");
+        exit;
     }
 }
 
+function showErrorMessage($message) {
+    echo "<script>
+        alert('" . addslashes($message) . "');
+        window.location.href = 'manageuser.php';
+    </script>";
+    exit;
+}
 
 // Handle edit user request
 if (isset($_POST['edit_user'])) {
@@ -247,97 +281,53 @@ if (isset($_POST['edit_user'])) {
     $newRole = trim($_POST['Role']);
 
     try {
+        // Input validation
+        if (empty($fname) || empty($lname)) {
+            throw new Exception("First name and last name are required.");
+        }
+
         // Determine current table based on role
         $currentTable = ($newRole === 'Staff') ? 'staff' : 'users';
         
         // Begin transaction
         $conn->begin_transaction();
 
-        // Get user data from current table
-        $getData = "SELECT * FROM $currentTable WHERE id = ?";
-        $stmt = $conn->prepare($getData);
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $userData = $result->fetch_assoc();
-
-        if (!$userData) {
-            // User not found in current table, check the other table
-            $otherTable = ($currentTable === 'staff') ? 'users' : 'staff';
-            $getData = "SELECT * FROM $otherTable WHERE id = ?";
-            $stmt = $conn->prepare($getData);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $userData = $result->fetch_assoc();
-
-            if ($userData) {
-                // User found in other table, need to move them
-                $insertQuery = "INSERT INTO $currentTable 
-                              (Fname, Lname, MI, Suffix, Birthdate, Age, Address, 
-                               contact, Sex, email, password, status) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                $stmt = $conn->prepare($insertQuery);
-                $stmt->bind_param("sssssissssss", 
-                    $fname, 
-                    $lname, 
-                    $mi, 
-                    $suffix, 
-                    $userData['Birthdate'],
-                    $userData['age'],
-                    $userData['Address'],
-                    $userData['contact'],
-                    $userData['sex'],
-                    $userData['email'],
-                    $userData['password'],
-                    $userData['status']
-                );
-
-                if (!$stmt->execute()) {
-                    throw new Exception("Error inserting into new table: " . $stmt->error);
-                }
-
-                // Delete from old table
-                $deleteQuery = "DELETE FROM $otherTable WHERE id = ?";
-                $stmt = $conn->prepare($deleteQuery);
-                $stmt->bind_param("i", $userId);
-                
-                if (!$stmt->execute()) {
-                    throw new Exception("Error deleting from old table: " . $stmt->error);
-                }
-
-                $conn->commit();
-                echo "<script>
-                    alert('User role successfully changed to $newRole');
-                    window.location.reload();
-                </script>";
-            }
-        } else {
-            // User found in current table, just update their information
-            $updateQuery = "UPDATE $currentTable 
-                           SET Fname = ?, Lname = ?, MI = ?, Suffix = ? 
-                           WHERE id = ?";
-            $stmt = $conn->prepare($updateQuery);
-            $stmt->bind_param("ssssi", $fname, $lname, $mi, $suffix, $userId);
-            
-            if (!$stmt->execute()) {
-                throw new Exception("Error updating user information: " . $stmt->error);
-            }
-            
-            $conn->commit();
-            echo "<script>
-                alert('User information updated successfully');
-                window.location.reload();
-            </script>";
+        // Update query
+        $updateQuery = "UPDATE $currentTable 
+                       SET Fname = ?, Lname = ?, MI = ?, Suffix = ? 
+                       WHERE id = ?";
+        $stmt = $conn->prepare($updateQuery);
+        
+        if (!$stmt) {
+            throw new Exception("Failed to prepare statement: " . $conn->error);
         }
+        
+        $stmt->bind_param("ssssi", $fname, $lname, $mi, $suffix, $userId);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update user: " . $stmt->error);
+        }
+
+        $conn->commit();
+        echo "<script>
+            alert('User updated successfully!');
+            window.location.href = 'manageuser.php';
+        </script>";
+        exit;
+
     } catch (Exception $e) {
-        if ($conn->connect_errno != 0) {
+        if ($conn && $conn->connect_errno == 0) {
             $conn->rollback();
         }
+        
+        // Safely encode the error message to prevent XSS
+        $errorMessage = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+        
         echo "<script>
             alert('Error: " . addslashes($e->getMessage()) . "');
-            window.location.reload();
+            window.location.href = 'manageuser.php';
         </script>";
+        exit;
     }
 }
 
@@ -372,11 +362,14 @@ if (isset($_POST['delete_user'])) {
                     if ($stmtDeleteUser) {
                         $stmtDeleteUser->bind_param("i", $userId);
                         if ($stmtDeleteUser->execute()) {
-                            echo "<script>alert('User and staff archived and deleted successfully!');</script>";
+                            echo "<script>
+                                alert('User has been successfully archived and deleted!');
+                                window.location.href = 'manageuser.php';
+                            </script>";
+                            exit;
                         } else {
-                            echo "<script>alert('Error deleting user: " . $stmtDeleteUser->error . "');</script>";
+                            showErrorMessage('Error deleting user: ' . $stmtDeleteUser->error);
                         }
-                        $stmtDeleteUser->close();
                     }
 
                     // Prepare and execute the delete query for the staff
@@ -386,110 +379,109 @@ if (isset($_POST['delete_user'])) {
                         if ($stmtDeleteStaff->execute()) {
                             // Optionally alert if staff entry was deleted
                         } else {
-                            echo "<script>alert('Error deleting staff: " . $stmtDeleteStaff->error . "');</script>";
+                            showErrorMessage('Error deleting staff: ' . $stmtDeleteStaff->error);
                         }
                         $stmtDeleteStaff->close();
                     }
                 } else {
-                    echo "<script>alert('Error archiving staff: " . $archiveStaff->error . "');</script>";
+                    showErrorMessage('Error archiving staff: ' . $archiveStaff->error);
                 }
                 $archiveStaff->close();
             } else {
-                echo "<script>alert('Error preparing statement for staff archiving: " . $conn->error . "');</script>";
+                showErrorMessage('Error preparing statement for staff archiving: ' . $conn->error);
             }
         } else {
-            echo "<script>alert('Error archiving user: " . $archiveUsers->error . "');</script>";
+            showErrorMessage('Error archiving user: ' . $archiveUsers->error);
         }
         $archiveUsers->close();
     } else {
-        echo "<script>alert('Error preparing statement for user archiving: " . $conn->error . "');</script>";
+        showErrorMessage('Error preparing statement for user archiving: ' . $conn->error);
     }
 }
 
 // Handle filter and search from the query string
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
-$search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';  // Prevent SQL injection
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$status = isset($_GET['status']) ? $_GET['status'] : 'active';
 
-// Pagination setup
-$rowsPerPage = 10;
-$currentPage = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-$startRow = ($currentPage - 1) * $rowsPerPage;
+// Base queries for users and staff
+$usersQuery = "SELECT 
+    id,
+    COALESCE(Fname, '') as Fname,
+    COALESCE(Lname, '') as Lname,
+    COALESCE(MI, '') as MI,
+    COALESCE(Suffix, '') as Suffix,
+    COALESCE(status, 'active') as status,
+    COALESCE(Birthdate, '') as Birthdate,
+    COALESCE(Age, '') as Age,
+    COALESCE(Address, '') as Address,
+    COALESCE(contact, '') as contact,
+    COALESCE(Sex, '') as Sex,
+    COALESCE(email, '') as email,
+    'General User' as role,
+    COALESCE(created_at, CURRENT_TIMESTAMP) as created_at
+FROM users 
+WHERE status = '$status'";
 
-// Base SQL query to count total rows with filters and search
-$totalRowsQuery = "SELECT COUNT(*) AS total FROM (";
-if ($filter === 'General User') {
-    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, role, created_at FROM users";
-} elseif ($filter === 'Staff') {
-    $totalRowsQuery .= "SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, role, created_at FROM staff";
-} else {
-    $totalRowsQuery .= "
-        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, role, created_at FROM users
-        UNION ALL
-        SELECT id, Fname, Lname, MI, Suffix, Birthdate, Age, Address, contact, Sex, role, created_at FROM staff
-    ";
+$staffQuery = "SELECT 
+    id,
+    COALESCE(Fname, '') as Fname,
+    COALESCE(Lname, '') as Lname,
+    COALESCE(MI, '') as MI,
+    COALESCE(Suffix, '') as Suffix,
+    COALESCE(status, 'active') as status,
+    COALESCE(Birthdate, '') as Birthdate,
+    COALESCE(Age, '') as Age,
+    COALESCE(Address, '') as Address,
+    COALESCE(contact, '') as contact,
+    COALESCE(Sex, '') as Sex,
+    COALESCE(email, '') as email,
+    'Staff' as role,
+    COALESCE(created_at, CURRENT_TIMESTAMP) as created_at
+FROM staff 
+WHERE status = '$status'";
+
+// Add search conditions if search term exists
+if (!empty($search)) {
+    $searchCondition = " AND (
+        Fname LIKE '%$search%' OR 
+        Lname LIKE '%$search%' OR 
+        MI LIKE '%$search%' OR 
+        email LIKE '%$search%' OR
+        CONCAT(Fname, ' ', Lname) LIKE '%$search%' OR
+        CONCAT(Fname, ' ', MI, ' ', Lname) LIKE '%$search%'
+    )";
+    $usersQuery .= $searchCondition;
+    $staffQuery .= $searchCondition;
 }
 
-$totalRowsQuery .= ") AS combined_data";
-
-// Add search filter if applicable
-if (!empty($search)) {
-    $totalRowsQuery .= " WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR MI LIKE '%$search%' OR role LIKE '%$search%')";
+// If no specific filter, combine both queries with ORDER BY
+if ($filter === 'General User') {
+    $sql = "$usersQuery ORDER BY created_at DESC";
+} elseif ($filter === 'Staff') {
+    $sql = "$staffQuery ORDER BY created_at DESC";
+} else {
+    // If no specific filter, combine both queries and order the combined results
+    $sql = "($usersQuery) UNION ALL ($staffQuery) ORDER BY created_at DESC";
 }
 
 // Execute the query
-$totalRowsResult = $conn->query($totalRowsQuery);
-if ($totalRowsResult === false) {
-    die("Error: " . $conn->error);
-}
-
-$totalRows = $totalRowsResult->fetch_assoc()['total'];
-
-$totalPages = ceil($totalRows / $rowsPerPage);
-
-// Main SQL query to fetch data with filters, sorting, and pagination
-$sql = "
-    SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, Role, status 
-    FROM (
-";
-
-// Apply filter to select from either `users` or `staff`, or both if no specific filter is set
-if ($filter === 'General User') {
-    $sql .= "
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'General User' AS Role, status 
-        FROM users
-    ";
-} elseif ($filter === 'Staff') {
-    $sql .= "
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'Staff' AS Role, status 
-        FROM staff
-    ";
-} else {
-    // No specific filter, so combine both tables
-    $sql .= "
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'General User' AS Role, status 
-        FROM users
-        UNION ALL
-        SELECT id, Fname, Lname, MI, Suffix, created_at, Sex, 'Staff' AS Role, status 
-        FROM staff
-    ";
-}
-
-$sql .= ") AS combined_data";
-
-// Apply search filter if a search term is provided
-if (!empty($search)) {
-    $sql .= " WHERE (Fname LIKE '%$search%' OR Lname LIKE '%$search%' OR Role LIKE '%$search%')";
-}
-
-// Apply sorting and pagination
-$sql .= " ORDER BY created_at DESC LIMIT $startRow, $rowsPerPage
-";
-
 $result = $conn->query($sql);
-if ($result === false) {
-    die("Error: " . $conn->error);
+
+if (!$result) {
+    die("Query failed: " . $conn->error);
 }
 
+// Get total rows for pagination
+$totalRows = $result->num_rows;
+$rowsPerPage = 10;
+$totalPages = ceil($totalRows / $rowsPerPage);
+$currentPage = isset($_GET['page']) ? max(1, min($totalPages, intval($_GET['page']))) : 1;
+$offset = ($currentPage - 1) * $rowsPerPage;
+
+// Add pagination to the main query
+$sql .= " LIMIT $offset, $rowsPerPage";
+$result = $conn->query($sql);
 
 $sort = isset($_GET['sort']) ? $_GET['sort'] : '';
 
@@ -512,29 +504,35 @@ switch ($sort) {
 $sql = "SELECT * FROM users ORDER BY $order";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle-status'])) {
-    // Get user ID
-    $userId = intval($_POST['user_id']);  // Ensure this is an integer for security
+    $userId = intval($_POST['user_id']);
+    
+    // Use prepared statement to prevent SQL injection
+    $sql = "SELECT status FROM users WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    // Fetch current status from the database
-    $sql = "SELECT status FROM users WHERE id = $userId";
-    $result = mysqli_query($conn, $sql);
-
-    if ($result && mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
         $currentStatus = $row['status'];
-
-        // Toggle the status: active -> inactive, inactive -> active
         $newStatus = ($currentStatus === 'active') ? 'inactive' : 'active';
 
-        // Update the user's status in the database
-        $updateSql = "UPDATE users SET status = '$newStatus' WHERE id = $userId";
-        if (mysqli_query($conn, $updateSql)) {
-            echo "<script>alert('User status updated successfully.');</script>";
+        $updateSql = "UPDATE users SET status = ? WHERE id = ?";
+        $updateStmt = $conn->prepare($updateSql);
+        $updateStmt->bind_param("si", $newStatus, $userId);
+        
+        if ($updateStmt->execute()) {
+            $conn->commit();
+            echo "<script>
+                alert('Status successfully updated to ' . ucfirst($newStatus));
+                window.location.href = 'manageuser.php';
+            </script>";
+            exit;
         } else {
-            echo "<script>alert('Error updating status: " . mysqli_error($conn) . "');</script>";
+            header("Location: " . $_SERVER['PHP_SELF'] . "?status_update=error");
+            exit;
         }
-    } else {
-        echo "<script>alert('No user found with ID: $userId');</script>";
     }
 }
 
@@ -547,7 +545,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
     $table = ($role === 'Staff') ? 'staff' : 'users';
     
     try {
-        // Get current status
+        // Start transaction
+        $conn->begin_transaction();
+        
+        // Get current status using prepared statement
         $query = "SELECT status FROM $table WHERE id = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param("i", $userId);
@@ -558,23 +559,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
             // Toggle the status
             $newStatus = ($row['status'] === 'active') ? 'inactive' : 'active';
             
-            // Update the status
+            // Update the status using prepared statement
             $updateQuery = "UPDATE $table SET status = ? WHERE id = ?";
             $updateStmt = $conn->prepare($updateQuery);
             $updateStmt->bind_param("si", $newStatus, $userId);
             
             if ($updateStmt->execute()) {
-                echo json_encode(['success' => true, 'newStatus' => $newStatus]);
+                $conn->commit();
+                echo "<script>
+                    alert('Status successfully updated to ' . ucfirst($newStatus));
+                    window.location.href = 'manageuser.php';
+                </script>";
+                exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to update status']);
+                // Rollback on update failure
+                $conn->rollback();
+                echo "<script>
+                    alert('Failed to update status');
+                    window.location.href = 'manageuser.php';
+                </script>";
+                exit;
             }
         } else {
-            echo json_encode(['success' => false, 'error' => 'User not found']);
+            // Rollback if user not found
+            $conn->rollback();
+            echo "<script>
+                alert('User not found');
+                window.location.href = 'manageuser.php';
+            </script>";
+            exit;
         }
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        // Ensure rollback on any error
+        if ($conn->connect_errno != 0) {
+            $conn->rollback();
+        }
+        echo "<script>
+            alert('Error: " . addslashes($e->getMessage()) . "');
+            window.location.href = 'manageuser.php';
+        </script>";
+        exit;
     }
-    exit;
+}
+
+// Add this function at the top of your file
+function getRoleDisplay($role) {
+    if ($role === 'Staff') {
+        return 'Staff';
+    }
+    return 'General User';
+}
+
+// Add this with your other POST handlers
+if (isset($_POST['reactivate_user'])) {
+    $userId = intval($_POST['user_id']);
+    $role = $_POST['role'];
+    
+    // Determine which table to update
+    $table = ($role === 'Staff') ? 'staff' : 'users';
+    
+    // Update user status to active
+    $updateQuery = "UPDATE $table SET status = 'active' WHERE id = ?";
+    $stmt = $conn->prepare($updateQuery);
+    $stmt->bind_param("i", $userId);
+    
+    if ($stmt->execute()) {
+        echo "<script>
+            alert('User reactivated successfully');
+            window.location.href = 'manageuser.php';
+        </script>";
+        exit;
+    } else {
+        echo "<script>
+            alert('Error reactivating user: " . $stmt->error . "');
+            window.location.href = 'manageuser.php';
+        </script>";
+        exit;
+    }
 }
 
 ?>
@@ -601,6 +662,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
 
 
 </head>
@@ -642,43 +815,67 @@ function confirmLogout() {
     <!-- Main content -->
     <div class="main-content">   
     <!-- Search Form -->
-    <div class="search-container" style="display: flex; align-items: center; justify-content: space-between; width: 100%;"> <!-- Flex for search and filter -->
-    <form method="GET" action="" class="search-form mt-5" style="position: relative; flex-grow: 1;"> <!-- Search form -->
-        <input type="text" id="searchInput" name="search" placeholder="Search for names, roles, etc." 
-            value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
-            style="padding-left: 30px; padding-right: 30px; width: 100%; box-sizing: border-box;">
-        <button type="submit" style="display: none;"></button>
-        <span style="position: absolute; top: 40%; left: 8px; transform: translateY(-50%); color: #ccc;">
-            <i class="fas fa-search"></i>
-        </span>
-    </form>
-
-    <!-- Filter Form -->
-    <form method="GET" action="" class="filter-form mt-5" style="margin-left: 10px;"> <!-- Filter form -->
-        <label for="filter">Filter by Role:</label>
-        <select name="filter" id="filter" onchange="this.form.submit()">
-            <option value="all" <?php if ($filter === 'all') echo 'selected'; ?>>All</option>
-            <option value="General User" <?php if ($filter === 'General User') echo 'selected'; ?>>General User</option>
-            <option value="Staff" <?php if ($filter === 'Staff') echo 'selected'; ?>>Staff</option>
-        </select>
-    </form>
-<!-- Sort Form -->
-<!-- Sort Form -->
-<form id="sortForm" class="filter-form mt-5" style="margin-left: 10px;">
-    <select name="sort" id="sort">
-        <option value="" selected>Sort by</option>
-        <option value="name_asc">Name (A to Z)</option>
-        <option value="name_desc">Name (Z to A)</option>
-    </select>
-</form>
-
-
-    <!-- Add User Button -->
-    <div class="button" style="margin-left: 10px;">
-        <button id="createButton" class="btn btn-primary" onclick="showModal()">Add User</button>
+    
+<div class="row mb-1">
+    <!-- Search Input -->
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" id="searchForm">
+            <!-- Preserve filter value if it exists -->
+            <?php if (isset($_GET['filter'])): ?>
+                <input type="hidden" name="filter" value="<?php echo htmlspecialchars($_GET['filter']); ?>">
+            <?php endif; ?>
+            
+            <div class="input-group mt-2">
+                <input type="text" name="search" id="searchInput" class="form-control custom-input-small" 
+                    placeholder="Search for names, roles, etc..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
+                    onkeyup="checkSearch()">
+                <button type="submit" class="input-group-text mb-2">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
     </div>
 
+    <!-- Filter Dropdown -->
+    <div class="col-6 col-md-2 mt-1">
+        <form method="GET" action="" id="filterForm">
+            <select name="filter" id="filter" class="form-select">
+                <option value="all" <?php echo (!isset($_GET['filter']) || $_GET['filter'] === 'all') ? 'selected' : ''; ?>>Filter by Role</option>
+                <option value="General User" <?php echo (isset($_GET['filter']) && $_GET['filter'] === 'General User') ? 'selected' : ''; ?>>General User</option>
+                <option value="Staff" <?php echo (isset($_GET['filter']) && $_GET['filter'] === 'Staff') ? 'selected' : ''; ?>>Staff</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select name="sort" class="form-select" id="sort" onchange="applySort()">
+            <option value="" selected>Sort by</option>
+            <option value="name_asc">Name (A to Z)</option>
+            <option value="name_desc">Name (Z to A)</option>
+            <option value="date_asc">Date Created (Oldest to Newest)</option>
+            <option value="date_desc">Date Created (Newest to Oldest)</option>
+        </select>
+    </div>
+
+    <!-- Add View Inactive Button -->
+    <div class="col-6 col-md-2">
+        <button type="button" class="btn btn-secondary w-100" data-bs-toggle="modal" data-bs-target="#inactiveUsersModal">
+            View Inactive Users
+        </button>
+    </div>
+
+    <!-- Add User Button -->
+    <div class="col-6 col-md-2">
+        <button type="button" class="btn btn-primary w-100" onclick="showModal()">
+            Add User
+        </button>
+    </div>
 </div>
+
+
+
 
 <table id="userTable" class="table display nowrap">
 
@@ -715,14 +912,26 @@ function confirmLogout() {
             echo "<tr>
                 <td>" . $no . "</td>
                 <td>" . $fullName . "</td>
-                <td>" . $role . "</td>
+                <td>" . getRoleDisplay($row['role']) . "</td>
                 <td>" . $formattedAccountCreated . "</td>
                 <td>
-                    <button class='btn-edit' onclick='editUserModal(\"$userId\", \"$row[Fname]\", \"$row[Lname]\", \"$row[MI]\", \"$row[Suffix]\", \"$role\", \"$role\")'>Edit</button>
-                    <button class='btn-status " . (isset($row['status']) && $row['status'] === 'inactive' ? 'inactive' : '') . "' 
-                            onclick='toggleStatus(\"$userId\", \"$role\", this)'>
-                        " . (isset($row['status']) ? ucfirst($row['status']) : 'Active') . "
-                    </button>
+                    <button class='btn-edit' onclick='editUserModal(
+                        " . json_encode($row["id"]) . ",
+                        " . json_encode($row["Fname"]) . ",
+                        " . json_encode($row["Lname"]) . ",
+                        " . json_encode($row["MI"]) . ",
+                        " . json_encode($row["Suffix"]) . ",
+                        " . json_encode($row["role"]) .
+                    ")'>Edit</button>
+                    <form method='POST' style='display: inline;'>
+                        <input type='hidden' name='user_id' value='" . $row['id'] . "'>
+                        <input type='hidden' name='role' value='" . $row['role'] . "'>
+                        <button type='submit' name='toggle_status' class='btn-status " . strtolower($row['status']) . "' 
+                            onclick='return confirm(\"Are you sure you want to change this user's status from " . 
+                            addslashes(ucfirst($row['status'])) . "?\");'>" . 
+                            ucfirst($row['status']) . "
+                        </button>
+                    </form>
                 </td>
             </tr>";
             $no++;
@@ -766,6 +975,24 @@ function confirmLogout() {
     /* Styling the action buttons */
     .table .btn {
         margin-right: 5px; /* Space between buttons */
+    }
+
+    .btn-secondary.active {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:not(.active) {
+        background-color: #f8f9fa;
+        border-color: #6c757d;
+        color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+        border-color: #545b62;
+        color: white;
     }
 
 </style>
@@ -1037,7 +1264,7 @@ function confirmLogout() {
     <div class="addmodal-content">
         <span class="close" onclick="closeEditModal()" style="cursor:pointer;">&times;</span>
         <h2 id="edituser">Edit User</h2>
-        <form method="POST" action="" onsubmit="return validateForm();">
+        <form method="POST" action="">
             <input type="hidden" id="editUserId" name="user_id">
             <div class="form-grid">
                 <div class="form-group">
@@ -1049,8 +1276,8 @@ function confirmLogout() {
                     <input type="text" id="editLname" name="Lname" required>
                 </div>
                 <div class="form-group">
-                    <label for="editMI">Middle Name:</label>
-                    <input type="text" id="editMI" name="MI" required>
+                    <label for="editMI">Middle Initial:</label>
+                    <input type="text" id="editMI" name="MI">
                 </div>
                 <div class="form-group">
                     <label for="editSuffix">Suffix:</label>
@@ -1064,7 +1291,9 @@ function confirmLogout() {
                     </select>
                 </div>
             </div>
-            <button type="submit" name="edit_user">Update</button>
+            <div class="modal-buttons">
+                <button type="submit" name="edit_user" class="btn-primary">Update User</button>
+            </div>
         </form>
     </div>
 </div>
@@ -1114,11 +1343,14 @@ $(document).ready(function() {
     // Add filter functionality
     $('#filter').on('change', function() {
         var filterValue = $(this).val();
-        if (filterValue === 'all') {
-            table.column(2).search('').draw(); // Clear filter
-        } else {
-            table.column(2).search(filterValue).draw(); // Filter by Role column
-        }
+        // Get the current URL
+        var url = new URL(window.location.href);
+        
+        // Update or add the filter parameter
+        url.searchParams.set('filter', filterValue);
+        
+        // Redirect to the new URL
+        window.location.href = url.toString();
     });
 
     // Add sort functionality
@@ -1191,7 +1423,6 @@ function validateContact() {
     // If the contact number doesn't match the pattern, show an alert
     if (!contactRegex.test(contact)) {
         alert("Please enter a valid contact number starting with '09' and exactly 11 digits long.");
-        // Optionally, reset the input field or focus on it
         document.getElementById("contact").value = "";
         document.getElementById("contact").focus();
     }
@@ -1203,37 +1434,44 @@ function nextPage() {
     var currentPage = document.querySelector(".form-page:not([style*='display: none'])");
     var inputs = currentPage.querySelectorAll("input[required], select[required]");
     var valid = true;
+    var errorMessages = [];
 
-    // Check if any required input is empty or invalid
+    // Check all inputs first and collect error messages
     inputs.forEach(function(input) {
         if (input.type === "text" && input.id === "contact") {
-            if (!validateContactNumber(input.value)) {
+            var contactRegex = /^09\d{9}$/;
+            if (!contactRegex.test(input.value)) {
                 valid = false;
-                input.style.borderColor = "red"; // Highlight invalid contact number
-                alert("Please enter a valid contact number starting with '09' and followed by 8-9 digits.");
+                input.style.borderColor = "red";
+                errorMessages.push('Contact number must start with "09" and be 11 digits long');
             } else {
-                input.style.borderColor = ""; // Reset border color if valid
+                input.style.borderColor = "";
             }
         } else if (input.value.trim() === "") {
             valid = false;
-            input.style.borderColor = "red"; // Highlight empty required fields
+            input.style.borderColor = "red";
+            errorMessages.push(`${input.previousElementSibling.textContent.replace(':', '')} is required`);
         } else {
-            input.style.borderColor = ""; // Reset border color if filled
+            input.style.borderColor = "";
         }
     });
 
+    // Show all error messages in one alert if there are any
+    if (!valid && errorMessages.length > 0) {
+        alert('Please correct the following:\n\n' + errorMessages.join('\n'));
+        return;
+    }
+
     if (valid) {
-        // Hide current page and show next page
         currentPage.style.display = "none";
         var nextPage = currentPage.nextElementSibling;
         if (nextPage) {
             nextPage.style.display = "block";
         }
 
-        // Show Previous button on the second page
         if (nextPage && nextPage.id === "accountInfoPage") {
             document.getElementById("previousButton").style.display = "inline-block";
-            document.getElementById("nextButton").style.display = "none"; // Hide Next button if it's the last page
+            document.getElementById("nextButton").style.display = "none";
             document.getElementById("submitButton").style.display = "inline-block";
         }
     }
@@ -1267,6 +1505,7 @@ function nextPage() {
         if (input.value.trim() === "") {
             valid = false;
             input.style.borderColor = "red"; // Optional: add red border to highlight the empty input
+            alert('Please fill out all required fields.');
         } else {
             input.style.borderColor = ""; // Reset border color if filled
         }
@@ -1368,16 +1607,15 @@ function calculateAge() {
 function editUserModal(userId, fname, lname, mi, suffix, role) {
     // Populate the modal fields with the passed user data
     document.getElementById('editUserId').value = userId;
-    document.getElementById('editFname').value = fname;
-    document.getElementById('editLname').value = lname;
-    document.getElementById('editMI').value = mi;
-    document.getElementById('editSuffix').value = suffix;
-
-    // Populate the role dropdown
-    document.getElementById('editRole').value = role;
+    document.getElementById('editFname').value = fname || '';
+    document.getElementById('editLname').value = lname || '';
+    document.getElementById('editMI').value = mi || '';
+    document.getElementById('editSuffix').value = suffix || '';
+    document.getElementById('editRole').value = role || 'General User';
 
     // Open the modal
     document.getElementById('editUserModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
 }
 
             
@@ -1479,7 +1717,7 @@ function hideModal() {
 }
 
 // Show the Edit User Modal
-function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role,Suffix,Birthdate) {
+function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role, Suffix, Birthdate) {
     document.getElementById('editUserId').value = id;
     document.getElementById('editFname').value = Fname;
     document.getElementById('editLname').value = Lname;
@@ -1488,13 +1726,12 @@ function openEditModal(id, Fname, Lname, MI, Age, Address, contact, Sex, Role,Su
     document.getElementById('editAddress').value = Address;
     document.getElementById('editContact').value = contact;
     document.getElementById('editSex').value = Sex;
-
-    // Added fields for Suffix and Birthdate
+    document.getElementById('editRole').value = Role;
     document.getElementById('editSuffix').value = Suffix;
     document.getElementById('editBirthdate').value = Birthdate;
 
     document.getElementById('editUserModal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';  // Prevent background scroll when modal is open
+    document.body.style.overflow = 'hidden';
 }
 
 // Hide the Edit User Modal
@@ -1537,20 +1774,20 @@ window.onclick = function(event) {
 
                 // Validate email format
                 if (email && !email.includes("@")) {
-                    alert("Please enter a valid email.");
+                    alert('Please enter a valid email.');
                     return false;
                 }
 
                 // Validate password length
                 if (password && password.length < 6) {
-                    alert("Password must be at least 6 characters.");
+                    alert('Password must be at least 6 characters.');
                     return false;
                 }
 
                 // Validate contact number is exactly 11 digits
                 const contactRegex = /^\d{11}$/;
                 if (contact && !contactRegex.test(contact)) {
-                    alert("Contact number must be exactly 11 digits.");
+                    alert('Contact number must be exactly 11 digits.');
                     return false;
                 }
 

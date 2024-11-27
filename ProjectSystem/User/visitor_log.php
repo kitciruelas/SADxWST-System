@@ -344,7 +344,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_user/visitor-logs.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
@@ -461,7 +461,7 @@ $conn->close();
 
                 <!-- Log Visitor Button -->
                 <div class="col-md-3 text-end">
-                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#visitorModal">
+                    <button class="btn btn-primary w-50" data-bs-toggle="modal" data-bs-target="#visitorModal">
                         <i class="fas fa-plus me-2"></i>Log Visitor
                     </button>
                 </div>
@@ -555,13 +555,14 @@ $conn->close();
         </div>
 
         <style>
+            
         
             /* Controls section styling */
           
             /* Search input styling */
             .input-group .form-control {
                 border-radius: 8px;
-                padding: 0.75rem 1rem;
+                padding: 0.75rem 2.25rem 0.75rem 1rem;
                 border: 2px solid #e0e0e0;
                 transition: all 0.3s ease;
             }
@@ -574,7 +575,6 @@ $conn->close();
             /* Filter and Sort controls */
             .form-select {
                 border-radius: 8px;
-                padding: 0.75rem 2.25rem 0.75rem 1rem;
                 border: 2px solid #e0e0e0;
                 background-color: white;
                 cursor: pointer;
@@ -685,6 +685,24 @@ $conn->close();
                     width: 100%;
                 }
             }
+            .btn-close {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+.btn-close span {
+    font-size: 1.5rem;
+    color: #fff;
+    line-height: 1;
+}
         </style>
 
         <!-- Log Visitor Modal -->
@@ -693,8 +711,9 @@ $conn->close();
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="visitorModalLabel">Log New Visitor</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+</button>                    </div>
                     <div class="modal-body">
                         <form action="visitor_log.php" method="post" id="addVisitorForm">
                             <div class="mb-4">
@@ -727,6 +746,7 @@ $conn->close();
 
         <!-- Add this CSS -->
         <style>
+            
         /* Modal styles */
         .modal-content {
             border: none;

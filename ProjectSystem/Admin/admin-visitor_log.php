@@ -130,6 +130,119 @@ $conn->close();
 
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
+
 
 </head>
 <body>
@@ -172,12 +285,24 @@ function confirmLogout() {
     <div class="main-content">      
     <div class="container mt-1">
      <!-- Search and Filter Section -->
-<div class="row mb-4">
-    <div class="col-12 col-md-8">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+<div class="row mb-1">
+    <!-- Search Input -->
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for visitors, residents, etc..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    <div class="col-6 col-md-2">
-        <select id="filterSelect" class="form-select">
+
+    <!-- Filter Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select id="filterSelect" class="form-select" onchange="filterTable()">
             <option value="all" selected>Filter by</option>
             <option value="name">Visiting Person</option>
             <option value="contact_info">Contact Info</option>
@@ -185,19 +310,20 @@ function confirmLogout() {
             <option value="visiting_person">Resident Name</option>
         </select>
     </div>
-    <div class="col-6 col-md-2">
 
-    <!-- Sort by Dropdown -->
-    <select id="sortSelect" class="form-select" style="width: 100%;" onchange="sortTable()">
-        <option value="all" selected>Sort by</option>
-        <option value="resident_asc">Resident (A to Z)</option>
-        <option value="resident_desc">Resident (Z to A)</option>
-        <option value="check_in_asc">Check-In Time (Earliest)</option>
-        <option value="check_in_desc">Check-In Time (Latest)</option>
-        <option value="check_out_asc">Check-Out Time (Earliest)</option>
-        <option value="check_out_desc">Check-Out Time (Latest)</option>
-    </select>
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select id="sortSelect" class="form-select" onchange="sortTable()">
+            <option value="" selected>Sort by</option>
+            <option value="resident_asc">Resident (A to Z)</option>
+            <option value="resident_desc">Resident (Z to A)</option>
+            <option value="check_in_asc">Check-In (Earliest)</option>
+            <option value="check_in_desc">Check-In (Latest)</option>
+            <option value="check_out_asc">Check-Out (Earliest)</option>
+            <option value="check_out_desc">Check-Out (Latest)</option>
+        </select>
     </div>
+
 </div>
 <div class="table-responsive">
     <table class="table table-bordered" id="visitorTable">
@@ -316,9 +442,10 @@ $(document).ready(function() {
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         pageLength: 10,
         ordering: true,
-        searching: true,
+        searching: false,
         lengthChange: false,
-        info: true,
+        info: false,
+        paging: false,
         responsive: true,
         order: [[5, 'desc']], // Sort by check-in time
         columnDefs: [{
@@ -455,39 +582,52 @@ document.addEventListener('DOMContentLoaded', function() {
         filterSelect.addEventListener('change', filterTable);
         searchInput.addEventListener('keyup', filterTable);
     });
-// JavaScript for client-side pagination
-const rowsPerPage = 10; // Display 10 rows per page
+// Pagination functionality
+const rowsPerPage = 10;
 let currentPage = 1;
-const rows = document.querySelectorAll('#visitor-table-body tr');
-const totalPages = Math.ceil(rows.length / rowsPerPage);
 
-// Show the initial set of rows
-showPage(currentPage);
-
-function showPage(page) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    rows.forEach((row, index) => {
-        row.style.display = index >= start && index < end ? '' : 'none';
+function updatePagination() {
+    const table = document.getElementById('visitorTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
+    
+    // Update page indicator
+    document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
+    
+    // Enable/disable buttons
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage === totalPages;
+    
+    // Show/hide rows
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    
+    Array.from(rows).forEach((row, index) => {
+        row.style.display = (index >= startIndex && index < endIndex) ? '' : 'none';
     });
-    document.getElementById('pageIndicator').innerText = `Page ${page}`;
-    document.getElementById('prevPage').disabled = page === 1;
-    document.getElementById('nextPage').disabled = page === totalPages;
 }
-
 function nextPage() {
+    const table = document.getElementById('visitorTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
+    
     if (currentPage < totalPages) {
         currentPage++;
-        showPage(currentPage);
+        updatePagination();
     }
 }
 
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
-        showPage(currentPage);
+        updatePagination();
     }
 }
+
+// Initialize pagination when the document loads
+document.addEventListener('DOMContentLoaded', function() {
+    updatePagination();
+});
 
 function validateForm() {
         const contactInfo = document.getElementById('contact_info').value;

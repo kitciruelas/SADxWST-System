@@ -270,6 +270,119 @@ $conn->close();
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
+
 </head>
 <body>
     <!-- Sidebar -->
@@ -324,28 +437,46 @@ function confirmLogout() {
 <div class="container mt-1">
    <!-- Search and Filter Section -->
 <div class="row mb-1">
-    <div class="col-12 col-md-8 mt-1">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search...">
+    <!-- Search Input -->
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for room details..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
+
+    <!-- Filter Dropdown -->
     <div class="col-6 col-md-2 mt-1">
         <select id="filterSelect" class="form-select">
-            <option value="all">All</option>
-            <option value="resident">By Resident</option>
-            <option value="room">By Room Number</option>
-            <option value="rent">By Monthly Rent</option>
+            <option value="all" selected>Filter by</option>
+            <option value="resident">Resident</option>
+            <option value="room">Room</option>
+            <option value="monthly_rent">Monthly Rent</option>
         </select>
     </div>
-    <div class="col-6 col-md-2 mt-1">
-        <select id="sortSelect" class="form-select">
-            <option value="">Sort By</option>
-            <option value="resident-asc">Resident (A-Z)</option>
-            <option value="resident-desc">Resident (Z-A)</option>
-            <option value="room-asc">Room Number (Low-High)</option>
-            <option value="room-desc">Room Number (High-Low)</option>
-            <option value="rent-asc">Monthly Rent (Low-High)</option>
-            <option value="rent-desc">Monthly Rent (High-Low)</option>
-        </select>
+
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 ">
+        <form method="GET" action="" class="form-select">
+            <select name="sort" id="sort" onchange="this.form.submit()">
+                <option value="" selected>Sort by</option>
+                <option value="resident_asc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'resident_asc' ? 'selected' : ''; ?>>Resident (A to Z)</option>
+                <option value="resident_desc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'resident_desc' ? 'selected' : ''; ?>>Resident (Z to A)</option>
+                <option value="room_asc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'room_asc' ? 'selected' : ''; ?>>Room (A to Z)</option>
+                <option value="room_desc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'room_desc' ? 'selected' : ''; ?>>Room (Z to A)</option>
+                <option value="rent_asc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'rent_asc' ? 'selected' : ''; ?>>Monthly Rent (Low to High)</option>
+                <option value="rent_desc" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'rent_desc' ? 'selected' : ''; ?>>Monthly Rent (High to Low)</option>
+            </select>
+        </form>
     </div>
+
+ 
 </div>
 
     <?php if (!empty($assignmentsData)): ?>
@@ -600,129 +731,40 @@ function prevPage() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const filterSelect = document.getElementById('filterSelect');
-    const sortSelect = document.getElementById('sortSelect');
-    const searchInput = document.getElementById('searchInput');
-    const tbody = document.querySelector('#room-table-body');
+document.addEventListener('DOMContentLoaded', function() { 
+        const filterSelect = document.getElementById('filterSelect');
+        const searchInput = document.getElementById('searchInput');
+        const table = document.getElementById('assignmentTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
 
-    function filterTable() {
-        const rows = Array.from(tbody.getElementsByTagName('tr'));
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const filterType = filterSelect.value;
+        function filterTable() {
+            const filterBy = filterSelect.value;
+            const searchTerm = searchInput.value.toLowerCase();
 
-        rows.forEach(row => {
-            let showRow = false;
-            const resident = row.querySelector('.resident').textContent.toLowerCase();
-            const room = row.querySelector('.room').textContent.toLowerCase();
-            const rent = row.querySelector('.monthly_rent').textContent.toLowerCase();
+            Array.from(rows).forEach(row => {
+                let cellText = '';
 
-            switch (filterType) {
-                case 'all':
-                    showRow = resident.includes(searchTerm) || 
-                             room.includes(searchTerm) || 
-                             rent.includes(searchTerm);
-                    break;
-                case 'resident':
-                    showRow = resident.includes(searchTerm);
-                    break;
-                case 'room':
-                    showRow = room.includes(searchTerm);
-                    break;
-                case 'rent':
-                    showRow = rent.includes(searchTerm);
-                    break;
-                default:
-                    showRow = true;
-            }
-
-            row.style.display = showRow ? '' : 'none';
-        });
-
-        updateRowNumbers();
-        sortTable(); // Apply sorting after filtering
-    }
-
-    function sortTable() {
-        const rows = Array.from(tbody.getElementsByTagName('tr'))
-            .filter(row => row.style.display !== 'none'); // Only sort visible rows
-        const sortType = sortSelect.value;
-
-        if (sortType) {
-            const [column, direction] = sortType.split('-');
-
-            rows.sort((a, b) => {
-                let valueA, valueB;
-
-                switch (column) {
+                switch(filterBy) {
                     case 'resident':
-                        valueA = a.querySelector('.resident').textContent.toLowerCase();
-                        valueB = b.querySelector('.resident').textContent.toLowerCase();
+                        cellText = row.querySelector('.resident')?.textContent.toLowerCase() || '';
                         break;
                     case 'room':
-                        valueA = a.querySelector('.room').textContent.toLowerCase();
-                        valueB = b.querySelector('.room').textContent.toLowerCase();
-                        // Handle 'No Room Assigned' case
-                        valueA = valueA === 'no room assigned' ? '' : valueA;
-                        valueB = valueB === 'no room assigned' ? '' : valueB;
+                        cellText = row.querySelector('.room')?.textContent.toLowerCase() || '';
                         break;
-                    case 'rent':
-                        valueA = parseFloat(a.querySelector('.monthly_rent').textContent.replace(/[^\d.-]/g, '')) || 0;
-                        valueB = parseFloat(b.querySelector('.monthly_rent').textContent.replace(/[^\d.-]/g, '')) || 0;
-                        return direction === 'asc' ? valueA - valueB : valueB - valueA;
+                    case 'monthly_rent':
+                        cellText = row.querySelector('.monthly_rent')?.textContent.toLowerCase() || '';
+                        break;
+                    default:
+                        cellText = row.textContent.toLowerCase();
                 }
 
-                return direction === 'asc' 
-                    ? valueA.localeCompare(valueB)
-                    : valueB.localeCompare(valueA);
+                row.style.display = cellText.includes(searchTerm) ? '' : 'none';
             });
-
-            // Reorder rows in the table
-            rows.forEach(row => tbody.appendChild(row));
         }
 
-        updateRowNumbers();
-    }
-
-    function updateRowNumbers() {
-        let visibleIndex = 1;
-        const rows = tbody.getElementsByTagName('tr');
-        
-        Array.from(rows).forEach(row => {
-            if (row.style.display !== 'none') {
-                row.cells[0].textContent = visibleIndex++;
-            }
-        });
-    }
-
-    function resetFilters() {
-        if (searchInput.value === '') {
-            filterSelect.value = 'all';
-            // Don't reset sort selection as it should persist
-            filterTable();
-        }
-    }
-
-    // Event listeners
-    searchInput.addEventListener('input', debounce(() => {
-        resetFilters();
-        filterTable();
-    }, 300));
-
-    filterSelect.addEventListener('change', filterTable);
-    sortSelect.addEventListener('change', sortTable);
-
-    function debounce(func, wait) {
-        let timeout;
-        return function(...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    }
-
-    // Initialize table
-    filterTable();
-});
+        filterSelect.addEventListener('change', filterTable);
+        searchInput.addEventListener('keyup', filterTable);
+    });
 
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const sidebar = document.getElementById('sidebar');

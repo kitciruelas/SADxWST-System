@@ -10,21 +10,21 @@ if (!isset($_SESSION['id'])) {
     exit();
 }
 
-$admin_id = $_SESSION['id']; // Set admin ID from session
+$staff_id = $_SESSION['id']; // Set staff ID from session
 
-// Verify admin_id exists in the admin table
+// Verify staff_id exists in the staff table
 $stmt = $conn->prepare("SELECT * FROM staff WHERE id = ?");
-$stmt->bind_param("i", $admin_id); // Use $admin_id to verify the logged-in admin
+$stmt->bind_param("i", $staff_id); // Use $staff_id to verify the logged-in staff
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    // admin_id does not exist in the admin table; return an error
-    die(json_encode(["error" => "Admin ID not found in database."]));
+    // staff_id does not exist in the staff table; return an error
+    die(json_encode(["error" => "Staff ID not found in database."]));
 }
 
 while ($row = $result->fetch_assoc()) {
-    // Process the result (if necessary, e.g., to get admin details)
+    // Process the result (if necessary, e.g., to get staff details)
 }
 
 $stmt->close();
@@ -39,7 +39,7 @@ if (isset($_POST['msg'])) {
 
     // Prepare and execute message insert
     $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, timestamp) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("iiss", $admin_id, $receiver_id, $msg, $created_at);
+    $stmt->bind_param("iiss", $staff_id, $receiver_id, $msg, $created_at);
 
     if ($stmt->execute()) {
         echo json_encode(getMessages($conn));  // Return messages after successful insert
@@ -133,7 +133,7 @@ function getMessages($conn, $receiverId = 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../Admin/Css_Admin/dashboard.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="icon" href="img-icon/chats.png" type="image/png">
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
@@ -628,25 +628,22 @@ function getMessages($conn, $receiverId = 0) {
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
+       <div class="sidebar" id="sidebar">
         <div class="menu" id="hamburgerMenu">
-            <i class="fas fa-bars"></i> <!-- Hamburger menu icon -->
+            <i class="fas fa-bars"></i>
         </div>
-
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="staff-chat.php" class="nav-link active"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-visitor_log.php" class="nav-link "><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+        <a href="staff-chat.php" class="nav-link active"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
         <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-
-
         </div>
-        
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
     <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
 </a>
 
@@ -656,6 +653,7 @@ function confirmLogout() {
 }
 </script>
         </div>
+    </div>
     </div>
 
     <!-- Top bar -->
@@ -898,24 +896,25 @@ function submitchat() {
     var msg = document.forms["form1"]["msg"].value;
     if (msg === '') {
         alert('Enter a message!');
-        return false;
+        return false;  // Prevent form submission if the message is empty
     }
 
     $.ajax({
         type: "POST",
-        url: "staff-chat.php",  // Updated URL
+        url: "staff-chat.php",  // Specify the correct endpoint for sending messages
         data: { msg: msg },
         success: function(response) {
-            window.location.reload();
-            document.getElementById("messageForm").reset();
-            scrollToBottom();
+            window.location.reload();  // Reload the page after submitting the message
+            document.getElementById("messageForm").reset();  // Clear the form
+            scrollToBottom();  // Scroll to the bottom after sending a message
+
         },
         error: function() {
-            alert('Message could not be sent. Please try again.');
+            alert('Message could not be sent. Please try again.');  // Handle errors
         }
     });
 
-    return false;
+    return false;  // Prevent default form submission behavior
 }
 
 function updateChatLogs(messages) {
@@ -960,15 +959,18 @@ $(document).ready(function() {
 });
 
 function editMessage(messageId, messageContent) {
+    // Show prompt with current message content
     const newContent = prompt("Edit message:", messageContent);
     
+    // If user clicks Cancel or enters empty message, do nothing
     if (newContent === null || !newContent.trim()) {
         return;
     }
     
+    // Send edit request to server
     $.ajax({
         type: "POST",
-        url: "staff-chat.php",  // Updated URL
+        url: "staff-chat.php",
         data: { 
             edit_id: messageId, 
             edit_msg: newContent 
@@ -996,10 +998,12 @@ function deleteMessage(messageId) {
     if (confirm("Are you sure you want to delete this message?")) {
         $.ajax({
             type: "POST",
-            url: "staff-chat.php",  // Updated URL
+            url: "staff-chat.php",  // Specify the correct endpoint for deleting messages
             data: { delete_id: messageId },
             success: function(response) {
-                window.location.reload();
+               
+                window.location.reload();  // Reload the page after submitting the message
+
             },
             error: function() {
                 alert('Message could not be deleted. Please try again.');

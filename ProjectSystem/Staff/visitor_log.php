@@ -2,41 +2,76 @@
 session_start();
 include '../config/config.php'; // Correct path to your config file
 
+// Function to log activities (ensure this function exists)
+function logActivity($conn, $userId, $action, $description) {
+    $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, description, timestamp) VALUES (?, ?, ?, NOW())");
+    $stmt->bind_param("iss", $userId, $action, $description);
+    $stmt->execute();
+    $stmt->close();
+}
+
 // Check if the user is logged in
 if (!isset($_SESSION['id'])) {
     header("Location: login.php"); // Redirect to login if not logged in
     exit();
 }
 
-// Store the logged-in user's ID
-$userId = $_SESSION['id'];
-
-// **Handle POST Requests**
+// Check if the request is a POST request and handle accordingly
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Handle visitor deletion (archive and delete)
+    if (isset($_POST['visitor_id']) && !empty($_POST['visitor_id'])) {
+        
+        $visitor_id = intval($_POST['visitor_id']); // Sanitize input
 
-    // Function to log activities
-    function logActivity($conn, $userId, $activityType, $activityDetails) {
-        $sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
-        if (!$stmt->execute()) {
-            error_log("Failed to log activity: " . $stmt->error);
+        // Step 1: Archive the visitor by copying to archive table
+        $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
+                       SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
+                       FROM visitors WHERE id = ?";
+        
+        $archiveStmt = $conn->prepare($archiveSql);
+        if ($archiveStmt) {
+            $archiveStmt->bind_param("i", $visitor_id); // Bind visitor ID as integer
+            
+            if ($archiveStmt->execute()) {
+                // Step 2: Delete the visitor from the original table
+                $deleteSql = "DELETE FROM visitors WHERE id = ?";
+                $deleteStmt = $conn->prepare($deleteSql);
+
+                if ($deleteStmt) {
+                    $deleteStmt->bind_param("i", $visitor_id);
+                    if ($deleteStmt->execute()) {
+                        echo "Visitor archived and deleted successfully.";
+                        header("Location: admin-visitor_log.php"); // Redirect after archiving
+                        exit;
+                    } else {
+                        echo "Error deleting visitor from the original table.";
+                    }
+                    $deleteStmt->close();
+                } else {
+                    echo "Failed to prepare the delete statement.";
+                }
+            } else {
+                echo "Error archiving visitor.";
+            }
+            $archiveStmt->close();
+        } else {
+            echo "Failed to prepare the archive statement.";
         }
-        $stmt->close();
-    }
 
-    if (isset($_POST['visitor_name'])) {
+    }
+    // Handle visitor addition
+    elseif (isset($_POST['visitor_name'])) {
         $visitorName = trim($_POST['visitor_name']);
         $contactInfo = trim($_POST['contact_info']);
         $purpose = trim($_POST['purpose']);
         $checkInTime = $_POST['check_in_time'];
         $userId = $_SESSION['id']; // Current logged-in staff user
-    
+
         if (empty($visitorName) || empty($contactInfo) || empty($purpose) || empty($checkInTime) || empty($_POST['visiting_user_id'])) {
             echo "<script>alert('All fields are required!'); window.history.back();</script>";
             exit();
         }
-    
+
         // Validate that the selected visiting_user_id exists in the users table
         $visitingUserId = $_POST['visiting_user_id'];
         $stmt = $conn->prepare("SELECT COUNT(*) FROM `users` WHERE `id` = ?");
@@ -45,12 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_result($userExists);
         $stmt->fetch();
         $stmt->close();
-    
+
         if ($userExists == 0) {
             echo "<script>alert('Invalid user ID!'); window.history.back();</script>";
             exit();
         }
-    
+
         // Proceed with inserting the visitor record if everything is valid
         $checkInDatetime = date('Y-m-d') . ' ' . $checkInTime . ':00';
         $stmt = $conn->prepare(
@@ -58,210 +93,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              VALUES (?, ?, ?, ?, ?)"
         );
         $stmt->bind_param("sssis", $visitorName, $contactInfo, $purpose, $visitingUserId, $checkInDatetime);
-    
+
         if ($stmt->execute()) {
             logActivity($conn, $userId, "Add Visitor", "Visitor '$visitorName' added successfully.");
-            echo "<script>alert('Visitor added successfully!'); window.location.href='visitor_log.php';</script>";
+            echo "<script>alert('Visitor added successfully!'); window.location.href='admin-visitor_log.php';</script>";
         } else {
             echo "<script>alert('Error adding visitor: " . $stmt->error . "'); window.history.back();</script>";
         }
         $stmt->close();
         exit();
     }
-    
-// Check-Out Visitor Logic
-if (isset($_POST['visitor_id'])) {
-    $visitorId = (int)$_POST['visitor_id'];  // Get the visitor ID
-
-    // Check if the visitor ID is valid and belongs to a valid entry
-    $stmt = $conn->prepare("SELECT id FROM visitors WHERE id = ? AND check_out_time IS NULL");
-    $stmt->bind_param("i", $visitorId);
-    $stmt->execute();
-    $stmt->store_result();
-
-    if ($stmt->num_rows > 0) {
-        // Proceed to update check-out time
-        $stmt->close(); // Close the initial statement
-
-        $stmt = $conn->prepare(
-            "UPDATE visitors SET check_out_time = NOW() WHERE id = ?"
-        );
-        $stmt->bind_param("i", $visitorId);
-
-        if ($stmt->execute()) {
-            // Fetch visitor's name for logging after updating
-            $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
-            $nameStmt = $conn->prepare($fetchNameSql);
-            $nameStmt->bind_param("i", $visitorId);
-            $nameStmt->execute();
-            $nameStmt->bind_result($visitorName);
-            $nameStmt->fetch();
-            $nameStmt->close();
-
-            // Log activity: Check-Out
-            logActivity($conn, $userId, "Check-Out Visitor", "Visitor '$visitorName' checked out.");
-            echo "<script>alert('Check-out successful!'); window.location.href='visitor_log.php';</script>";
-        } else {
-            echo "<script>alert('Error updating check-out time: " . $stmt->error . "'); window.history.back();</script>";
-        }
-        $stmt->close();
-    } else {
-        echo "<script>alert('Invalid visitor ID or visitor has already checked out!'); window.history.back();</script>";
-    }
-
-    exit();
-}
-
-
-    // Archive Visitor Logic
-    if (isset($_POST['delete_visitor_id'])) {
-        $visitorId = (int)$_POST['delete_visitor_id'];
-
-        $conn->begin_transaction();
-
-        $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
-                       SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
-                       FROM visitors WHERE id = ? AND visiting_user_id = ?";
-        $stmt = $conn->prepare($archiveSql);
-        $stmt->bind_param("ii", $visitorId, $userId);
-
-        if (!$stmt->execute()) {
-            $conn->rollback();
-            echo "<script>alert('Error archiving visitor: " . $stmt->error . "'); window.history.back();</script>";
-            exit();
-        }
-
-        // Fetch visitor's name for logging
-        $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
-        $nameStmt = $conn->prepare($fetchNameSql);
-        $nameStmt->bind_param("i", $visitorId);
-        $nameStmt->execute();
-        $nameStmt->bind_result($visitorName);
-        $nameStmt->fetch();
-        $nameStmt->close();
-
-        $stmt->close();
-
-        $deleteSql = "DELETE FROM visitors WHERE id = ? AND visiting_user_id = ?";
-        $stmt = $conn->prepare($deleteSql);
-        $stmt->bind_param("ii", $visitorId, $userId);
-
-        if (!$stmt->execute()) {
-            $conn->rollback();
-            echo "<script>alert('Error deleting visitor: " . $stmt->error . "'); window.history.back();</script>";
-            exit();
-        }
-        $stmt->close();
-
-        $conn->commit();
-        logActivity($conn, $userId, "Archive Visitor", "Visitor '$visitorName' archived.");
-        echo "<script>alert('Visitor archived successfully!'); window.location.href='visitor_log.php';</script>";
-        exit();
-    }
-
-    // Edit Visitor Logic
-    if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
-        $visitorId = (int)$_POST['edit_id'];
-        $name = mysqli_real_escape_string($conn, $_POST['edit_msg']['name']);
-        $contactInfo = mysqli_real_escape_string($conn, $_POST['edit_msg']['contact_info']);
-        $purpose = mysqli_real_escape_string($conn, $_POST['edit_msg']['purpose']);
-
-        if (empty($name) || empty($contactInfo) || empty($purpose)) {
-            echo "<script>alert('All fields are required!'); window.history.back();</script>";
-            exit();
-        }
-
-        // Fetch the visitor's original name for logging
-        $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
-        $stmt = $conn->prepare($fetchNameSql);
-        $stmt->bind_param("i", $visitorId);
-        $stmt->execute();
-        $stmt->bind_result($originalName);
-        $stmt->fetch();
-        $stmt->close();
-
-        $sql = "UPDATE visitors 
-                SET name = '$name', contact_info = '$contactInfo', purpose = '$purpose'
-                WHERE id = $visitorId";
-
-        if (mysqli_query($conn, $sql)) {
-            logActivity($conn, $userId, "Edit Visitor", "Visitor '$originalName' updated.");
-            echo "<script>alert('Visitor updated successfully'); window.location.href='visitor_log.php';</script>";
-        } else {
-            echo "<script>alert('Failed to update visitor'); window.history.back();</script>";
-        }
-        exit();
+    else {
+        echo "Invalid request: Missing required parameters.";
     }
 }
-
-
-// Check if form data is submitted via POST
-if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
-    // Retrieve visitor ID and the data from the form
-    $visitor_id = $_POST['edit_id'];
-    $name = mysqli_real_escape_string($conn, $_POST['edit_msg']['name']);
-    $contact_info = mysqli_real_escape_string($conn, $_POST['edit_msg']['contact_info']);
-    $purpose = mysqli_real_escape_string($conn, $_POST['edit_msg']['purpose']);
-
-    // Check if any required fields are empty
-    if (empty($name) || empty($contact_info) || empty($purpose)) {
-        // If any field is empty, show an alert and stop execution
-        echo "<script>
-                alert('All fields are required!');
-                window.location.href = 'visitors_list.php';
-              </script>";
-        exit();
-    }
-
-    // Prepare the SQL query to update the visitor details
-    $sql = "UPDATE visitors 
-            SET name = '$name', contact_info = '$contact_info', purpose = '$purpose'
-            WHERE id = '$visitor_id'";
-
-    // Execute the query and check if the update was successful
-    if (mysqli_query($conn, $sql)) {
-        // Success alert and redirect
-        echo "<script>
-                alert('Visitor updated successfully');
-                window.location.href = 'visitor_log.php';
-              </script>";
-    } else {
-        // Error alert and redirect
-        echo "<script>
-                alert('Failed to update visitor');
-                window.location.href = 'visitor_log.php';
-              </script>";
-    }
-} 
-
-
-
-// Assuming you're using $_GET['filter'] to fetch the filter value
-$filter = isset($_GET['filter']) ? $_GET['filter'] : '';
-$sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
-        FROM visitors v 
-        LEFT JOIN users u ON v.visiting_user_id = u.id";
-
-// Modify query based on selected filter
-if ($filter == 'today') {
-    $sql .= " WHERE DATE(v.check_in_time) = CURDATE()"; // Filter for today's visits
-} elseif ($filter == 'this_week') {
-    $sql .= " WHERE WEEK(v.check_in_time) = WEEK(CURDATE())"; // Filter for this week's visits
-} elseif ($filter == 'this_month') {
-    $sql .= " WHERE MONTH(v.check_in_time) = MONTH(CURDATE())"; // Filter for this month's visits
-}
-
-$result = $conn->query($sql);
-// Assuming you're using $_GET['sort'] to get the sort parameter
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name'; // Default sort by name
-
-$sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
-        FROM visitors v 
-        LEFT JOIN users u ON v.visiting_user_id = u.id 
-        ORDER BY v.$sort"; // Sorting by the selected field (name, check_in_time, or check_out_time)
-
-$result = $conn->query($sql);
-
 
 // SQL query to fetch users from the users table
 $sql = "SELECT id, fname, lname FROM users";
@@ -283,21 +128,29 @@ if (mysqli_num_rows($result) > 0) {
     $options[] = "<option value=''>No users found</option>";
 }
 
-// Close the database connection
-
 // Combine all options into a single string
 $options_string = implode("\n", $options);
 
+// **Filter Logic**: Handle filter selection from the dropdown
+$filter = $_GET['filter'] ?? ''; // Get the selected filter (if any)
+$dateCondition = ''; // Initialize
+
+if ($filter === 'today') {
+    $dateCondition = "AND DATE(check_in_time) = CURDATE()";
+} elseif ($filter === 'this_week') {
+    $dateCondition = "AND YEARWEEK(check_in_time, 1) = YEARWEEK(CURDATE(), 1)";
+} elseif ($filter === 'this_month') {
+    $dateCondition = "AND MONTH(check_in_time) = MONTH(CURDATE()) AND YEAR(check_in_time) = YEAR(CURDATE())";
+}
 
 $query = "
     SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person
-FROM visitors v
-LEFT JOIN users u ON v.visiting_user_id = u.id
-ORDER BY v.check_in_time DESC;
-
+    FROM visitors v
+    LEFT JOIN users u ON v.visiting_user_id = u.id
+    WHERE 1=1 $dateCondition
+    ORDER BY v.check_in_time DESC
 ";
 $result = $conn->query($query);
-
 
 $conn->close();
 ?>
@@ -308,26 +161,157 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="../User/Css_user/visitor-logs.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <title>Visitor Logs</title>
+    <link rel="icon" href="img-icon/visit.png" type="image/png">
+
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
 
-    <!-- Bootstrap CSS -->
-<link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 
-<!-- jQuery (needed for Bootstrap's JavaScript plugins) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 
 <!-- Bootstrap JS -->
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<!-- DataTables Buttons CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+
+<!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+
+<!-- JSZip for Excel Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+
+<!-- pdfMake for PDF Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+
+<!-- DataTables Buttons for exporting -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+
 <style>
-.main-content {
-   padding-top: 80px;
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
 }
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+   /* Pagination styling */
+   #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color:  #2B228A;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
 </style>
+ 
 </head>
 <body>
 
@@ -340,13 +324,12 @@ $conn->close();
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="visitor_log.php" class="nav-link active"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-visitor_log.php" class="nav-link active"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
         <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-
-
         </div>
         
         <div class="logout">
@@ -365,135 +348,109 @@ function confirmLogout() {
     <!-- Top bar -->
     <div class="topbar">
         <h2>Visitor Log</h2>
-
+    
     </div>
     <div class="main-content">      
     <div class="container mt-1">
-    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+     <!-- Search and Filter Section -->
+<div class="row mb-1">
     <!-- Search Input -->
-    <div class="input-group w-50">
-        <input type="text" class="form-control" id="searchInput" placeholder="Search for visitors..." onkeyup="searchTable()">
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for visitors, residents, etc..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
 
-    <!-- Filter Section -->
-  <!-- Filter by Dropdown -->
-<div class="d-flex align-items-center">
-    <label for="filterSelect" class="form-label me-2">Filter by:</label>
-    <select class="form-select w-auto" id="filterSelect" onchange="filterTable()">
-        <option value="">All</option>
-        <option value="today">Today</option>
-        <option value="this_week">This Week</option>
-        <option value="this_month">This Month</option>
-    </select>
-</div>
-
-
-    <!-- Sort by Dropdown -->
-    <div class="d-flex align-items-center">
-        <label for="sortSelect" class="form-label me-2">Sort by:</label>
-        <select class="form-select w-auto" id="sortSelect" onchange="sortTable()">
-            <option value="name" selected>Name</option>
-            <option value="check_in_time">Check-In Time</option>
-            <option value="check_out_time">Check-Out Time</option>
+    <!-- Filter Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select id="filterSelect" class="form-select" onchange="filterTable()">
+            <option value="all" selected>Filter by</option>
+            <option value="name">Visiting Person</option>
+            <option value="contact_info">Contact Info</option>
+            <option value="purpose">Purpose</option>
+            <option value="visiting_person">Resident Name</option>
         </select>
     </div>
 
-    <!-- Log Visitor Button -->
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#visitorModal">Log Visitor</button>
-</div>
-
-<!-- Visitor Log Table -->
-<div class="table-responsive">
-<table class="table table-bordered" id="visitorTable">
-    <thead class="table-light">
-        <tr>
-            <th scope="col">No.</th>
-            <th scope="col">Visiting Person</th>
-            <th scope="col">Contact Info</th>
-            <th scope="col">Purpose</th>
-          <th scope="col">Name</th>
-            <th scope="col">Check-In</th>
-            <th scope="col">Check-Out</th>
-            <th scope="col">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php
-        date_default_timezone_set('Asia/Manila'); // Set timezone to Philippine Time
-
-        if ($result->num_rows > 0): 
-            $counter = 1;
-            while ($row = $result->fetch_assoc()):
-                $isCheckedOut = !empty($row['check_out_time']);
-                $checkInDateTime = date("Y-m-d g:i A", strtotime($row['check_in_time'])); // Date with AM/PM
-                $checkOutDateTime = $isCheckedOut ? date("Y-m-d g:i A", strtotime($row['check_out_time'])) : 'N/A'; // Check-out date and time or 'N/A'
-        ?>
-            <tr>
-                <td><?= $counter++ ?></td>
-                <td><?= htmlspecialchars($row['name']) ?></td>
-                <td><?= htmlspecialchars($row['contact_info']) ?></td>
-                <td><?= htmlspecialchars($row['purpose']) ?></td>
-                <td><?= htmlspecialchars($row['visiting_person']) ?></td>
-                <td><?= $checkInDateTime ?></td>
-                <td><?= $checkOutDateTime ?></td>
-                <td>
-                    
-                    <form action="visitor_log.php" method="post" style="display:inline;">
-                        <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
-                        <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Are you sure you want to check out this visitor?')" <?= $isCheckedOut ? 'disabled' : '' ?>>Check-Out</button>
-                    </form>
-                    <button type="submit" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editVisitorModal<?= $row['id'] ?>">Edit</button>
-
-                    <form action="visitor_log.php" method="post" style="display:inline;">
-                        <input type="hidden" name="delete_visitor_id" value="<?= $row['id'] ?>">
-                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
-                    </form>
-                </td>
-            </tr>
-
-      <!-- Edit Modal -->
-<div class="modal fade" id="editVisitorModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editVisitorModalLabel<?= $row['id'] ?>" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editVisitorModalLabel<?= $row['id'] ?>">Edit Visitor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form action="visitor_log.php" method="post">
-                    <input type="hidden" name="edit_id" value="<?= $row['id'] ?>">
-                    <div class="mb-3">
-                        <label for="editVisitorName<?= $row['id'] ?>" class="form-label">Visitor's Name</label>
-                        <input type="text" class="form-control" id="editVisitorName<?= $row['id'] ?>" name="edit_msg[name]" value="<?= htmlspecialchars($row['name']) ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editContactInfo<?= $row['id'] ?>" class="form-label">Contact Info</label>
-                        <input type="text" class="form-control" id="editContactInfo<?= $row['id'] ?>" name="edit_msg[contact_info]" value="<?= htmlspecialchars($row['contact_info']) ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editPurpose<?= $row['id'] ?>" class="form-label">Purpose</label>
-                        <input type="text" class="form-control" id="editPurpose<?= $row['id'] ?>" name="edit_msg[purpose]" value="<?= htmlspecialchars($row['purpose']) ?>" required>
-                    </div>
-                    <div class="text-center">
-                        <button type="submit" class="btn btn-success">Save Changes</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select id="sortSelect" class="form-select" onchange="sortTable()">
+            <option value="" selected>Sort by</option>
+            <option value="resident_asc">Resident (A to Z)</option>
+            <option value="resident_desc">Resident (Z to A)</option>
+            <option value="check_in_asc">Check-In (Earliest)</option>
+            <option value="check_in_desc">Check-In (Latest)</option>
+            <option value="check_out_asc">Check-Out (Earliest)</option>
+            <option value="check_out_desc">Check-Out (Latest)</option>
+        </select>
     </div>
+        <div class="col-6 col-md-2 mt-2">
+
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#visitorModal">
+            <i class="fas fa-plus"></i> Log New Visitor
+        </button>
+        </div>
 </div>
-
-
-        <?php endwhile; else: ?>
+<div class="table-responsive">
+    <table class="table table-bordered" id="visitorTable">
+        <thead>
             <tr>
-                <td colspan="8" class="text-center">No visitors found.</td>
+                <th>No.</th>
+                <th>Visiting Person</th>
+                <th>Contact Info</th>
+                <th>Purpose</th>
+                <th>Resident Name</th>
+                <th>Check-In</th>
+                <th>Check-Out</th>
+                <th>Actions</th>
             </tr>
-        <?php endif; ?>
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            <?php 
+            if ($result && $result->num_rows > 0): 
+                $counter = 1;
+                while ($row = $result->fetch_assoc()):
+            ?>
+                <tr>
+                    <td><?= $counter++ ?></td>
+                    <td><?= htmlspecialchars($row['name']) ?></td>
+                    <td><?= htmlspecialchars($row['contact_info']) ?></td>
+                    <td><?= htmlspecialchars($row['purpose']) ?></td>
+                    <td><?= htmlspecialchars($row['visiting_person']) ?></td>
+                    <td><?= date("M d, Y g:i A", strtotime($row['check_in_time'])) ?></td>
+                    <td><?= !empty($row['check_out_time']) ? date("M d, Y g:i A", strtotime($row['check_out_time'])) : 'N/A' ?></td>
+                    <td>
+                        <form action="admin-visitor_log.php" method="post" style="display: inline;">
+                            <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this visitor record?')">
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            <?php 
+                endwhile; 
+            else: 
+            ?>
+                <tr>
+                    <td colspan="8">No visitors found</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
 
 </div>
 
+</div>
 <style>
     /* Style for the entire table */
     .table {
@@ -525,10 +482,333 @@ function confirmLogout() {
 
     /* Styling the action buttons */
     .table .btn {
-        margin-right: 2px; /* Space between buttons */
+        margin-right: 5px; /* Space between buttons */
     }
+    
 
 </style>
+
+<!-- Pagination Controls -->
+<div id="pagination">
+    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
+    <span id="pageIndicator">Page 1</span>
+    <button id="nextPage" onclick="nextPage()">Next</button>
+</div>
+
+      <!-- Add this CSS -->
+      <style>
+            
+            /* Modal styles */
+            .modal-content {
+                border: none;
+                border-radius: 15px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            }
+
+            .modal-header {
+                background-color: #2B228A;
+                color: white;
+                border-top-left-radius: 15px;
+                border-top-right-radius: 15px;
+                padding: 1.5rem;
+            }
+
+            .modal-body {
+                padding: 2rem;
+            }
+
+            .btn-close {
+                filter: brightness(0) invert(1);
+            }
+
+            /* Form styles */
+            .form-label {
+                font-weight: 500;
+                color: #2B228A;
+                margin-bottom: 0.5rem;
+            }
+
+            .custom-input {
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 12px;
+                transition: all 0.3s ease;
+            }
+
+            .custom-input:focus {
+                border-color: #2B228A;
+                box-shadow: 0 0 0 0.2rem rgba(43, 34, 138, 0.25);
+            }
+
+            .text-muted {
+                font-size: 0.85rem;
+                margin-top: 0.25rem;
+            }
+
+            /* Button styles */
+            .btn-primary {
+                background-color: #2B228A;
+                border: none;
+                padding: 12px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+            }
+
+            .btn-primary:hover {
+                background-color: #201b68;
+                transform: translateY(-1px);
+            }
+
+            .btn-primary:active {
+                transform: translateY(0);
+            }
+
+            /* Responsive adjustments */
+            @media (max-width: 576px) {
+                .modal-body {
+                    padding: 1.5rem;
+                }
+                
+                .custom-input {
+                    padding: 10px;
+                }
+            }
+            </style>
+
+
+<!-- JavaScript Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    
+    <!-- JavaScript -->
+    <script>
+        
+$(document).ready(function() {
+    $('#visitorTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        pageLength: 10,
+        ordering: true,
+        searching: false,
+        lengthChange: false,
+        info: false,
+        paging: false,
+        responsive: true,
+        order: [[5, 'desc']], // Sort by check-in time
+        columnDefs: [{
+            targets: -1,
+            orderable: false
+        }]
+    });
+
+    // Custom search
+    $('#searchInput').on('keyup', function() {
+        $('#visitorTable').DataTable().search(this.value).draw();
+    });
+
+    // Custom filter
+    $('#filterSelect').on('change', function() {
+        const column = parseInt($(this).val());
+        if (!isNaN(column)) {
+            $('#visitorTable').DataTable()
+                .columns().search('')
+                .column(column)
+                .search($('#searchInput').val())
+                .draw();
+        } else {
+            $('#visitorTable').DataTable()
+                .search($('#searchInput').val())
+                .draw();
+        }
+    });
+});
+
+
+// Function to get the current date and time in a formatted string
+function getFormattedDate() {
+  var now = new Date();
+  var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+  var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
+  return date + ' ' + time;
+}
+
+// Function to get the current date and time in a formatted string
+function getFormattedDate() {
+  var now = new Date();
+  var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+  var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
+  return date + ' ' + time;
+}
+
+function sortTable() {
+    const table = document.getElementById("visitorTable");
+    const tbody = table.querySelector("tbody");
+    const rows = Array.from(tbody.rows);
+    const sortBy = document.getElementById('sortSelect').value;
+
+    // Determine the sorting order (ascending or descending)
+    const isDescending = sortBy.includes('desc');
+
+    rows.sort((rowA, rowB) => {
+        let valueA, valueB;
+        
+        switch (sortBy) {
+            case 'resident_asc':
+            case 'resident_desc':
+                valueA = rowA.cells[1].textContent.trim().toLowerCase(); // Name column
+                valueB = rowB.cells[1].textContent.trim().toLowerCase();
+                break;
+            case 'check_in_asc':
+            case 'check_in_desc':
+                valueA = parseTime(rowA.cells[5].textContent.trim());
+                valueB = parseTime(rowB.cells[5].textContent.trim());
+                break;
+            case 'check_out_asc':
+            case 'check_out_desc':
+                valueA = parseTime(rowA.cells[6].textContent.trim());
+                valueB = parseTime(rowB.cells[6].textContent.trim());
+                break;
+            default:
+                return 0; // No sorting
+        }
+
+        // Handle sorting direction
+        if (isDescending) {
+            return valueA < valueB ? 1 : (valueA > valueB ? -1 : 0);
+        } else {
+            return valueA < valueB ? -1 : (valueA > valueB ? 1 : 0);
+        }
+    });
+
+    // Re-append sorted rows to the table
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Helper function to parse time values
+function parseTime(timeStr) {
+    if (timeStr === 'N/A') return new Date(0); // Handle 'N/A' as earliest time
+    const [hours, minutes, period] = timeStr.split(/[:\s]/);
+    const hour = (period.toLowerCase() === 'pm' && hours !== '12') ? parseInt(hours) + 12 : parseInt(hours);
+    return new Date(1970, 0, 1, hour, minutes); // Use a fixed date for comparison
+}
+
+document.addEventListener('DOMContentLoaded', function() { 
+        const filterSelect = document.getElementById('filterSelect');
+        const searchInput = document.getElementById('searchInput');
+        const table = document.getElementById('visitorTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        function filterTable() {
+            const filterBy = filterSelect.value;
+            const searchTerm = searchInput.value.toLowerCase();
+
+            Array.from(rows).forEach(row => {
+                let cellText = '';
+
+                switch(filterBy) {
+                    case 'name':
+                        cellText = row.querySelector('.name')?.textContent.toLowerCase() || '';
+                        break;
+                    case 'contact_info':
+                        cellText = row.querySelector('.contact_info')?.textContent.toLowerCase() || '';
+                        break;
+                    case 'purpose':
+                        cellText = row.querySelector('.purpose')?.textContent.toLowerCase() || '';
+                        break;
+                    case 'visiting_person':
+                        cellText = row.querySelector('.visiting_person')?.textContent.toLowerCase() || '';
+                        break;
+                    default:
+                        cellText = row.textContent.toLowerCase();
+                }
+
+                row.style.display = cellText.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        filterSelect.addEventListener('change', filterTable);
+        searchInput.addEventListener('keyup', filterTable);
+    });
+// Pagination functionality
+const rowsPerPage = 10;
+let currentPage = 1;
+
+function updatePagination() {
+    const table = document.getElementById('visitorTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
+    
+    // Update page indicator
+    document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
+    
+    // Enable/disable buttons
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage === totalPages;
+    
+    // Show/hide rows
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    
+    Array.from(rows).forEach((row, index) => {
+        row.style.display = (index >= startIndex && index < endIndex) ? '' : 'none';
+    });
+}
+function nextPage() {
+    const table = document.getElementById('visitorTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
+    
+    if (currentPage < totalPages) {
+        currentPage++;
+        updatePagination();
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        updatePagination();
+    }
+}
+
+// Initialize pagination when the document loads
+document.addEventListener('DOMContentLoaded', function() {
+    updatePagination();
+});
+
+function validateForm() {
+        const contactInfo = document.getElementById('contactInfo').value;
+
+        // Regular expression for Philippine phone numbers starting with 09
+        const contactPattern = /^(0?[9]\d{9}|[9]\d{9})$/;
+
+        if (!contactPattern.test(contactInfo)) {
+            alert('Contact Info must be a valid Philippine phone number starting with 09 (10 or 11 digits).');
+            return false; // Prevent form submission
+        }
+        return true; // Allow form submission if valid
+    }
+        // Sidebar toggle
+        const hamburgerMenu = document.getElementById('hamburgerMenu');
+        const sidebar = document.getElementById('sidebar');
+
+        sidebar.classList.add('collapsed');
+        hamburgerMenu.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            const icon = hamburgerMenu.querySelector('i');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            } else {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            }
+        });
+    </script>
 
 <!-- Log Visitor Modal -->
 <div class="modal fade" id="visitorModal" tabindex="-1" aria-labelledby="visitorModalLabel" aria-hidden="true">
@@ -541,7 +821,7 @@ function confirmLogout() {
                 </button>
             </div>
             <div class="modal-body">
-                <form action="visitor_log.php" method="post" onsubmit="return validateForm()">
+                <form action="admin-visitor_log.php" method="post" onsubmit="return validateForm()">
                     <div class="mb-3">
                         <label for="visitorName" class="form-label">Visiting Person</label>
                         <input type="text" class="form-control" id="visitorName" name="visitor_name" required>
@@ -575,166 +855,13 @@ function confirmLogout() {
             </div>
         </div>
     </div>
-</div>  
+</div>
 
-<!-- Client-side validation function -->
-<script>
-function validateForm() {
-    // Get the selected resident (visiting_user_id)
-    var visitingUser = document.getElementById("visitingUser").value;
-
-    // Check if a resident is selected
-    if (visitingUser == "") {
-        alert("Please select a valid resident.");
-        return false; // Prevent form submission
-    }
-
-    return true; // Allow form submission
-}
-</script>
-
-
-<!-- JavaScript Libraries -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-
-<!-- Include jQuery and Bootstrap JS (required for dropdown) -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    
-    <!-- JavaScript -->
-    <script>
-        // Function to filter the table based on the selected filter (Today, This Week, This Month)
-// Function to filter the table based on the selected filter (Today, This Week, This Month)
-function filterTable() {
-    const filterValue = document.getElementById("filterSelect").value;
-    const rows = document.querySelectorAll("#visitorTable tbody tr");
-
-    rows.forEach(row => {
-        const checkInTimeText = row.querySelector("td:nth-child(6)").textContent; // Check-In column
-        const checkOutTimeText = row.querySelector("td:nth-child(7)").textContent; // Check-Out column
-        const checkInDate = new Date(checkInTimeText);
-        const currentDate = new Date();
-
-        // Set flag to determine whether to display this row
-        let shouldDisplay = true;
-
-        if (filterValue === 'today') {
-            // Filter by today (compare date only)
-            if (checkInDate.toDateString() !== currentDate.toDateString()) {
-                shouldDisplay = false;
-            }
-        } else if (filterValue === 'this_week') {
-            // Filter by this week (compare week number)
-            const currentWeek = getWeekNumber(currentDate);
-            const checkInWeek = getWeekNumber(checkInDate);
-            if (currentWeek !== checkInWeek) {
-                shouldDisplay = false;
-            }
-        } else if (filterValue === 'this_month') {
-            // Filter by this month
-            if (checkInDate.getMonth() !== currentDate.getMonth()) {
-                shouldDisplay = false;
-            }
-        }
-
-        // Show or hide the row based on filter match
-        row.style.display = shouldDisplay ? '' : 'none';
-    });
-}
-
-// Function to get the week number of the year for a given date
-function getWeekNumber(date) {
-    const tempDate = new Date(date.getTime());
-    tempDate.setHours(0, 0, 0, 0);
-    tempDate.setDate(tempDate.getDate() + 3 - (tempDate.getDay() + 6) % 7);
-    const firstThursday = tempDate.getTime();
-    tempDate.setMonth(0, 1);
-    return Math.ceil((((firstThursday - tempDate) / 86400000) + 1) / 7);
-}
-
-// Function to sort the table based on selected sort criteria (Name, Check-In Time, Check-Out Time)
-function sortTable() {
-    const sortBy = document.getElementById("sortSelect").value;
-    const rows = Array.from(document.querySelectorAll("#visitorTable tbody tr"));
-    const compareFunc = (a, b) => {
-        let valueA, valueB;
-        if (sortBy === "name") {
-            valueA = a.querySelector("td:nth-child(5)").textContent.trim().toLowerCase();
-            valueB = b.querySelector("td:nth-child(5)").textContent.trim().toLowerCase();
-        } else if (sortBy === "check_in_time") {
-            valueA = new Date(a.querySelector("td:nth-child(6)").textContent);
-            valueB = new Date(b.querySelector("td:nth-child(6)").textContent);
-        } else if (sortBy === "check_out_time") {
-            valueA = new Date(a.querySelector("td:nth-child(7)").textContent);
-            valueB = new Date(b.querySelector("td:nth-child(7)").textContent);
-        }
-        
-        if (valueA < valueB) return -1;
-        if (valueA > valueB) return 1;
-        return 0;
-    };
-
-    // Sort the rows based on the selected option
-    rows.sort(compareFunc);
-
-    // Reattach the sorted rows to the table body
-    const tbody = document.querySelector("#visitorTable tbody");
-    rows.forEach(row => tbody.appendChild(row));
-}
-
-    // JavaScript to filter table based on search input
-function searchTable() {
-    const searchInput = document.getElementById("searchInput").value.toLowerCase();
-    const table = document.getElementById("visitorTable");
-    const rows = table.getElementsByTagName("tr");
-
-    for (let i = 1; i < rows.length; i++) { // Start from 1 to skip the header row
-        const cells = rows[i].getElementsByTagName("td");
-        let found = false;
-        
-        // Loop through each cell in the row and check if it contains the search term
-        for (let j = 0; j < cells.length; j++) {
-            if (cells[j].textContent.toLowerCase().includes(searchInput)) {
-                found = true;
-                break;
-            }
-        }
-
-        // Show or hide row based on whether it matches the search input
-        rows[i].style.display = found ? "" : "none";
-    }
-}
-
-function validateForm() {
-        const contactInfo = document.getElementById('contact_info').value;
-
-        // Regular expression for 10-11 digit numbers
-        const contactPattern = /^\d{10,11}$/;
-
-        if (!contactPattern.test(contactInfo)) {
-            alert('Contact Info must be a number with 10 or 11 digits.');
-            return false; // Prevent form submission
-        }
-        return true; // Allow form submission if valid
-    }
-        // Sidebar toggle
-        const hamburgerMenu = document.getElementById('hamburgerMenu');
-        const sidebar = document.getElementById('sidebar');
-
-        sidebar.classList.add('collapsed');
-        hamburgerMenu.addEventListener('click', function() {
-            sidebar.classList.toggle('collapsed');
-            const icon = hamburgerMenu.querySelector('i');
-            if (sidebar.classList.contains('collapsed')) {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
-            } else {
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
-            }
-        });
-    </script>
+<?php if (isset($_GET['success']) && $_GET['success'] == 1): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        Visitor logged successfully!
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
 </body>
 </html>

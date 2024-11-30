@@ -16,7 +16,7 @@ if ($conn->connect_error) {
 
 
 // SQL query to fetch users from the users table
-$sql = "SELECT id, fname, lname FROM users";
+$sql = "SELECT id, fname, lname FROM users ORDER BY id;";
 $result = mysqli_query($conn, $sql);
 
 // Store the options in an array
@@ -53,10 +53,10 @@ if (isset($_POST['user_id'])) {
         $room_number = ''; // If no room is assigned
     }
 }
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Get the staff ID from the session
-    $staff_id = $_SESSION['id'];
 
+
+// Check if the form is submitted (for both create and update)
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Check if it's a payment creation (no payment_id in the form)
     if (!isset($_POST['payment_id'])) {
         // Capture form data for creating a payment
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $payment_date = mysqli_real_escape_string($conn, $_POST['payment_date']);
         $status = mysqli_real_escape_string($conn, $_POST['status']);
         $payment_method = mysqli_real_escape_string($conn, $_POST['payment_method']);
-        $reference_number = !empty($_POST['reference_number']) ? mysqli_real_escape_string($conn, $_POST['reference_number']) : NULL;
+        $reference_number = isset($_POST['reference_number']) ? mysqli_real_escape_string($conn, $_POST['reference_number']) : NULL;
 
         // Prepare SQL query to insert payment data
         $query = "INSERT INTO rentpayment (user_id, amount, payment_date, status, payment_method, reference_number) 
@@ -73,15 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Execute the query
         if (mysqli_query($conn, $query)) {
-            // Log activity
-            $activity_details = "Created payment for user_id: $user_id, amount: $amount, payment method: $payment_method";
-            $log_query = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                          VALUES ('$staff_id', 'Payment Created', '$activity_details')";
-            mysqli_query($conn, $log_query);
-
-            echo "<script>alert('Payment created successfully'); window.location.href='rent_payment.php';</script>";
+            header('Location: rent_payment.php?message=Payment created successfully');
         } else {
-            echo "<script>alert('Failed to create payment'); window.location.href='rent_payment.php';</script>";
+            header('Location: rent_payment.php?error=Failed to create payment');
         }
     }
 
@@ -104,57 +98,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Execute the query
         if (mysqli_query($conn, $sql)) {
-            // Log activity
-            $activity_details = "Updated payment for payment_id: $payment_id, new amount: $amount, status: $status";
-            $log_query = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                          VALUES ('$staff_id', 'Payment Updated', '$activity_details')";
-            mysqli_query($conn, $log_query);
-
-            echo "<script>alert('Payment updated successfully'); window.location.href='rent_payment.php';</script>";
+            header('Location: rent_payment.php?message=Payment updated successfully');
         } else {
-            echo "<script>alert('Failed to update payment'); window.location.href='rent_payment.php';</script>";
+            header('Location: rent_payment.php?error=Failed to update payment');
         }
     }
 }
-
 // Check if the delete request is set
 if (isset($_GET['delete_payment_id'])) {
     $payment_id = mysqli_real_escape_string($conn, $_GET['delete_payment_id']);
-
-    // Prepare the SQL query to get the user_id of the payment being deleted
-    $select_query = "SELECT user_id FROM rentpayment WHERE payment_id = '$payment_id'";
-    $result = mysqli_query($conn, $select_query);
-    if ($result && mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
-        $user_id = $row['user_id'];  // Get the user_id associated with the payment
-    } else {
-        // If no payment found, redirect with an error
-        echo "<script>alert('Payment not found'); window.location.href='rent_payment.php';</script>";
-        exit();
-    }
-
-    // Get the staff ID from the session
-    $staff_id = $_SESSION['id'];
 
     // Prepare the SQL query to delete the payment
     $query = "DELETE FROM rentpayment WHERE payment_id = '$payment_id'";
 
     // Execute the query
     if (mysqli_query($conn, $query)) {
-        // Log activity: record the user_id (the person whose payment is being deleted)
-        $activity_details = "Deleted payment with payment_id: $payment_id for user_id: $user_id";
-        $log_query = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                      VALUES ('$staff_id', 'Payment Deleted', '$activity_details')";
-        mysqli_query($conn, $log_query);
-
-        echo "<script>alert('Payment deleted successfully'); window.location.href='rent_payment.php';</script>";
+        // Redirect to the same page with a success message
+        header('Location: rent_payment.php?message=Payment deleted successfully');
     } else {
-        echo "<script>alert('Failed to delete payment'); window.location.href='rent_payment.php';</script>";
+        // Redirect with an error message if deletion fails
+        header('Location: rent_payment.php?error=Failed to delete payment');
     }
 
     exit();
 }
+// Check for the 'message' query parameter and display an alert if it exists
+if (isset($_GET['message'])) {
+    echo "<script>alert('" . htmlspecialchars($_GET['message']) . "');</script>";
+}
 
+// Check for the 'error' query parameter and display an error alert if it exists
+if (isset($_GET['error'])) {
+    echo "<script>alert('" . htmlspecialchars($_GET['error']) . "');</script>";
+}
 
 ?>
 
@@ -201,6 +177,118 @@ if (isset($_GET['delete_payment_id'])) {
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+ /* Pagination styling */
+ #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color:  #2B228A;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
+
 
 </head>
 <body>
@@ -212,13 +300,12 @@ if (isset($_GET['delete_payment_id'])) {
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
         <a href="rent_payment.php" class="nav-link active"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-
-
         </div>
         <div class="logout">
         <a href="../config/user-logout.php" onclick="return confirmLogout();">
@@ -247,29 +334,42 @@ function confirmLogout() {
     <div class="container mt-1">
     <div class="row mb-1">
     <div class="col-12 col-md-6">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for payment details..." onkeyup="filterTable()">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for payment details..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
+                    onkeyup="filterTable()">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    
-    <div class="col-6 col-md-2">
-        <select id="filterSelect" class="form-select" onchange="filterTable()">
-            <option value="all" selected>Filter by</option>
+
+    <div class="col-6 col-md-2 mt-2">
+        <select name="filter" id="filterSelect" class="form-select" onchange="filterTable()">
+            <option value="all">Filter by</option>
             <option value="amount">Amount</option>
             <option value="status">Status</option>
         </select>
     </div>
 
-    <div class="col-6 col-md-2">
-    <select name="sort" class="form-select" id="sort" onchange="applySort()">
-            <option value="" selected>Select Sort</option>
-   
-        <option value="amount_asc">Amount (Low to High)</option>
-        <option value="amount_desc">Amount (High to Low)</option>
-        <option value="payment_date_asc">Payment Date (Oldest to Newest)</option>
-        <option value="payment_date_desc">Payment Date (Newest to Oldest)</option>
-    </select>
-</div>
+    <div class="col-6 col-md-2 mt-2">
+        <select name="sort" class="form-select" id="sort" onchange="applySort()">
+            <option value="" selected>Sort by</option>
+            <option value="amount_asc">Amount (Low to High)</option>
+            <option value="amount_desc">Amount (High to Low)</option>
+            <option value="payment_date_asc">Payment Date (Oldest to Newest)</option>
+            <option value="payment_date_desc">Payment Date (Newest to Oldest)</option>
+        </select>
+    </div>
 
-    
+    <div class="col-6 col-md-2 mt-2">
+        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
+            Add Rent Payment
+        </button>
+    </div>
 </div>
 
 
@@ -348,12 +448,6 @@ function confirmLogout() {
 
 
 
-<!-- Pagination Controls -->
-<div id="pagination">
-    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
-    <span id="pageIndicator">Page 1</span>
-    <button id="nextPage" onclick="nextPage()">Next</button>
-</div>
 <style>
         
     /* Style for the entire table */
@@ -391,7 +485,15 @@ function confirmLogout() {
 
 </style>
         </div>
+        
     </div>
+    
+<!-- Pagination Controls -->
+<div id="pagination">
+    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
+    <span id="pageIndicator">Page 1</span>
+    <button id="nextPage" onclick="nextPage()">Next</button>
+</div>
 <!-- Modal for creating rent payment -->
 <div class="modal fade" id="createPaymentModal" tabindex="-1" aria-labelledby="createPaymentModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -773,6 +875,8 @@ const rowsPerPage = 10;
             document.getElementById('pageIndicator').innerText = `Page ${page}`;
             document.getElementById('prevPage').disabled = page === 1;
             document.getElementById('nextPage').disabled = page === totalPages;
+            // Update page indicator
+            document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
         }
 
         // Show the first page when the page is loaded

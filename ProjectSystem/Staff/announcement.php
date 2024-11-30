@@ -13,139 +13,84 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Start session at the beginning of the script
-session_start();
-
 // Process form submission to add new announcement
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add'])) {
     if (isset($_POST['announcement-title']) && isset($_POST['announcement-content'])) {
-        $title = $_POST['announcement-title'];
-        $content = $_POST['announcement-content'];
+        $title = mysqli_real_escape_string($conn, $_POST['announcement-title']);
+        $content = mysqli_real_escape_string($conn, $_POST['announcement-content']);
 
-        // Ensure the user is logged in by checking the session ID
-        if (isset($_SESSION['id'])) {
-            $staff = $_SESSION['id']; // Store user ID in $staff
-
-            // Insert the new announcement into the database with the current date
-            $sql = "INSERT INTO announce (title, content, date_published) VALUES ('$title', '$content', NOW())";
-            if (mysqli_query($conn, $sql)) {
-                // Log the activity in the activity_logs table using the correct variable
-                $activity_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                                 VALUES ('$staff', 'Announcement Created', 'New announcement added with title: $title')";
-                if (mysqli_query($conn, $activity_sql)) {
-                    echo "<script>alert('New announcement added successfully');</script>";
-                } else {
-                    echo "Error logging activity: " . mysqli_error($conn);
-                }
-
-                // Redirect to the same page
-                header("Location: " . $_SERVER['PHP_SELF']);
-                exit;
-            } else {
-                echo "Error adding announcement: " . mysqli_error($conn);
-            }
-        } else {
-            echo "Error: User not logged in.";
-        }
-    } else {
-        echo "Error: Announcement title or content missing.";
-    }
-}
-
-
-
-// Ensure session is started to access $_SESSION['id']
-// Ensure session is started to access $_SESSION['id']
-
-// Check if the update form is submitted
-if (isset($_POST['update'])) {
-    $announcement_id = $_POST['announcement-id'];
-    $updated_title = $_POST['announcement-title'];
-    $updated_content = $_POST['announcement-content'];
-
-    // Ensure that input values are not empty
-    if (!empty($updated_title) && !empty($updated_content)) {
-        $sql = "UPDATE announce 
-                SET title = '$updated_title', 
-                    content = '$updated_content', 
-                    date_published = NOW() 
-                WHERE announcementId = $announcement_id";
-
-        if (mysqli_query($conn, $sql)) {
-            // Retrieve the title and content of the announcement to log it
-            $title_sql = "SELECT title, content FROM announce WHERE announcementId = $announcement_id";
-            $result = mysqli_query($conn, $title_sql);
-            $row = mysqli_fetch_assoc($result);
-            $announcement_title = $row['title'];
-            $announcement_content = $row['content'];
-
-            // Log the activity of updating the announcement
-            $staff_id = $_SESSION['id'];  // Assuming the user is logged in and their ID is in the session
-            $activity_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                             VALUES ('$staff_id', 'Announcement Updated', 'Updated announcement with ID: $announcement_id, title: $announcement_title, and content: $announcement_content')";
-            mysqli_query($conn, $activity_sql);
-
-            echo "<script>alert('Announcement updated successfully');</script>";
+        $sql = "INSERT INTO announce (title, content, date_published) VALUES (?, ?, NOW())";
+        $stmt = mysqli_prepare($conn, $sql);
+        mysqli_stmt_bind_param($stmt, "ss", $title, $content);
+        
+        if (mysqli_stmt_execute($stmt)) {
+            echo "<script>alert('New announcement added successfully');</script>";
             header("Location: " . $_SERVER['PHP_SELF']);
-            exit();
+            exit;
         } else {
-            echo "Error updating announcement: " . mysqli_error($conn);
+            echo "Error: " . mysqli_error($conn);
         }
-    } else {
-        echo "Title and content cannot be empty.";
     }
 }
 
-// Check if the delete form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
-    $announcementId = $_POST['announcement-id'];
+// Update announcement
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update'])) {
+    $announcement_id = mysqli_real_escape_string($conn, $_POST['announcement-id']);
+    $updated_title = mysqli_real_escape_string($conn, $_POST['announcement-title']);
+    $updated_content = mysqli_real_escape_string($conn, $_POST['announcement-content']);
 
-    // Ensure that announcementId is valid
-    if (isset($announcementId) && !empty($announcementId)) {
-        // Step 1: Copy the announcement to the archive table
-        $archiveSql = "INSERT INTO announce_archive (announcementId, title, content, date_published, is_displayed)
-                       SELECT announcementId, title, content, date_published, is_displayed
-                       FROM announce WHERE announcementId = $announcementId";
-
-        if (mysqli_query($conn, $archiveSql)) {
-            // Step 2: Delete the announcement from the original table
-            $deleteSql = "DELETE FROM announce WHERE announcementId = $announcementId";
-            if (mysqli_query($conn, $deleteSql)) {
-                // Retrieve the title and content of the announcement to log it
-                $title_sql = "SELECT title, content FROM announce WHERE announcementId = $announcementId";
-                $result = mysqli_query($conn, $title_sql);
-                $row = mysqli_fetch_assoc($result);
-                $announcement_title = $row['title'];
-                $announcement_content = $row['content'];
-
-                // Log the activity of deleting the announcement
-                $staff_id = $_SESSION['id'];  // Assuming the user is logged in and their ID is in the session
-                $activity_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                                 VALUES ('$staff_id', 'Announcement Deleted', 'Deleted announcement with ID: $announcementId, title: $announcement_title, and content: $announcement_content')";
-                mysqli_query($conn, $activity_sql);
-
-                echo "<script>alert('Announcement Deleted successfully');</script>";
-                header("Location: " . $_SERVER['PHP_SELF']);
-                exit();
-            } else {
-                echo "Error deleting announcement: " . mysqli_error($conn);
-            }
-        } else {
-            echo "Error archiving announcement: " . mysqli_error($conn);
-        }
-    } else {
-        echo "Invalid announcement ID.";
-    }
-}
-
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
-
-    $announcementId = intval(value: $_POST['announcement-id']);
+    $sql = "UPDATE announce SET title = ?, content = ?, date_published = NOW() WHERE announcementId = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "ssi", $updated_title, $updated_content, $announcement_id);
     
-    // Get current display status
-    $sql = "SELECT is_displayed FROM announce WHERE announcementId = $announcementId";
-    $result = mysqli_query($conn, $sql);
+    if (mysqli_stmt_execute($stmt)) {
+        echo "<script>alert('Announcement updated successfully');</script>";
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } else {
+        echo "Error updating announcement: " . mysqli_error($conn);
+    }
+}
+
+// Delete announcement
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
+    $announcementId = mysqli_real_escape_string($conn, $_POST['announcement-id']);
+
+    // Use prepared statement for archive
+    $archiveSql = "INSERT INTO announce_archive (announcementId, title, content, date_published, is_displayed)
+                   SELECT announcementId, title, content, date_published, is_displayed
+                   FROM announce WHERE announcementId = ?";
+    $stmt = mysqli_prepare($conn, $archiveSql);
+    mysqli_stmt_bind_param($stmt, "i", $announcementId);
+
+    if (mysqli_stmt_execute($stmt)) {
+        // Delete using prepared statement
+        $deleteSql = "DELETE FROM announce WHERE announcementId = ?";
+        $stmt = mysqli_prepare($conn, $deleteSql);
+        mysqli_stmt_bind_param($stmt, "i", $announcementId);
+        
+        if (mysqli_stmt_execute($stmt)) {
+            echo "<script>alert('Announcement archived and deleted successfully');</script>";
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit;
+        } else {
+            echo "Error deleting announcement: " . mysqli_error($conn);
+        }
+    } else {
+        echo "Error archiving announcement: " . mysqli_error($conn);
+    }
+}
+
+// Toggle display status
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
+    $announcementId = intval($_POST['announcement-id']);
+    
+    $sql = "SELECT is_displayed FROM announce WHERE announcementId = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $announcementId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
     if (!$result) {
         die("Error retrieving display status: " . mysqli_error($conn));
     }
@@ -153,10 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
     $announcement = mysqli_fetch_assoc($result);
     
     if ($announcement) {
-        // Toggle the display status
         $newDisplayStatus = $announcement['is_displayed'] ? 0 : 1;
-        $updateSql = "UPDATE announce SET is_displayed = $newDisplayStatus WHERE announcementId = $announcementId";
-        if (mysqli_query($conn, $updateSql)) {
+        $updateSql = "UPDATE announce SET is_displayed = ? WHERE announcementId = ?";
+        $stmt = mysqli_prepare($conn, $updateSql);
+        mysqli_stmt_bind_param($stmt, "ii", $newDisplayStatus, $announcementId);
+        
+        if (mysqli_stmt_execute($stmt)) {
             echo "<script>alert('Display status updated successfully.');</script>";
         } else {
             die("Error updating display status: " . mysqli_error($conn));
@@ -165,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
         die("No announcement found with ID: $announcementId");
     }
 }
-
 
 // Display announcements from the database in ascending order by date
 $sql = "SELECT * FROM announce ORDER BY date_published DESC";
@@ -188,9 +134,14 @@ mysqli_close($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin-announce.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+
+<!-- Include Font Awesome for Icons if not already included -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
    <!-- DataTables CSS -->
    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -207,8 +158,110 @@ mysqli_close($conn);
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
 
+    <!-- DataTables Export Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
     <title>Announcements</title>
-   
+    <style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+</style>
+
 </head>
 <body>
 
@@ -220,7 +273,13 @@ mysqli_close($conn);
 
     <div class="sidebar-nav">
     <a href="user-dashboard.php" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
+        <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+
         <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
+        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
         </div>
 
         <div class="logout">
@@ -235,148 +294,137 @@ function confirmLogout() {
 </script>
         </div>
 </div>
-<!-- Back button -->
-
-<div class="container">
-<!-- Back button -->
-
-
-<!-- Announcement -->
-<div class="centered-content ">
-<button class="back-button" onclick="location.href='user-dashboard.php'"><i class="fas fa-arrow-left fa-2x"></i></button>
-<h2 class="announcements-heading mb-4"> 
-    <i class="fas fa-bullhorn announcement-icon"></i> Announcements
-</h2>
-</div>
-
-   <!-- Announcement Options -->
-<div class="announcement-options">
-    <div class="announcement-option">
-        <p>Create New Announcement</p>
-        <p>Notify all</p>
+<div class="topbar">
+        
+        <h2>Announcement</h2>
+        
     </div>
-    <div class="add-announcement btn btn-primary d-inline-flex align-items-center" id="add-new-button">
-    <i class="fas fa-plus me-2"></i> Add Announcement
-</div>
+<!-- Back button -->
+<div class="main-content">
+    <div class="container">
+        <div class="container mt-4">
+            <!-- Search, Filter, Sort, and Add Announcement Row -->
+            <div class="row g-3 mb-4">
+                <!-- Search Box -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="search-box w-100">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control h-100" placeholder="Search announcements...">
+                    </div>
+                </div>
 
-<!-- Include Font Awesome for Icons if not already included -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+                <!-- Filter Select -->
+                <div class="col-lg-3 col-md-6">
+                    <select id="filterSelect" class="form-select h-100">
+                        <option value="all">All Announcements</option>
+                        <option value="displayed">Displayed Only</option>
+                        <option value="hidden">Hidden Only</option>
+                    </select>
+                </div>
 
-</div>
+                <!-- Sort Select -->
+                <div class="col-lg-3 col-md-6">
+                    <select id="sortSelect" class="form-select h-100">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="title">Title (A-Z)</option>
+                    </select>
+                </div>
 
-<!-- Search and Filter Container -->
-<div class="row mb-4 align-items-center">
-    <!-- Search Container -->
-    <div class="col-12 col-md-8">
-        <div class="search-container">
-            <input type="text" id="announcement-search" class="form-control custom-input-small" placeholder="Search announcements...">
-            <i class="fas fa-search search-icon"></i>
-            
+                <!-- Add New Button -->
+                <div class="col-lg-3 col-md-6">
+                    <button class="btn btn-primary w-100 h-100" id="add-new-button">
+                        <i class="fas fa-plus me-2"></i>Add New
+                    </button>
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <button id="resetFilters" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-undo me-1"></i>Reset Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Announcements Table -->
+            <div class="announcements mt-3">
+                <?php if (!empty($announcements)): ?>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" id="announcementTable">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">No.</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Content</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $counter = 1; 
+                                foreach ($announcements as $announcement): ?>
+                                    <tr>
+                                        <td><?= $counter++ ?></td>
+                                        <td class="title"><?= htmlspecialchars($announcement['title']) ?></td>
+                                        <td class="content"><?= htmlspecialchars($announcement['content']) ?></td>
+                                        <td class="date_published"><?= htmlspecialchars($announcement['date_published']) ?></td>
+                                        <td>
+                                            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
+                                                <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
+                                                <button type="submit" name="toggle-display" class="btn btn-sm <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
+                                                    <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
+                                                </button>
+                                            </form>
+                                            <button class="btn btn-sm btn-primary update-button" data-id="<?= $announcement['announcementId'] ?>">
+                                                <i class="far fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-danger delete-button" data-id="<?= $announcement['announcementId'] ?>">Delete</button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <p class="alert alert-info text-center">No announcements yet.</p>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
-
-    <!-- Filter Select -->
-  <!-- Filter Select -->
-<div class="col-12 col-md-4">
-    <select id="filterSelect" class="form-select" onchange="filterTable()">
-        <option value="all" selected>Filter by</option>
-        <option value="title">Title</option>
-        <option value="content">Content</option>
-        <option value="date">Date</option>
-    </select>
 </div>
 
-</div>
-<style>
-/* Filter Select Styles */
-#filterSelect {
-    font-size: 1rem;
-    padding: 0.375rem 1.5rem 0.375rem 1rem; /* Adjust padding for a balanced look */
-    border-radius: 0.375rem; /* Rounded corners */
-    border: 1px solid #ced4da; /* Border color */
-    background-color: #fff; /* White background */
-    appearance: none; /* Remove default arrow */
-    -webkit-appearance: none; /* Safari support */
-    -moz-appearance: none; /* Firefox support */
-}
-
-#filterSelect:focus {
-    border-color: #80bdff; /* Blue border on focus */
-    outline: none; /* Remove outline */
-}
-
-/* Adding a custom arrow icon for select dropdown */
-#filterSelect::after {
-    content: "▼";
-    font-size: 0.8rem;
-    color: #666;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-/* Align the filter select to the left */
-.col-12.col-md-4 {
-    display: flex;
-    justify-content: flex-start; /* Align the select to the left */
-    margin-bottom: 20px; /* Adjust bottom margin */
-}
-
-@media (max-width: 767px) {
-    /* Ensuring the filter select is full-width on smaller screens */
-    #filterSelect {
-        width: 100%;
-    }
-}
-
-</style>
-
-
-<!-- Announcements Table -->
-<div class="announcements">
-    <?php if (!empty($announcements)): ?>
-        <div class="table-responsive">
-    <table class="table table-bordered table-striped" id="announcementTable">
-        <thead class="thead-dark">
-            <tr>
-                <th scope="col">No.</th>
-                <th scope="col">Title</th>
-                <th scope="col">Content</th>
-                <th scope="col">Date</th>
-                <th scope="col">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php 
-            $counter = 1; 
-            foreach ($announcements as $announcement): ?>
-                <tr>
-                    <td><?= $counter++ ?></td>
-                    <td class="title"><?= htmlspecialchars($announcement['title']) ?></td>
-                    <td class="content"><?= htmlspecialchars($announcement['content']) ?></td>
-                    <td class="date_published"><?= htmlspecialchars($announcement['date_published']) ?></td>
-                    <td>
-                        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
-                            <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
-                            <button type="submit" name="toggle-display" class="btn btn-sm <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
-                                <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
-                            </button>
-                        </form>
-                        <button class="btn btn-sm btn-primary update-button" data-id="<?= $announcement['announcementId'] ?>">
-                            <i class="far fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-button" data-id="<?= $announcement['announcementId'] ?>">Delete</button>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+<!-- Add/Update Announcement Modal -->
+<div class="modal fade" id="announcementModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add New Announcement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="announcementForm">
+                    <input type="hidden" id="announcement-id" name="announcement-id">
+                    <div class="mb-3">
+                        <label for="announcement-title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="announcement-title" name="announcement-title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="announcement-content" class="form-label">Content</label>
+                        <textarea class="form-control" id="announcement-content" name="announcement-content" rows="4" required></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveButton">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
-    <?php else: ?>
-        <p class="alert alert-info text-center">No announcements yet.</p>
-    <?php endif; ?>
-</div>
 <style>
     /* Style for the entire table */
     .table {
@@ -411,255 +459,284 @@ function confirmLogout() {
         margin-right: 5px; /* Space between buttons */
     }
 
+    /* Add these new styles for the search box */
+    .search-box {
+        position: relative;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 1;
+    }
+
+    .search-box input {
+        padding-left: 35px;
+    }
+
+    /* Style for DataTables export buttons */
+    .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+
+    /* Search box styling */
+    .search-box {
+        position: relative;
+        margin-bottom: 15px;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 1;
+    }
+
+    .search-box input {
+        padding-left: 35px;
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+    }
+
+    /* Select boxes styling */
+    .form-select {
+        margin-bottom: 15px;
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .search-box, .form-select, #add-new-button {
+            margin-bottom: 10px;
+        }
+    }
+
+    /* Filter controls styling */
+    .search-box {
+        position: relative;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 1;
+    }
+
+    .search-box input,
+    .form-select,
+    #add-new-button {
+        height: 38px;           /* Consistent height for all elements */
+        margin-bottom: 0;       /* Remove bottom margin */
+    }
+
+    .search-box input {
+        padding-left: 35px;
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .search-box, 
+        .form-select, 
+        #add-new-button {
+            margin-bottom: 10px !important;
+        }
+        
+        .row > div:last-child #add-new-button {
+            margin-bottom: 0 !important;
+        }
+    }
+
+    .row .form-control,
+    .row .form-select,
+    .row .btn {
+        height: 38px !important; /* or your preferred height */
+    }
 </style>
-
-<div id="announcement-form" class="popup-form" style="display: none;">
-        <h3 id="form-title">Add New Announcement</h3>
-        <form id="announcement-form-inner" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-            <input type="hidden" id="announcement-id" name="announcement-id">
-            <div class="input-container">
-                <label for="announcement-title">Title:</label>
-                <input type="text" id="announcement-title" name="announcement-title" required>
-            </div>
-            <div class="input-container">
-                <label for="announcement-content">Content:</label>
-                <textarea id="announcement-content" name="announcement-content" required></textarea>
-            </div>
-            <button type="submit" name="submit" id="submit-button">Submit</button>
-            <button type="button" class="cancel-announcement" id="cancel-announcement">Cancel</button>
-        </form>
-    </div>
-  
-    <!-- update announcement -->
-
-    <div id="update-form" class="popup-form" style="display: none;">
-        <h3 id="form-title">Update Announcement</h3>
-        <form id="update-form-inner" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-            <input type="hidden" id="update-announcement-id" name="announcement-id">
-            <div class="input-container">
-                <label for="update-announcement-title">Title:</label>
-                <input type="text" id="update-announcement-title" name="announcement-title" required>
-            </div>
-            <div class="input-container">
-                <label for="update-announcement-content">Content:</label>
-                <textarea id="update-announcement-content" name="announcement-content" required></textarea>
-            </div>
-            <button type="submit" name="update" id="update-button">Update</button>
-            <button type="button" class="cancel-announcement" id="cancel-update">Cancel</button>
-        </form>
-    </div>
 
 <!-- JScript -->
 
 <script>
+    $(document).ready(function() {
+        // Initialize DataTable with export buttons and no search
+        var table = $('#announcementTable').DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 10,
+            responsive: true,
+            order: [[3, 'desc']], 
+            searching: false,
+            info: false,
+            lengthChange: false
+        });
 
- 
-// Function to filter the table based on search and filter selection
-function filterTable() {
-    var filterValue = document.getElementById("filterSelect").value.toLowerCase(); // Get selected filter option
-    var searchValue = document.getElementById("announcement-search").value.toLowerCase(); // Get search input value
-
-    // Get all rows in the table
-    var rows = document.querySelectorAll("#announcementTable tbody tr");
-
-    // Loop through each row
-    rows.forEach(function(row) {
-        // Get text content for each column (Title, Content, Date)
-        var title = row.querySelector(".title").textContent.toLowerCase();
-        var content = row.querySelector(".content").textContent.toLowerCase();
-        var date = row.querySelector(".date_published").textContent.toLowerCase();
-
-        var showRow = false;
-
-        // Apply the filter based on selected filter option
-        if (filterValue === "all" || (filterValue === "title" && title.includes(searchValue)) || 
-            (filterValue === "content" && content.includes(searchValue)) || 
-            (filterValue === "date" && date.includes(searchValue))) {
-            showRow = true;
-        }
-
-        // Show or hide the row based on the filter and search criteria
-        if (showRow) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-}
-
-// Add event listener for search input to trigger filtering on typing
-document.getElementById("announcement-search").addEventListener("input", filterTable);
-
-// Add event listener for the filter select to trigger filtering on change
-document.getElementById("filterSelect").addEventListener("change", filterTable);
-
-// Add event listener for search input to trigger filtering on typing
-document.getElementById("announcement-search").addEventListener("input", filterTable);
-
-// Add event listener for the filter select to trigger filtering on change
-document.getElementById("filterSelect").addEventListener("change", filterTable);
-
-  $(document).ready(function () {
-    $('#announcementTable').DataTable({
-        dom: 'Bfrtip',
-        buttons: [
-            {
-                extend: 'copy',
-                text: 'Copy',
-                className: 'btn btn-primary'
-            },
-            {
-                extend: 'csv',
-                text: 'Export CSV',
-                className: 'btn btn-success',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Exclude the last column (if any)
+        // Custom search functionality
+        $('#searchInput').on('keyup', function() {
+            var searchText = $(this).val().toLowerCase();
+            
+            table.rows().every(function() {
+                var rowNode = this.node();
+                var title = $(rowNode).find('td.title').text().toLowerCase();
+                var content = $(rowNode).find('td.content').text().toLowerCase();
+                var date = $(rowNode).find('td.date_published').text().toLowerCase();
+                
+                if (title.includes(searchText) || content.includes(searchText) || date.includes(searchText)) {
+                    $(rowNode).show();
+                } else {
+                    $(rowNode).hide();
                 }
-            },
-            {
-                extend: 'excel',
-                text: 'Export Excel',
-                className: 'btn btn-info',
-                exportOptions: {
-                    columns: ':not(:last-child)'
+            });
+        });
+
+        // Filter functionality
+        $('#filterSelect').on('change', function() {
+            var filterValue = $(this).val();
+            
+            table.rows().every(function() {
+                var rowNode = this.node();
+                var displayButton = $(rowNode).find('button[name="toggle-display"]');
+                var isDisplayed = displayButton.hasClass('btn-warning');
+                
+                if (filterValue === 'all') {
+                    $(rowNode).show();
+                } else if (filterValue === 'displayed' && isDisplayed) {
+                    $(rowNode).show();
+                } else if (filterValue === 'hidden' && !isDisplayed) {
+                    $(rowNode).show();
+                } else {
+                    $(rowNode).hide();
                 }
-            },
-            {
-                extend: 'pdf',
-                text: 'Export PDF',
-                className: 'btn btn-danger',
-                exportOptions: {
-                    columns: ':not(:last-child)'
-                },
-                title: '',  // Empty title to remove it
-                customize: function(doc) {
-                    // Remove title and customize the PDF appearance
-                    doc.content[1].table.widths = ['10%', '30%', '40%', '20%'];
+            });
+        });
 
-                    // Style the table header
-                    doc.content[1].table.body[0].forEach(function (header) {
-                        header.alignment = 'center';
-                        header.bold = true;
-                        header.fillColor = '#4CAF50'; // Set background color for headers
-                        header.color = 'white'; // Set text color for headers
-                    });
-
-                    // Align table cells to the center
-                    doc.content[1].table.body.slice(1).forEach(function (row) {
-                        row.forEach(function (cell) {
-                            cell.alignment = 'center';
-                        });
-                    });
-
-                    doc.styles = {
-                        tableHeader: {
-                            bold: true,
-                            fontSize: 12,
-                            color: 'black'
-                        }
-                    };
-
-                    doc.pageMargins = [20, 20, 20, 20];
-                }
-            },
-            {
-                extend: 'print',
-                text: 'Print',
-                className: 'btn btn-warning',
-                exportOptions: {
-                    columns: ':not(:last-child)'
-                },
-                title: '',  // Empty title to remove it
-                customize: function(win) {
-                    // Customize print layout (no title)
-                    $(win.document.body).find('th').css({
-                        'background-color': '#4CAF50', // Set background color for headers
-                        'color': 'white',               // Set text color for headers
-                        'font-weight': 'bold',          // Set bold text for headers
-                        'text-align': 'center'         // Align text to the center for headers
-                    });
-
-                    $(win.document.body).find('td').css({
-                        'text-align': 'center' // Align text to the center for table cells
-                    });
-                }
-            }
-        ],
-        responsive: false,
-        searching: false,
-        paging: false,
-        info: false,
-        autoWidth: false
-    });
-});
-
-
-
-    // Function to search announcements
-    function searchAnnouncements() {
-        var query = document.getElementById('announcement-search').value.toLowerCase();
-        var announcements = document.querySelectorAll('.announcements table tbody tr');
-
-        announcements.forEach(function(announcement) {
-            var title = announcement.querySelector('td:nth-child(2)').textContent.toLowerCase();
-            var content = announcement.querySelector('td:nth-child(3)').textContent.toLowerCase();
-
-            // Check if query matches title or content, and display or hide accordingly
-            if (title.includes(query) || content.includes(query)) {
-                announcement.style.display = 'table-row';
-            } else {
-                announcement.style.display = 'none';
+        // Sort functionality
+        $('#sortSelect').on('change', function() {
+            var sortValue = $(this).val();
+            
+            switch(sortValue) {
+                case 'newest':
+                    table.order([3, 'desc']).draw(); // Date column
+                    break;
+                case 'oldest':
+                    table.order([3, 'asc']).draw(); // Date column
+                    break;
+                case 'title':
+                    table.order([1, 'asc']).draw(); // Title column
+                    break;
             }
         });
-    }
 
-    // Attach search event listener to the input field
-    document.getElementById('announcement-search').addEventListener('input', searchAnnouncements);
-
-    // Rest of the script...
-    document.getElementById('add-new-button').addEventListener('click', function() {
-        document.getElementById('announcement-form').style.display = 'block';
-    });
-
-    document.getElementById('cancel-announcement').addEventListener('click', function() {
-        document.getElementById('announcement-form').style.display = 'none';
-    });
-
-    document.getElementById('cancel-update').addEventListener('click', function() {
-        document.getElementById('update-form').style.display = 'none';
-    });
-
-    var updateButtons = document.querySelectorAll('.update-button');
-    updateButtons.forEach(function(button) {
-        button.addEventListener('click', function() {
-            var id = this.getAttribute('data-id');
-            var title = this.parentNode.parentNode.querySelector('td:nth-child(2)').textContent;
-            var content = this.parentNode.parentNode.querySelector('td:nth-child(3)').textContent;
-
-            document.getElementById('update-announcement-id').value = id;
-            document.getElementById('update-announcement-title').value = title;
-            document.getElementById('update-announcement-content').value = content;
-
-            document.getElementById('update-form').style.display = 'block';
+        // Reset button functionality (optional)
+        $('#resetFilters').on('click', function() {
+            $('#searchInput').val('');
+            $('#filterSelect').val('all');
+            $('#sortSelect').val('newest');
+            table.order([3, 'desc']).draw();
+            table.rows().every(function() {
+                $(this.node()).show();
+            });
         });
-    });
 
-    var deleteButtons = document.querySelectorAll('.delete-button');
-    deleteButtons.forEach(function(button) {
-        button.addEventListener('click', function() {
-            var id = this.getAttribute('data-id');
+        // Initialize modal functionality
+        const modal = new bootstrap.Modal(document.getElementById('announcementModal'));
 
+        // Handle Add New button click
+        $('#add-new-button').click(function() {
+            $('#modalTitle').text('Add New Announcement');
+            $('#announcement-id').val('');
+            $('#announcement-title').val('');
+            $('#announcement-content').val('');
+            $('#announcementForm').attr('action', '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>');
+            $('#announcementForm').data('action', 'add');
+            modal.show();
+        });
+
+        // Handle Update button click
+        $('.update-button').click(function() {
+            const id = $(this).data('id');
+            const title = $(this).closest('tr').find('.title').text();
+            const content = $(this).closest('tr').find('.content').text();
+
+            $('#modalTitle').text('Update Announcement');
+            $('#announcement-id').val(id);
+            $('#announcement-title').val(title);
+            $('#announcement-content').val(content);
+            $('#announcementForm').attr('action', '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>');
+            $('#announcementForm').data('action', 'update');
+            modal.show();
+        });
+
+        // Handle form submission
+        $('#announcementForm').submit(function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const action = $(this).data('action');
+            formData.append(action, '1'); // Append either 'add' or 'update'
+
+            $.ajax({
+                url: $(this).attr('action'),
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    modal.hide();
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    alert('Error: ' + error);
+                }
+            });
+        });
+
+        // Handle Delete button click
+        $('.delete-button').click(function() {
+            const id = $(this).data('id');
             if (confirm('Are you sure you want to delete this announcement?')) {
-                var form = document.createElement('form');
-                form.setAttribute('method', 'post');
-                form.setAttribute('action', '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>');
-                form.innerHTML = '<input type="hidden" name="delete" value="1"><input type="hidden" name="announcement-id" value="' + id + '">';
-                document.body.appendChild(form);
+                const form = $('<form>', {
+                    'method': 'post',
+                    'action': '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>'
+                }).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'delete',
+                    'value': '1'
+                })).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'announcement-id',
+                    'value': id
+                }));
+                $(document.body).append(form);
                 form.submit();
             }
         });
     });
-    
+
+    // Sidebar functionality
     const hamburgerMenu = document.getElementById('hamburgerMenu');
     const sidebar = document.getElementById('sidebar');
 
@@ -667,33 +744,29 @@ document.getElementById("filterSelect").addEventListener("change", filterTable);
     sidebar.classList.add('collapsed');
 
     hamburgerMenu.addEventListener('click', function() {
-        sidebar.classList.toggle('collapsed');  // Toggle sidebar collapse state
+        sidebar.classList.toggle('collapsed');
         
-        // Change the icon based on the sidebar state
         const icon = hamburgerMenu.querySelector('i');
         if (sidebar.classList.contains('collapsed')) {
-            icon.classList.remove('fa-times'); // Change to hamburger icon
+            icon.classList.remove('fa-times');
             icon.classList.add('fa-bars');
         } else {
-            icon.classList.remove('fa-bars'); // Change to close icon
+            icon.classList.remove('fa-bars');
             icon.classList.add('fa-times');
         }
     });
     
-    // Get all sidebar links
+    // Sidebar active link handling
     const sidebarLinks = document.querySelectorAll('.sidebar a');
-
-    // Loop through each link
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function() {
-            // Remove the active class from all links
             sidebarLinks.forEach(link => link.classList.remove('active'));
-            
-            // Add the active class to the clicked link
             this.classList.add('active');
         });
     });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

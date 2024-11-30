@@ -288,24 +288,49 @@ if (isset($_POST['edit_user'])) {
 
         // Determine current table based on role
         $currentTable = ($newRole === 'Staff') ? 'staff' : 'users';
-        
+        $otherTable = ($newRole === 'Staff') ? 'users' : 'staff';
+
         // Begin transaction
         $conn->begin_transaction();
 
-        // Update query
-        $updateQuery = "UPDATE $currentTable 
-                       SET Fname = ?, Lname = ?, MI = ?, Suffix = ? 
-                       WHERE id = ?";
-        $stmt = $conn->prepare($updateQuery);
-        
-        if (!$stmt) {
-            throw new Exception("Failed to prepare statement: " . $conn->error);
-        }
-        
-        $stmt->bind_param("ssssi", $fname, $lname, $mi, $suffix, $userId);
-        
-        if (!$stmt->execute()) {
-            throw new Exception("Failed to update user: " . $stmt->error);
+        // Check if role change is needed
+        $checkRoleQuery = "SELECT role FROM $otherTable WHERE id = ?";
+        $stmt = $conn->prepare($checkRoleQuery);
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows > 0) {
+            $stmt->bind_result($currentRole);
+            $stmt->fetch();
+
+            // Move user to the correct table, including required fields
+            $moveQuery = "INSERT INTO $currentTable (id, fname, lname, mi, suffix,Birthdate, role, email, password, created_at, status, age, Address, contact)
+                          SELECT id, fname, lname, mi, suffix,Birthdate, ?, email, password, created_at, status, age, Address, contact
+                          FROM $otherTable WHERE id = ?";
+            $moveStmt = $conn->prepare($moveQuery);
+            $moveStmt->bind_param("si", $newRole, $userId);
+            if (!$moveStmt->execute()) {
+                throw new Exception("Failed to move user: " . $moveStmt->error);
+            }
+
+            // Delete from the old table
+            $deleteQuery = "DELETE FROM $otherTable WHERE id = ?";
+            $deleteStmt = $conn->prepare($deleteQuery);
+            $deleteStmt->bind_param("i", $userId);
+            if (!$deleteStmt->execute()) {
+                throw new Exception("Failed to delete user from old table: " . $deleteStmt->error);
+            }
+        } else {
+            // Update role in the current table along with other details if necessary
+            $updateQuery = "UPDATE $currentTable 
+                           SET Fname = ?, Lname = ?, MI = ?, Suffix = ?, role = ?
+                           WHERE id = ?";
+            $stmt = $conn->prepare($updateQuery);
+            $stmt->bind_param("sssssi", $fname, $lname, $mi, $suffix, $newRole, $userId);
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to update user: " . $stmt->error);
+            }
         }
 
         $conn->commit();
@@ -316,15 +341,15 @@ if (isset($_POST['edit_user'])) {
         exit;
 
     } catch (Exception $e) {
-        if ($conn && $conn->connect_errno == 0) {
+        if ($conn && $conn->errno == 0) {
             $conn->rollback();
         }
-        
+
         // Safely encode the error message to prevent XSS
         $errorMessage = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-        
+
         echo "<script>
-            alert('Error: " . addslashes($e->getMessage()) . "');
+            alert('Error: " . addslashes($errorMessage) . "');
             window.location.href = 'manageuser.php';
         </script>";
         exit;

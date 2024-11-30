@@ -2,7 +2,7 @@
 session_start();
 include '../config/config.php'; // Ensure the correct path to your config file
 
-// Add this at the very beginning of the file, right after session_start()
+// Initialize sweet alert messages
 $sweetAlertMessages = [];
 
 // Ensure the user is logged in
@@ -16,6 +16,27 @@ if (!isset($_SESSION['id'])) {
 }
 
 $userId = $_SESSION['id'];
+
+// Fetch user's first name early to ensure it's available throughout the script
+$userFname = ''; // Initialize the variable
+
+$sql = "SELECT fname FROM users WHERE id = ?";
+$stmt = $conn->prepare($sql);
+
+if ($stmt) {
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->bind_result($userFname);
+    $stmt->fetch();
+    $stmt->close();
+} else {
+    // Handle error if needed
+    $sweetAlertMessages[] = [
+        'title' => 'Error!',
+        'text' => 'Error fetching user details: ' . $conn->error,
+        'icon' => 'error'
+    ];
+}
 
 // Fetch the room assignment for the logged-in user
 $query = "
@@ -34,79 +55,55 @@ $result = $stmt->get_result();
 
 // Check if the user has an assigned room
 $roomAssignment = $result->num_rows > 0 ? $result->fetch_assoc() : null;
+
+// Set assignment_id based on roomAssignment
+$assignment_id = $roomAssignment ? $roomAssignment['assignment_id'] : null;
+
 // Handle feedback submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedback'])) {
     if (!empty($_POST['feedback'])) {
         $feedback = $conn->real_escape_string($_POST['feedback']);
         $userId = $_SESSION['id'];
 
-        // Fetch user's first name
-        $sql = "SELECT fname FROM users WHERE id = ?";
-        $stmt = $conn->prepare($sql);
+        // Check if assignment_id exists
+        if (isset($_POST['assignment_id']) && !empty($_POST['assignment_id'])) {
+            $assignment_id = $_POST['assignment_id'];
+            
+            // Insert feedback
+            $sql = "INSERT INTO roomfeedback (user_id, assignment_id, feedback) VALUES (?, ?, ?)";
+            $stmt = $conn->prepare($sql);
 
-        if ($stmt) {
-            $stmt->bind_param('i', $userId);
-            $stmt->execute();
-            $stmt->bind_result($userFname);
-            $stmt->fetch();
-            $stmt->close();
+            if ($stmt) {
+                $stmt->bind_param('iis', $userId, $assignment_id, $feedback);
 
-            // Check if assignment_id exists
-            if (isset($_POST['assignment_id']) && !empty($_POST['assignment_id'])) {
-                $assignment_id = $_POST['assignment_id'];
-                
-                // Insert feedback
-                $sql = "INSERT INTO roomfeedback (user_id, assignment_id, feedback) VALUES (?, ?, ?)";
-                $stmt = $conn->prepare($sql);
+                if ($stmt->execute()) {
+                    // Log the feedback submission activity using the helper function
+                    logActivity($conn, $userId, "Feedback Submission", "$userFname submitted feedback for Assignment ID $assignment_id.");
 
-                if ($stmt) {
-                    $stmt->bind_param('iis', $userId, $assignment_id, $feedback);
-
-                    if ($stmt->execute()) {
-                        $sweetAlertMessages[] = [
-                            'title' => 'Success!',
-                            'text' => 'Feedback submitted successfully.',
-                            'icon' => 'success',
-                            'redirect' => 'user_room.php'
-                        ];
-                    } else {
-                        $sweetAlertMessages[] = [
-                            'title' => 'Error!',
-                            'text' => 'Error submitting feedback: ' . $stmt->error,
-                            'icon' => 'error'
-                        ];
-                    }
-                    $stmt->close();
+                    $sweetAlertMessages[] = [
+                        'title' => 'Success!',
+                        'text' => 'Feedback submitted successfully.',
+                        'icon' => 'success',
+                        'redirect' => 'user_room.php'
+                    ];
+                } else {
+                    $sweetAlertMessages[] = [
+                        'title' => 'Error!',
+                        'text' => 'Error submitting feedback: ' . $stmt->error,
+                        'icon' => 'error'
+                    ];
                 }
-            } else {
-                $sweetAlertMessages[] = [
-                    'title' => 'Error!',
-                    'text' => 'Invalid or missing assignment ID.',
-                    'icon' => 'error'
-                ];
+                $stmt->close();
             }
         } else {
             $sweetAlertMessages[] = [
                 'title' => 'Error!',
-                'text' => 'Error fetching user details: ' . $conn->error,
+                'text' => 'Invalid or missing assignment ID.',
                 'icon' => 'error'
             ];
         }
     }
 }
-
-// Query to get the current assignment_id (adjust query as necessary)
-$query = "SELECT assignment_id FROM roomassignments WHERE user_id = '$userId' ORDER BY assignment_date DESC ";
-$result = mysqli_query($conn, $query);
-
-// Check if assignment exists and fetch the assignment_id
-if ($result && mysqli_num_rows($result) > 0) {
-    $row = mysqli_fetch_assoc($result);
-    $assignment_id = $row['assignment_id'];
-} else {
-    $assignment_id = null; // Handle the case where no assignment is found
-}
-
 
 // Fetch the previous feedback for the logged-in user
 $query = "SELECT feedback FROM roomfeedback WHERE user_id = ?";
@@ -156,14 +153,8 @@ if (isset($_GET['delete_id'])) {
                 $stmt->bind_param('i', $feedbackIdToDelete);
                 
                 if ($stmt->execute()) {
-                    // Log activity
-                    $activityType = "Feedback Deletion";
-                    $activityDetails = "$userFname deleted their feedback";
-                    
-                    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
-                    $logStmt = $conn->prepare($logSql);
-                    $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
-                    $logStmt->execute();
+                    // Log activity using the helper function
+                    logActivity($conn, $userId, "Feedback Deletion", "$userFname deleted their feedback.");
 
                     $sweetAlertMessages[] = [
                         'title' => 'Success!',
@@ -200,14 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['feedbackText'])) {
         if ($stmt) {
             $stmt->bind_param('sii', $feedbackText, $feedbackId, $userId);
             if ($stmt->execute()) {
-                // Log activity
-                $activityType = "Feedback Update";
-                $activityDetails = "User updated their feedback";
-                
-                $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
-                $logStmt = $conn->prepare($logSql);
-                $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
-                $logStmt->execute();
+                // Log activity using the helper function
+                logActivity($conn, $userId, "Feedback Update", "User updated their feedback.");
 
                 $sweetAlertMessages[] = [
                     'title' => 'Success!',
@@ -280,14 +265,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_move_out'])) 
         $stmt->bind_param('iiss', $userId, $roomId, $reason, $targetDate);
         
         if ($stmt->execute()) {
-            // Log the activity
-            $activityType = "Move Out Request";
-            $activityDetails = "User submitted a move out request for Room " . $roomAssignment['room_number'];
-            
-            $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
-            $logStmt = $conn->prepare($logSql);
-            $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
-            $logStmt->execute();
+            // Log the activity using the helper function
+            logActivity($conn, $userId, "Move Out Request", "User submitted a move out request for Room " . $roomAssignment['room_number'] . ".");
 
             $sweetAlertMessages[] = [
                 'title' => 'Success!',
@@ -310,6 +289,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_move_out'])) 
     }
 }
 
+function logActivity($conn, $userId, $activityType, $activityDetails) {
+    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($logSql);
+    if ($stmt) {
+        $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
+        if (!$stmt->execute()) {
+            error_log("Failed to log activity: " . $stmt->error);
+        }
+        $stmt->close();
+    } else {
+        error_log("Failed to prepare activity_logs statement: " . $conn->error);
+    }
+}
+
 ?>
 
 
@@ -318,8 +311,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_move_out'])) 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="Css_user/users-dashboard.css">
+    <title>My Room</title>
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">

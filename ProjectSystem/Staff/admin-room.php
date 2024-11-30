@@ -49,7 +49,7 @@ $conn->close();
     <title>Room Manage</title>
     <link rel="icon" href="img-icon/room.png" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -65,21 +65,18 @@ $conn->close();
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
-            <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+        <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="admin-room.php" class="nav-link active"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
+        <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
-            <!-- Room Manager Dropdown Menu -->
-            <a href="admin-room.php" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
 
-            <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
-            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
+        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
 
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
+        <a href="../config/user-logout.php" onclick="return confirmLogout();">
     <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
 </a>
 
@@ -115,7 +112,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Manage and view the list of rooms</p>
-                                <a href="roomlist.php" class="btn btn-primary btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="roomlist.php" class="btn btn-primary btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -136,7 +133,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Assign rooms to users</p>
-                                <a href="room-assign.php" class="btn btn-success btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="room-assign.php" class="btn btn-success btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -157,7 +154,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Room reassignment requests</p>
-                                <a href="application-room.php" class="btn btn-warning btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="application-room.php" class="btn btn-warning btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -178,7 +175,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Manage move-out requests</p>
-                                <a href="manage_move_out.php" class="btn btn-danger btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="manage_move_out.php" class="btn btn-danger btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>

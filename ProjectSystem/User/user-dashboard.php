@@ -70,10 +70,7 @@ if (isset($_GET['id'])) {
     $stmt->close();
 }
 
-// Query for pending room applications count
-$applicationsQuery = "SELECT COUNT(*) AS pendingApplications FROM RoomApplications WHERE status = 'pending'";
-$applicationsResult = $conn->query($applicationsQuery);
-$pendingApplications = $applicationsResult->fetch_assoc()['pendingApplications'];
+
 
 // Set limit of records per page for pagination
 $limit = 6;
@@ -112,7 +109,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Ensure user is logged in
         $userId = $_SESSION['id'] ?? null;
         if (!$userId) {
-            echo "<script>alert('User not logged in. Please log in to apply.');window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!',
+                'text' => 'User not logged in. Please log in to apply.',
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
             exit;
         }
 
@@ -129,8 +131,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $stmt->get_result();
             
             if ($result->num_rows === 0) {
-                echo "<script>alert('No current room assignment found.');window.history.back();</script>";
-                $stmt->close();
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'No current room assignment found.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             }
             
@@ -139,7 +145,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $oldRoomNumber = $currentRoom['room_number'];
             $stmt->close();
         } else {
-            echo "<script>alert('Error: Could not fetch current room assignment.');window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!',
+                'text' => 'Could not fetch current room assignment.',
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
             exit;
         }
 
@@ -151,8 +162,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $stmt->get_result();
             
             if ($result->num_rows === 0) {
-                echo "<script>alert('Selected room does not exist.');window.history.back();</script>";
-                $stmt->close();
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'Selected room does not exist.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             }
             
@@ -161,20 +176,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Check if room is under maintenance
             if ($newRoom['status'] === 'maintenance') {
-                echo "<script>alert('This room is under maintenance and cannot be selected.');window.history.back();</script>";
-                $stmt->close();
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'This room is under maintenance and cannot be selected.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             }
             
             $stmt->close();
         } else {
-            echo "<script>alert('Error: Could not fetch new room details.');window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!',
+                'text' => 'Could not fetch new room details.',
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
             exit;
         }
 
         // Check if trying to reassign to same room
         if ($oldRoomId === $roomId) {
-            echo "<script>alert('You are already assigned to this room.');window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!',
+                'text' => 'You are already assigned to this room.',
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
             exit;
         }
 
@@ -187,8 +216,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $stmt->get_result();
             
             if ($result->num_rows > 0) {
-                echo "<script>alert('You already have a pending reassignment request.');window.history.back();</script>";
-                $stmt->close();
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'You already have a pending reassignment request.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             }
             $stmt->close();
@@ -214,20 +247,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $logStmt->close();
                 }
 
-                echo "<script>
-                    alert('Reassignment request submitted successfully!');
-                    window.location.href = '" . $_SERVER['PHP_SELF'] . "';
-                </script>";
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'Reassignment request submitted successfully!',
+                    'icon' => 'success'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             } else {
-                echo "<script>alert('Error submitting request: " . htmlspecialchars($stmt->error) . "');window.history.back();</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'Error submitting request: ' . htmlspecialchars($stmt->error),
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
             }
             $stmt->close();
         } else {
-            echo "<script>alert('Error preparing request: " . htmlspecialchars($conn->error) . "');window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!',
+                'text' => 'Error preparing request: ' . htmlspecialchars($conn->error),
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
         }
     } else {
-        echo "<script>alert('Invalid room ID provided.');window.history.back();</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Invalid room ID provided.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
     }
 }
 
@@ -391,6 +441,10 @@ if ($result === false) {
 
 <!-- Your custom CSS (placed last to ensure it overrides Bootstrap) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Include SweetAlert CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
     .main-content{
@@ -1055,15 +1109,9 @@ if ($result === false) {
         </div>
         
         <div class="logout">
-        <a href="../config/user-logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
     </div>
 
@@ -1409,6 +1457,69 @@ function closeModal() {
                 modal.querySelector('#modalRoomStatus').textContent = roomStatus;
             });
         });
+    </script>
+
+    <!-- Function to display SweetAlert messages based on session variables -->
+    <script>
+        function displayAlerts() {
+            <?php if (isset($_SESSION['swal_error'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_error']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_error']['icon']; ?>',
+                    confirmButtonText: 'OK'
+                });
+                <?php unset($_SESSION['swal_error']); // Clear the session variable after displaying ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['swal_success'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_success']['icon']; ?>',
+                    confirmButtonText: 'OK'
+                });
+                <?php unset($_SESSION['swal_success']); // Clear the session variable after displaying ?>
+            <?php endif; ?>
+        }
+
+        // Call the function when the document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            displayAlerts();
+        });
+    </script>
+
+    <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
     </script>
 </body>
 </html>

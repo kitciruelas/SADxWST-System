@@ -108,7 +108,7 @@ $conn->close();
     <title>Presence Monitoring</title>
     <link rel="icon" href="img-icon/eye.png" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
@@ -144,6 +144,120 @@ $conn->close();
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color:  #2B228A;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
+
+
 </head>
 <body>
     <!-- Sidebar -->
@@ -151,20 +265,16 @@ $conn->close();
         <div class="menu" id="hamburgerMenu">
             <i class="fas fa-bars"></i>
         </div>
-        
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="admin-monitoring.php" class="nav-link active"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
         <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-
-
-
         </div>
-        
         <div class="logout">
         <a href="../config/user-logout.php" onclick="return confirmLogout();">
     <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
@@ -190,12 +300,24 @@ function confirmLogout() {
     <div class="container mt-1">
     <!-- Search and Filter Section -->
     <!-- Room Table Filter Section -->
-<div class="row mb-4">
-    <div class="col-12 col-md-8">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search...">
+<div class="row mb-1">
+    <!-- Search Input -->
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for residents, rooms, etc..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    <div class="col-6 col-md-2">
-        <select id="filterSelect" class="form-select">
+
+    <!-- Filter Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select name="filter" id="filterSelect" class="form-select" onchange="this.form.submit()">
             <option value="all">Filter by</option>
             <option value="1">Resident Name</option>
             <option value="2">Room</option>
@@ -203,8 +325,10 @@ function confirmLogout() {
             <option value="4">Check-Out Time</option>
         </select>
     </div>
-    <div class="col-6 col-md-2">
-        <select id="sortSelect" class="form-select">
+
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 mt-2">
+        <select name="sort" id="sortSelect" class="form-select" onchange="applySort()">
             <option value="">Sort by</option>
             <option value="resident_asc">Resident Name (A-Z)</option>
             <option value="resident_desc">Resident Name (Z-A)</option>
@@ -320,8 +444,8 @@ function confirmLogout() {
         ],
         paging: false,      // Disable DataTables pagination
         info: false,        // Remove "Showing X of Y entries" info
-        searching:false,
         lengthChange: false,
+        searching: false,
         order: []
     });
 
@@ -341,6 +465,9 @@ function confirmLogout() {
         $('#pageIndicator').text(`Page ${page}`);
         $('#prevPage').prop('disabled', page === 1);
         $('#nextPage').prop('disabled', page === totalPages);
+
+        // Update page indicator
+        document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
     }
 
     function nextPage() {
@@ -470,6 +597,9 @@ function getFormattedDate() {
         document.getElementById('pageIndicator').innerText = `Page ${page}`;
         document.getElementById('prevPage').disabled = page === 1;
         document.getElementById('nextPage').disabled = page === totalPages;
+
+        // Update page indicator
+        document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
     }
 
     function nextPage() {

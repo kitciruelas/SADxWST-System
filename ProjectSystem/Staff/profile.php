@@ -4,6 +4,9 @@ session_start();
 
 include '../config/config.php';
 
+// Add this near the top of the file, after session_start()
+date_default_timezone_set('Asia/Manila');
+
 // Check if user is logged in and retrieve user ID
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || !isset($_SESSION['id'])) {
     header("location: user-login.php");
@@ -22,35 +25,37 @@ $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 
 $updateSuccess = false; // Flag for successful update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_personal_info'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['firstName'])) {
   // Profile Information Processing
   $firstName = $_POST['firstName'] ?? '';
   $lastName = $_POST['lastName'] ?? '';
   $middleInitial = $_POST['middleInitial'] ?? '';
   $contact = $_POST['contact'] ?? '';
-  $birthdate = $_POST['birthdate'] ?? '';
-  $suffix = $_POST['suffix'] ?? '';
   $address = $_POST['address'] ?? '';
-  $profilePic = $user['profile_pic']; // Default to current profile pic
+  $birthdate = $_POST['birthdate'] ?? '';
+  $profilePic = $user['profile_pic'];
 
-  // Validate Contact Number
-  if (!preg_match('/^09\d{9}$/', $contact)) {
-      echo "Invalid contact number. It must start with '09' and be exactly 11 digits.";
+  // Calculate age from birthdate
+  $birthdateObj = new DateTime($birthdate);
+  $today = new DateTime();
+  $age = $birthdateObj->diff($today)->y;
+
+  // Check if age is at least 16
+  if ($age < 16) {
+      echo "<script>
+            Swal.fire({
+                title: 'Age Restriction',
+                text: 'You must be at least 16 years old to register.',
+                icon: 'error',
+                confirmButtonColor: '#3085d6'
+            }).then((result) => {
+                window.history.back();
+            });
+        </script>";
       exit;
   }
 
-  // Validate Birthdate
-  if (!empty($birthdate)) {
-      $birthDateObj = new DateTime($birthdate);
-      $currentDate = new DateTime();
-      $age = $currentDate->diff($birthDateObj)->y;
-      if ($age < 16) {
-          echo "You must be at least 16 years old.";
-          exit;
-      }
-  }
-
-  // Process Profile Picture Upload
+  // Validate and process profile picture upload
   if (isset($_FILES['profilePic']) && $_FILES['profilePic']['error'] === UPLOAD_ERR_OK) {
       $targetDir = "../uploads/";
       $fileName = uniqid() . "-" . basename($_FILES["profilePic"]["name"]);
@@ -60,27 +65,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_personal_info'
 
       if (in_array($fileType, $allowedTypes)) {
           if (move_uploaded_file($_FILES["profilePic"]["tmp_name"], $targetFilePath)) {
-              $profilePic = $targetFilePath; // Use the uploaded file path
+              $profilePic = $targetFilePath;
           } else {
-              echo "Error uploading file.";
+              echo "<script>
+                    Swal.fire({
+                        title: 'Upload Error',
+                        text: 'Error uploading file. Please try again.',
+                        icon: 'error',
+                        confirmButtonColor: '#3085d6'
+                    });
+                </script>";
               exit;
           }
       } else {
-          echo "Invalid file type.";
+          echo "<script>
+                Swal.fire({
+                    title: 'Invalid File',
+                    text: 'Please upload only JPG, JPEG, PNG, or GIF files.',
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            </script>";
           exit;
       }
   }
 
-  // Update Profile Info Query
-  $updateQuery = "UPDATE staff SET fname = ?, lname = ?, mi = ?, contact = ?, birthdate = ?, suffix = ?, address = ?, profile_pic = ? WHERE id = ?";
+  // Update query
+  $updateQuery = "UPDATE staff SET fname = ?, lname = ?, mi = ?, suffix = ?, contact = ?, address = ?, birthdate = ?, age = ?, sex = ?, profile_pic = ? WHERE id = ?";
   $stmt = $conn->prepare($updateQuery);
 
   if ($stmt) {
-      $stmt->bind_param("ssssssssi", $firstName, $lastName, $middleInitial, $contact, $birthdate, $suffix, $address, $profilePic, $userId);
+      // Get sex and suffix from POST data
+      $sex = $_POST['sex'] ?? '';
+      $suffix = $_POST['suffix'] ?? '';
+      
+      // Update bind_param to include new parameters
+      $stmt->bind_param("ssssssssssi", 
+          $firstName, 
+          $lastName, 
+          $middleInitial,
+          $suffix,  // Added suffix
+          $contact, 
+          $address, 
+          $birthdate, 
+          $age,
+          $sex,    // Added sex 
+          $profilePic, 
+          $userId
+      );
+      
       if ($stmt->execute()) {
-          echo "<script>alert('Profile updated successfully!'); window.location.href = 'profile.php';</script>";
+          $updateSuccess = true; // Set flag for success
+          echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Profile updated successfully!',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6'
+                }).then((result) => {
+                    window.location.href = 'profile.php';
+                });
+            });
+        </script>";
       } else {
-          echo "Error executing profile update: " . $stmt->error;
+          echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Error updating profile: " . htmlspecialchars($stmt->error) . "',
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            });
+        </script>";
       }
       $stmt->close();
   } else {
@@ -88,7 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_personal_info'
   }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_account_info'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
+  // Account Information Processing
   $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
   $newPassword = $_POST['password'] ?? '';
   $confirmPassword = $_POST['confirmPassword'] ?? '';
@@ -97,13 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_account_info']
   if (!$email) {
       $errors[] = "Invalid email address.";
   }
-  if (!empty($newPassword)) {
-      if (strlen($newPassword) < 6) {
-          $errors[] = "Password must be at least 6 characters long.";
-      }
-      if ($newPassword !== $confirmPassword) {
-          $errors[] = "Passwords do not match.";
-      }
+  if ($newPassword && $newPassword !== $confirmPassword) {
+      $errors[] = "Passwords do not match.";
   }
 
   if (empty($errors)) {
@@ -111,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_account_info']
       $params = [$email];
       $types = 's';
 
-      if (!empty($newPassword)) {
+      if ($newPassword) {
           $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
           $query .= ", password = ?";
           $params[] = $hashedPassword;
@@ -119,32 +173,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_account_info']
       }
 
       $query .= " WHERE id = ?";
-      $params[] = $userId; // Ensure $userId is defined earlier in your code
+      $params[] = $userId;
       $types .= 'i';
 
       $stmt = $conn->prepare($query);
       if ($stmt) {
           $stmt->bind_param($types, ...$params);
           if ($stmt->execute()) {
-              echo "<script>alert('Account Information updated successfully!'); window.location.href = 'profile.php';</script>";
+              echo "<script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: 'Account information updated successfully!',
+                            icon: 'success',
+                            confirmButtonColor: '#3085d6'
+                        }).then((result) => {
+                            window.location.href = 'profile.php';
+                        });
+                    });
+                </script>";
           } else {
-              $errors[] = "Error updating account information: " . htmlspecialchars($stmt->error);
+              echo "<script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Error updating account: " . htmlspecialchars($stmt->error) . "',
+                            icon: 'error',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    });
+                </script>";
           }
           $stmt->close();
       } else {
           $errors[] = "Error preparing statement: " . htmlspecialchars($conn->error);
       }
-  }
-
-  if (!empty($errors)) {
-      // Display error messages using JavaScript alert
-      $errorMessages = implode("\\n", $errors);
-      echo "<script>alert('$errorMessages');</script>";
+  } else {
+      // Display validation errors
+      echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    title: 'Validation Error',
+                    html: '" . implode("<br>", array_map('htmlspecialchars', $errors)) . "',
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            });
+        </script>";
   }
 }
-
-
-
 
 $conn->close();
 
@@ -170,18 +247,76 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
 
-    <link rel="stylesheet" href="../User/Css_user/visitor-logs.css"> <!-- I-load ang custom CSS sa huli -->
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-
+    <!-- Add SweetAlert2 CSS and JS in the head section -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Bootstrap CSS -->
+    <style>
+        /* Add this style block in the head section or in your CSS file */
+        .accordion-button {
+            background: linear-gradient(to right, #007bff, #0056b3) !important;
+            color: white !important;
+            font-weight: 500;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background: linear-gradient(to right, #007bff, #0056b3) !important;
+            color: white !important;
+        }
+
+        .accordion-button::after {
+            filter: brightness(0) invert(1);
+        }
+
+        .accordion-button:focus {
+            box-shadow: none;
+            border-color: rgba(0,0,0,.125);
+        }
+
+        /* Style for the icons in the accordion headers */
+        .accordion-button i {
+            margin-right: 10px;
+            color: white;
+        }
+
+        .credential-box {
+            transition: all 0.3s ease;
+        }
+
+        .credential-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .credential-icon-container {
+            transition: all 0.3s ease;
+        }
+        
+        .credential-icon-container:hover {
+            transform: scale(1.05);
+        }
+
+        .form-floating > label {
+            color: #6c757d;
+        }
+
+        .form-floating > input {
+            background-color: #f8f9fa;
+        }
+
+        .form-floating > input:focus {
+            background-color: #fff;
+        }
+    </style>
 </head>
 <body>
 
@@ -194,12 +329,12 @@ $conn->close();
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link active"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
-        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
 
+        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
         </div>
         
         <div class="logout">
@@ -209,7 +344,21 @@ $conn->close();
 
 <script>
 function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
+    return Swal.fire({
+        title: 'Confirm Logout',
+        text: 'Are you sure you want to log out?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, logout',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            return true;
+        }
+        return false;
+    });
 }
 </script>
         </div>
@@ -237,83 +386,109 @@ function confirmLogout() {
        
         <h2 class="accordion-header">
           <button class="accordion-button" type="button"  data-bs-target="#personalInfo" aria-expanded="true">
-            Personal Information
+            <i class="fas fa-user me-2"></i> Personal Information
           </button>
         </h2>
         <div id="personalInfo" class="accordion-collapse">
   <div class="accordion-body">
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <?php
-        
-        // Check if the profile picture is empty
-        if (!empty($user['profile_pic'])) {
-            echo '<img src="' . htmlspecialchars($user['profile_pic']) . '" alt="Profile Picture" class="profile-pic" />';
-        } else {
-            // Display the first letter of the first name as a placeholder
-            $firstLetter = strtoupper(substr($user['fname'], 0, 1));
-            echo '<div class="profile-pic" style="width: 200px; height: 200px; border-radius: 50%; background-color: #007bff; color: white; display: flex; align-items: center; justify-content: center; font-size: 100px;">' . $firstLetter . '</div>';
-        }
-        ?>
-
-
-
-
-      </div>
-  
-      <!-- Other personal info fields go here -->
-
-      <div class="col-md-9 mt-3">
-    <div class="container">
-        <div class="row mb-3 justify-content-center">
-            <div class="col-md-4">
-                <label class="form-label">First Name</label>
-                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['fname']); ?>" readonly />
+    <div class="row">
+        <!-- Profile Picture Column -->
+        <div class="col-md-3 text-center">
+            <div class="profile-container mb-3">
+                <?php if (!empty($user['profile_pic'])): ?>
+                    <img src="<?php echo htmlspecialchars($user['profile_pic']); ?>" 
+                         alt="Profile Picture" 
+                         class="profile-pic img-fluid rounded-circle shadow" 
+                         style="width: 200px; height: 200px; object-fit: cover;" />
+                <?php else: ?>
+                    <div class="profile-pic rounded-circle shadow d-flex align-items-center justify-content-center" 
+                         style="width: 200px; height: 200px; background: linear-gradient(45deg, #007bff, #00bfff); margin: 0 auto;">
+                        <span style="font-size: 80px; color: white;">
+                            <?php echo strtoupper(substr($user['fname'], 0, 1)); ?>
+                        </span>
+                    </div>
+                <?php endif; ?>
             </div>
-            <div class="col-md-4">
-                <label class="form-label">Last Name</label>
-                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['lname']); ?>" readonly />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Middle Name</label>
-                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['mi']); ?>" readonly />
-            </div>
-        </div>
-        <div class="row mb-3 justify-content-center">
-            <div class="col-md-4">
-                <label class="form-label">Suffix</label>
-                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['suffix']); ?>" readonly />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Birthdate</label>
-                <input type="date" class="form-control" value="<?php echo htmlspecialchars($user['birthdate']); ?>" readonly />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Age</label>
-                <input type="number" class="form-control" value="<?php echo htmlspecialchars($user['age']); ?>" readonly />
-            </div>
-        </div>
-        <div class="row mb-3 justify-content-center">
-            <div class="col-md-4">
-                <label class="form-label">Sex</label>
-                <select class="form-control" name="sex" disabled>
-                    <option value="" disabled>Select Sex</option>
-                    <option value="Male" <?php echo ($user['sex'] === 'Male') ? 'selected' : ''; ?>>Male</option>
-                    <option value="Female" <?php echo ($user['sex'] === 'Female') ? 'selected' : ''; ?>>Female</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Contact</label>
-                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['contact']); ?>" readonly />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Address</label>
-                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['address']); ?>" readonly />
-            </div>
-        </div>
             
-        <div class="text-end mt-3">
-            <button type="submit" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+        </div>
+
+        <!-- Personal Info Fields -->
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Name Section -->
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['fname']); ?>" readonly />
+                                <label><i class="fas fa-user me-2"></i>First Name</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['lname']); ?>" readonly />
+                                <label><i class="fas fa-user me-2"></i>Last Name</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['mi']); ?>" readonly />
+                                <label><i class="fas fa-user me-2"></i>Middle Name</label>
+                            </div>
+                        </div>
+
+                        <!-- Personal Details -->
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['suffix']); ?>" readonly />
+                                <label><i class="fas fa-user-tag me-2"></i>Suffix</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="date" class="form-control" value="<?php echo htmlspecialchars($user['birthdate']); ?>" readonly />
+                                <label><i class="fas fa-calendar me-2"></i>Birthdate</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="number" class="form-control" value="<?php echo htmlspecialchars($user['age']); ?>" readonly />
+                                <label><i class="fas fa-birthday-cake me-2"></i>Age</label>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <select class="form-control" disabled>
+                                    <option value="Male" <?php echo ($user['sex'] === 'Male') ? 'selected' : ''; ?>>Male</option>
+                                    <option value="Female" <?php echo ($user['sex'] === 'Female') ? 'selected' : ''; ?>>Female</option>
+                                </select>
+                                <label><i class="fas fa-venus-mars me-2"></i>Sex</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['contact']); ?>" readonly />
+                                <label><i class="fas fa-phone me-2"></i>Contact</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($user['address']); ?>" readonly />
+                                <label><i class="fas fa-map-marker-alt me-2"></i>Address</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Button -->
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -324,58 +499,293 @@ function confirmLogout() {
         
       </div>
 
-      <div class="accordion-item mt-3">
-  <h2 class="accordion-header">
-    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accountInfo" aria-expanded="false">
-    Account Credentials
-    </button>
-  </h2>  
-  <div id="accountInfo" class="accordion-collapse collapse ">
-    <div class="accordion-body">
-    <div class="row">
-    <div class="col-md-4 mb-2">
-        <label for="email" class="form-label">Email</label>
-        <p class="form-control"><?php echo htmlspecialchars($user['email']); ?></p>
-    </div>
-    <div class="col-md-4 mb-2">
-        <label for="password" class="form-label">New Password</label>
-        <p class="form-control"><?php echo !empty($user['password']) ? 'Password Set' : 'Not Set'; ?></p> <!-- Confirm password status text -->
-    </div>
-    <div class="col-md-4 mb-2">
-        <label for="confirmPassword" class="form-label">Confirm Password</label>
-        <p class="form-control"><?php echo !empty($user['password']) ? 'Password Set' : 'Not Set'; ?></p> <!-- Confirm password status text -->
-    </div>
-</div>
-<!-- Button to trigger the edit form -->
-<div class="text-end mt-3">
-    <button type="submit" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editAccountModal">Change Information</button>
-</div>
+      <!-- Account Credentials Section -->
+      <div class="accordion" id="profileSettingsAccordion">
+          <div class="accordion-item mt-3">
+              <h2 class="accordion-header" id="accountInfoHeader">
+                  <button class="accordion-button collapsed w-100" type="button" 
+                          data-bs-toggle="collapse" 
+                          data-bs-target="#accountInfo" 
+                          aria-expanded="false" 
+                          aria-controls="accountInfo">
+                      <i class="fas fa-lock me-2"></i> Account Credentials
+                  </button>
+              </h2>
+              <div id="accountInfo" class="accordion-collapse collapse" 
+                   aria-labelledby="accountInfoHeader" 
+                   data-bs-parent="#profileSettingsAccordion">
+                  <div class="accordion-body">
+                      <div class="row">
+                          <!-- Icon/Logo Column -->
+                          <div class="col-md-3 text-center">
+                              <div class="credential-icon-container mb-3">
+                                  <div class="rounded-circle shadow d-flex align-items-center justify-content-center" 
+                                       style="width: 200px; height: 200px; background: linear-gradient(45deg, #007bff, #00bfff); margin: 0 auto;">
+                                      <i class="fas fa-shield-alt fa-5x" style="color: white;"></i>
+                                  </div>
+                              </div>
+                              <button type="button" class="btn btn-outline-primary btn-lg mb-3">
+                                  <i class="fas fa-lock me-2"></i> Security Status
+                              </button>
+                          </div>
 
-    </div>
-  </div>
-</div>
+                          <!-- Credentials Info Fields -->
+                          <div class="col-md-9">
+                              <div class="card shadow-sm">
+                                  <div class="card-body">
+                                      <div class="row g-3">
+                                          <!-- Email Section -->
+                                          <div class="col-md-6">
+                                              <div class="form-floating">
+                                                  <input type="email" class="form-control" value="<?php echo htmlspecialchars($user['email']); ?>" readonly />
+                                                  <label><i class="fas fa-envelope me-2"></i>Email Address</label>
+                                              </div>
+                                          </div>
+                                          <div class="col-md-6">
+                                              <div class="form-floating">
+                                                  <input type="text" class="form-control" value="Active" readonly />
+                                                  <label><i class="fas fa-check-circle me-2"></i>Account Status</label>
+                                              </div>
+                                          </div>
 
+                                          <!-- Security Section -->
+                                          <div class="col-md-6">
+                                              <div class="form-floating">
+                                                  <input type="text" class="form-control" value="Password Protected" readonly />
+                                                  <label><i class="fas fa-key me-2"></i>Password Status</label>
+                                              </div>
+                                          </div>
+                                          <div class="col-md-6">
+                                              <div class="form-floating">
+                                                  <input type="text" class="form-control" value="Standard" readonly />
+                                                  <label><i class="fas fa-shield-alt me-2"></i>Security Level</label>
+                                              </div>
+                                          </div>
 
+                                          <!-- Additional Security Info -->
+                                          <div class="col-md-6">
+                                              <div class="form-floating">
+                                                  <input type="text" class="form-control" value="<?php echo date('Y-m-d H:i:s'); ?>" readonly />
+                                                  <label><i class="fas fa-clock me-2"></i>Last Updated</label>
+                                              </div>
+                                          </div>
+                                          <div class="col-md-6">
+                                              <div class="form-floating">
+                                                  <input type="text" class="form-control" value="Email Verified" readonly />
+                                                  <label><i class="fas fa-user-check me-2"></i>Verification Status</label>
+                                              </div>
+                                          </div>
+                                      </div>
+
+                                      <!-- Add this inside your Account Credentials card body, after the existing fields -->
+                                      <div class="row g-3 mt-3">
+                                          <!-- Last Login Section -->
+                                          <div class="col-md-4">
+                                              <div class="security-box p-3 border rounded bg-light">
+                                                  <div class="d-flex align-items-center mb-2">
+                                                      <i class="fas fa-clock fa-2x text-primary me-2"></i>
+                                                      <h5 class="mb-0">Last Login</h5>
+                                                  </div>
+                                                  <p class="text-muted mb-1">Date: <?php echo date('M d, Y'); ?></p>
+                                                  <p class="text-muted mb-0">Time: <?php echo date('h:i:s A'); ?></p>
+                                              </div>
+                                          </div>
+
+                                          <!-- Recent Activity Section -->
+                                          <div class="col-md-4">
+                                              <div class="security-box p-3 border rounded bg-light">
+                                                  <div class="d-flex align-items-center mb-2">
+                                                      <i class="fas fa-history fa-2x text-primary me-2"></i>
+                                                      <h5 class="mb-0">Recent Activity</h5>
+                                                  </div>
+                                                  <ul class="list-unstyled mb-0 small">
+                                                      <li class="mb-1">
+                                                          <i class="fas fa-sign-in-alt text-success me-1"></i> Login - <?php echo date('M d, Y h:i A'); ?>
+                                                      </li>
+                                                      <li class="mb-1">
+                                                          <i class="fas fa-user-edit text-info me-1"></i> Profile Updated - <?php echo date('M d, Y h:i A', strtotime('-1 day')); ?>
+                                                      </li>
+                                                      <li>
+                                                          <i class="fas fa-sign-out-alt text-warning me-1"></i> Logout - <?php echo date('M d, Y h:i A', strtotime('-2 day')); ?>
+                                                      </li>
+                                                  </ul>
+                                              </div>
+                                          </div>
+
+                                          <!-- Login Devices Section -->
+                                          <div class="col-md-4">
+                                              <div class="security-box p-3 border rounded bg-light">
+                                                  <div class="d-flex align-items-center mb-2">
+                                                      <i class="fas fa-mobile-alt fa-2x text-primary me-2"></i>
+                                                      <h5 class="mb-0">Login Devices</h5>
+                                                  </div>
+                                                  <div class="devices-list">
+                                                      <div class="device-item mb-2 d-flex justify-content-between align-items-center">
+                                                          <div>
+                                                              <i class="fas fa-laptop text-secondary me-2"></i>
+                                                              <span>Windows PC</span>
+                                                              <small class="text-success d-block">Current Device</small>
+                                                          </div>
+                                                          <button class="btn btn-sm btn-outline-danger" onclick="signOutDevice('device1')">
+                                                              <i class="fas fa-sign-out-alt"></i>
+                                                          </button>
+                                                      </div>
+                                                      <div class="device-item mb-2 d-flex justify-content-between align-items-center">
+                                                          <div>
+                                                              <i class="fas fa-mobile-alt text-secondary me-2"></i>
+                                                              <span>iPhone 12</span>
+                                                              <small class="text-muted d-block">Last active: Today</small>
+                                                          </div>
+                                                          <button class="btn btn-sm btn-outline-danger" onclick="signOutDevice('device2')">
+                                                              <i class="fas fa-sign-out-alt"></i>
+                                                          </button>
+                                                      </div>
+                                                      <div class="device-item d-flex justify-content-between align-items-center">
+                                                          <div>
+                                                              <i class="fas fa-tablet-alt text-secondary me-2"></i>
+                                                              <span>iPad Pro</span>
+                                                              <small class="text-muted d-block">Last active: Yesterday</small>
+                                                          </div>
+                                                          <button class="btn btn-sm btn-outline-danger" onclick="signOutDevice('device3')">
+                                                              <i class="fas fa-sign-out-alt"></i>
+                                                          </button>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
+
+                                      <!-- Add this CSS -->
+                                      <style>
+                                          .security-box {
+                                              height: 100%;
+                                              transition: all 0.3s ease;
+                                          }
+
+                                          .security-box:hover {
+                                              transform: translateY(-5px);
+                                              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                                          }
+
+                                          .device-item {
+                                              padding: 8px;
+                                              border-radius: 6px;
+                                              transition: background-color 0.3s ease;
+                                          }
+
+                                          .device-item:hover {
+                                              background-color: #f8f9fa;
+                                          }
+
+                                          .devices-list {
+                                              max-height: 200px;
+                                              overflow-y: auto;
+                                          }
+
+                                          .devices-list::-webkit-scrollbar {
+                                              width: 5px;
+                                          }
+
+                                          .devices-list::-webkit-scrollbar-track {
+                                              background: #f1f1f1;
+                                          }
+
+                                          .devices-list::-webkit-scrollbar-thumb {
+                                              background: #888;
+                                              border-radius: 5px;
+                                          }
+                                      </style>
+
+                                      <!-- Add this JavaScript -->
+                                      <script>
+                                          function signOutDevice(deviceId) {
+                                              Swal.fire({
+                                                  title: 'Sign Out Device?',
+                                                  text: 'Are you sure you want to sign out from this device?',
+                                                  icon: 'warning',
+                                                  showCancelButton: true,
+                                                  confirmButtonColor: '#d33',
+                                                  cancelButtonColor: '#3085d6',
+                                                  confirmButtonText: 'Sign Out',
+                                                  cancelButtonText: 'Cancel'
+                                              }).then((result) => {
+                                                  if (result.isConfirmed) {
+                                                      Swal.fire({
+                                                          title: 'Success!',
+                                                          text: 'Device has been signed out successfully.',
+                                                          icon: 'success',
+                                                          confirmButtonColor: '#3085d6'
+                                                      }).then(() => {
+                                                          // Here you would typically make an API call to sign out the device
+                                                          // For now, we'll just remove the device from the UI
+                                                          const deviceElement = document.querySelector(`[onclick="signOutDevice('${deviceId}')"]`).closest('.device-item');
+                                                          deviceElement.style.opacity = '0';
+                                                          setTimeout(() => {
+                                                              deviceElement.style.display = 'none';
+                                                          }, 300);
+                                                      });
+                                                  }
+                                              });
+                                          }
+
+                                          // Add a function to format dates nicely
+                                          function formatDate(date) {
+                                              const options = { 
+                                                  year: 'numeric', 
+                                                  month: 'short', 
+                                                  day: 'numeric', 
+                                                  hour: '2-digit', 
+                                                  minute: '2-digit',
+                                                  hour12: true,
+                                                  timeZone: 'Asia/Manila'
+                                              };
+                                              return new Date(date).toLocaleDateString('en-US', options);
+                                          }
+                                      </script>
+
+                                      <!-- Edit Button -->
+                                      <div class="text-end mt-4">
+                                          <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#editAccountModal">
+                                              <i class="fas fa-edit me-2"></i>Change Information
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+<!-- Edit Profile Modal -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <h5 class="modal-title" id="editProfileModalLabel">Edit Profile</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editProfileModalLabel">
+          <i class="fas fa-user-edit me-2"></i>Edit Profile
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       
-      <!-- Modal Body -->
       <div class="modal-body">
-        <form id="editProfileForm" method="POST" action="profile.php" enctype="multipart/form-data">
-          <input type="hidden" name="update_personal_info" value="1" />
-
-          <!-- Upload New Profile Picture -->
-          <div class="mb-3">
-            <label for="profilePic" class="form-label">Upload New Profile Picture</label>
-            <input type="file" class="form-control" name="profilePic" accept="image/*" />
+        <form id="editProfileForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST" enctype="multipart/form-data">
+          <!-- Profile Picture Preview -->
+          <div class="text-center mb-4">
+            <div class="profile-preview-container">
+              <img id="profilePreview" src="<?php echo !empty($user['profile_pic']) ? htmlspecialchars($user['profile_pic']) : '../assets/default-avatar.png'; ?>" 
+                   class="rounded-circle preview-img" style="width: 150px; height: 150px; object-fit: cover;">
+            </div>
+            <div class="mt-2">
+              <label for="profilePic" class="btn btn-outline-primary">
+                <i class="fas fa-camera me-2"></i>Change Photo
+              </label>
+              <input type="file" class="d-none" id="profilePic" name="profilePic" accept="image/*" onchange="previewImage(this)">
+            </div>
           </div>
-          
+
+          <!-- Rest of the form fields remain the same -->
           <!-- First Row -->
           <div class="row mb-3">
             <div class="col-md-6">
@@ -387,7 +797,7 @@ function confirmLogout() {
               <input type="text" class="form-control" name="lastName" value="<?php echo htmlspecialchars($user['lname']); ?>" required />
             </div>
           </div>
-
+          
           <!-- Second Row -->
           <div class="row mb-3">
             <div class="col-md-6">
@@ -408,18 +818,17 @@ function confirmLogout() {
             </div>
             <div class="col-md-6">
               <label for="age" class="form-label">Age</label>
-              <input type="number" class="form-control" name="age" value="<?php echo htmlspecialchars($user['age']); ?>" required />
+              <input type="number" class="form-control" name="age" value="<?php echo htmlspecialchars($user['age']); ?>" readonly />
             </div>
           </div>
 
-          <!-- Fourth Row -->
+          <!-- Additional Fields in the Fourth Row -->
           <div class="row mb-3">
             <div class="col-md-6">
               <label for="sex" class="form-label">Sex</label>
               <select class="form-control" name="sex" required>
                 <option value="Male" <?php echo ($user['sex'] === 'Male') ? 'selected' : ''; ?>>Male</option>
                 <option value="Female" <?php echo ($user['sex'] === 'Female') ? 'selected' : ''; ?>>Female</option>
-                <option value="Other" <?php echo ($user['sex'] === 'Other') ? 'selected' : ''; ?>>Other</option>
               </select>
             </div>
             <div class="col-md-6">
@@ -427,68 +836,412 @@ function confirmLogout() {
               <input type="text" class="form-control" name="contact" value="<?php echo htmlspecialchars($user['contact']); ?>" required />
             </div>
           </div>
-
+          
           <!-- Address Field -->
           <div class="mb-3">
             <label for="address" class="form-label">Address</label>
             <input type="text" class="form-control" name="address" value="<?php echo htmlspecialchars($user['address']); ?>" required />
           </div>
-
-          <!-- Submit Button -->
-          <button type="submit" class="btn btn-primary">Save Changes</button>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-2"></i>Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+          </div>
         </form>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Edit Account Modal -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form id="accountInfoForm" action="profile.php" method="POST">
-        <input type="hidden" name="update_account_info" value="1" />
-        
-        <div class="modal-header">
-          <h5 class="modal-title" id="editAccountModalLabel">Edit Account Credentials</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <!-- Email -->
-          <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required />
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editAccountModalLabel">
+          <i class="fas fa-lock me-2"></i>Edit Account Information
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="editAccountForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
+          <!-- Email Field -->
+          <div class="mb-4">
+            <label for="email" class="form-label">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+              <input type="email" class="form-control" id="email" name="email" 
+                     value="<?php echo htmlspecialchars($user['email']); ?>" required>
+            </div>
           </div>
 
-          <!-- Password Field -->
-          <div class="mb-3">
+          <!-- New Password Field -->
+          <div class="mb-4">
             <label for="password" class="form-label">New Password</label>
             <div class="input-group">
-              <input type="password" class="form-control" name="password" id="password" placeholder="Leave blank if unchanged" />
-              <span class="input-group-text" onclick="togglePassword()">
-                <i class="fas fa-eye" id="eyeIcon"></i>
-              </span>
+              <span class="input-group-text"><i class="fas fa-key"></i></span>
+              <input type="password" class="form-control" id="password" name="password" 
+                     placeholder="Leave blank to keep current password"
+                     minlength="6">
+              <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div id="passwordStrength" class="mt-2 d-none">
+              <div class="progress" style="height: 5px;">
+                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+              </div>
+              <small class="text-muted">Password strength: <span id="strengthText">None</span></small>
+            </div>
+            <div class="password-requirements mt-2">
+              <small class="text-muted d-block">Password must contain:</small>
+              <ul class="list-unstyled">
+                <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>At least 6 characters</small></li>
+                <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One uppercase letter (A-Z)</small></li>
+                <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One lowercase letter (a-z)</small></li>
+                <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One number (0-9)</small></li>
+                <li><small class="text-muted"><i class="fas fa-circle fa-xs me-2"></i>One special character (!@#$%^&*)</small></li>
+              </ul>
             </div>
           </div>
 
           <!-- Confirm Password Field -->
-          <div class="mb-3">
-            <label for="confirmPassword" class="form-label">Confirm Password</label>
+          <div class="mb-4">
+            <label for="confirmPassword" class="form-label">Confirm New Password</label>
             <div class="input-group">
-              <input type="password" class="form-control" name="confirmPassword" id="confirmPassword" placeholder="Leave blank if unchanged" />
-              <span class="input-group-text" onclick="toggleConfirmPassword()">
-                <i class="fas fa-eye" id="eyeIconConfirm"></i>
-              </span>
+              <span class="input-group-text"><i class="fas fa-lock"></i></span>
+              <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" 
+                     placeholder="Leave blank to keep current password"
+                     minlength="6">
+              <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                <i class="fas fa-eye"></i>
+              </button>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Update Account</button>
-        </div>
-      </form>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-2"></i>Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Updated JavaScript with password strength check -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Password strength checker
+    function checkPasswordStrength(password) {
+        let strength = 0;
+        
+        if (password.length >= 6) strength += 20;
+        if (password.match(/[a-z]+/)) strength += 20;
+        if (password.match(/[A-Z]+/)) strength += 20;
+        if (password.match(/[0-9]+/)) strength += 20;
+        if (password.match(/[!@#$%^&*(),.?":{}|<>]+/)) strength += 20;
+        
+        return strength;
+    }
+
+    // Update password strength indicator
+    const passwordInput = document.getElementById('password');
+    const strengthDiv = document.getElementById('passwordStrength');
+    const progressBar = strengthDiv.querySelector('.progress-bar');
+    const strengthText = document.getElementById('strengthText');
+
+    passwordInput.addEventListener('input', function() {
+        if (this.value) {
+            strengthDiv.classList.remove('d-none');
+            const strength = checkPasswordStrength(this.value);
+            progressBar.style.width = strength + '%';
+            
+            // Update progress bar color and text
+            if (strength < 40) {
+                progressBar.className = 'progress-bar bg-danger';
+                strengthText.textContent = 'Weak';
+            } else if (strength < 80) {
+                progressBar.className = 'progress-bar bg-warning';
+                strengthText.textContent = 'Medium';
+            } else {
+                progressBar.className = 'progress-bar bg-success';
+                strengthText.textContent = 'Strong';
+            }
+        } else {
+            strengthDiv.classList.add('d-none');
+        }
+    });
+
+    // Toggle password visibility
+    function togglePasswordVisibility(inputId, buttonId) {
+        const input = document.getElementById(inputId);
+        const button = document.getElementById(buttonId);
+        
+        button.addEventListener('click', function() {
+            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+            input.setAttribute('type', type);
+            
+            // Toggle eye icon
+            const icon = button.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Initialize password toggles
+    togglePasswordVisibility('password', 'togglePassword');
+    togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
+
+    // Form validation
+    const editAccountForm = document.getElementById('editAccountForm');
+    if (editAccountForm) {
+        editAccountForm.addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password) {  // Only validate if a new password is being set
+                if (password.length < 6) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Password must be at least 6 characters long!',
+                        icon: 'error',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Passwords do not match!',
+                        icon: 'error',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+            }
+
+            // Show loading state
+            Swal.fire({
+                title: 'Updating Account',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        });
+    }
+});
+</script>
+
+<!-- Add these additional styles -->
+<style>
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
+}
+
+.input-group .form-control {
+    border-left: none;
+}
+
+.input-group .form-control:focus {
+    border-color: #ced4da;
+    box-shadow: none;
+}
+
+.input-group .btn-outline-secondary {
+    border-color: #ced4da;
+    color: #6c757d;
+}
+
+.input-group .btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+.modal-content {
+    border-radius: 0.5rem;
+}
+
+.modal-header {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+</style>
+
+<!-- Add this JavaScript after your existing scripts -->
+<script>
+// Function to preview uploaded image
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profilePreview').src = e.target.result;
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Initialize Bootstrap modal
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all modals
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        new bootstrap.Modal(modal);
+    });
+
+    // Handle edit profile button click
+    const editProfileBtn = document.querySelector('[data-bs-target="#editProfileModal"]');
+    if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', function() {
+            const editProfileModal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+            editProfileModal.show();
+        });
+    }
+
+    // Handle form submission
+    const editProfileForm = document.getElementById('editProfileForm');
+    if (editProfileForm) {
+        editProfileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            Swal.fire({
+                title: 'Updating Profile',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Submit form
+            this.submit();
+        });
+    }
+});
+</script>
+
+<!-- Add these styles -->
+<style>
+.preview-img {
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.preview-img:hover {
+    transform: scale(1.05);
+}
+
+.modal-header {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.modal-footer {
+    border-top: 2px solid #dee2e6;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+</style>
+
+<!-- Modal Structure -->
+<div class="modal fade" id="userProfileModal" tabindex="-1" role="dialog" aria-labelledby="userProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userProfileModalLabel">My QR Code</h5>
+               
+            </div>
+                    <div class="card-body">
+                    <?php
+require '../phpqrcode/qrlib.php';
+include '../config/config.php';
+
+function getUserById($user_id) {
+    global $conn;
+    $stmt = $conn->prepare("
+        SELECT id
+        FROM staff 
+        WHERE id = ?
+    ");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
+        return $data;
+    }
+    return null;
+}
+
+// Determine the user ID from GET or SESSION
+$user_id = isset($_GET['id']) ? intval($_GET['id']) : (isset($_SESSION['id']) ? intval($_SESSION['id']) : null);
+if (!$user_id) {
+    die("<div class='alert alert-warning'>No user ID provided.</div>");
+}
+
+// Fetch user data (only checking for existence of user_id)
+$user = getUserById($user_id);
+
+if ($user) {
+    $qr_code_file = '../qrcodes/user_' . $user['id'] . '.png';
+
+    // Generate QR code if it does not already exist
+    if (!file_exists($qr_code_file)) {
+        $directory = '../qrcodes/';
+        if (!is_dir($directory)) mkdir($directory, 0755, true);
+
+        // QR code content with only user ID
+        $text = "ID: " . $user['id'];
+        
+        // Generate and save the QR code
+        QRcode::png($text, $qr_code_file, QR_ECLEVEL_L, 10);
+    }
+
+    // Display QR code and download link
+    echo "<div class='text-center'>";
+    echo "<img src='../CSS/logo.png' alt='Dorm logo' style='width: 200px; margin-bottom: 10px;'>";
+    echo "<h3 style='font-weight: bold;'>User ID: " . htmlspecialchars($user['id']) . "</h3>";
+    echo "<div><img src='$qr_code_file' alt='QR Code for User ID " . $user['id'] . "' class='img-thumbnail'></div>";
+    echo "<div class='text-center mt-3'>";
+    echo "<a href='$qr_code_file' class='btn btn-outline-secondary' download='Dormio-QR_Code_UserID_" . $user['id'] . ".png'><i class='fas fa-download'></i> Download QR Code</a>";
+    echo "</div>";
+    echo "</div>";
+} else {
+    echo "<div class='alert alert-danger'>User not found.</div>";
+}
+?>
+
+
 
 
 
@@ -499,32 +1252,6 @@ function confirmLogout() {
     
     <!-- JavaScript -->
     <script>
-      
-      function togglePassword() {
-  const passwordField = document.getElementById("password");
-  const eyeIcon = document.getElementById("eyeIcon");
-  if (passwordField.type === "password") {
-    passwordField.type = "text";
-    eyeIcon.classList.replace("fa-eye", "fa-eye-slash");
-  } else {
-    passwordField.type = "password";
-    eyeIcon.classList.replace("fa-eye-slash", "fa-eye");
-  }
-}
-
-function toggleConfirmPassword() {
-  const confirmPasswordField = document.getElementById("confirmPassword");
-  const eyeIconConfirm = document.getElementById("eyeIconConfirm");
-  if (confirmPasswordField.type === "password") {
-    confirmPasswordField.type = "text";
-    eyeIconConfirm.classList.replace("fa-eye", "fa-eye-slash");
-  } else {
-    confirmPasswordField.type = "password";
-    eyeIconConfirm.classList.replace("fa-eye-slash", "fa-eye");
-  }
-}
-
-
   // Trigger the success modal after a successful operation
 document.addEventListener('DOMContentLoaded', function() {
   // Assuming you have an AJAX call or form submission that shows this modal on success
@@ -554,5 +1281,134 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     </script>
+
+    <!-- Add this JavaScript to automatically calculate age -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const birthdateInput = document.querySelector('input[name="birthdate"]');
+        const ageInput = document.querySelector('input[name="age"]');
+
+        if (birthdateInput && ageInput) {
+            birthdateInput.addEventListener('change', function() {
+                const birthdate = new Date(this.value);
+                const today = new Date();
+                let age = today.getFullYear() - birthdate.getFullYear();
+                const monthDiff = today.getMonth() - birthdate.getMonth();
+                
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+                    age--;
+                }
+
+                // Check if age is at least 16
+                if (age < 16) {
+                    Swal.fire({
+                        title: 'Age Restriction',
+                        text: 'You must be at least 16 years old to register.',
+                        icon: 'error',
+                        confirmButtonColor: '#3085d6'
+                    }).then((result) => {
+                        this.value = ''; // Clear the birthdate input
+                        ageInput.value = ''; // Clear the age input
+                    });
+                    return;
+                }
+
+                ageInput.value = age;
+            });
+
+            // Make age input readonly since it's calculated automatically
+            ageInput.readOnly = true;
+        }
+    });
+    </script>
+
+    <!-- Add this JavaScript -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all accordion buttons
+        const accordionButtons = document.querySelectorAll('.accordion-button');
+        
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Get the target collapse element
+                const target = document.querySelector(this.getAttribute('data-bs-target'));
+                
+                // If the target is already shown (expanded)
+                if (!this.classList.contains('collapsed')) {
+                    // Hide it
+                    this.classList.add('collapsed');
+                    this.setAttribute('aria-expanded', 'false');
+                    target.classList.remove('show');
+                } else {
+                    // Show it
+                    this.classList.remove('collapsed');
+                    this.setAttribute('aria-expanded', 'true');
+                    target.classList.add('show');
+                }
+                
+                // Close other open accordions
+                accordionButtons.forEach(otherButton => {
+                    if (otherButton !== this) {
+                        const otherTarget = document.querySelector(otherButton.getAttribute('data-bs-target'));
+                        otherButton.classList.add('collapsed');
+                        otherButton.setAttribute('aria-expanded', 'false');
+                        if (otherTarget) {
+                            otherTarget.classList.remove('show');
+                        }
+                    }
+                });
+            });
+        });
+    });
+    </script>
+
+    <!-- Update your existing CSS -->
+    <style>
+        .accordion-button {
+            background: linear-gradient(to right, #007bff, #0056b3) !important;
+            color: white !important;
+            font-weight: 500;
+            padding: 1rem 1.25rem;
+            font-size: 1.1rem;
+            width: 100% !important;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background: linear-gradient(to right, #007bff, #0056b3) !important;
+            color: white !important;
+            box-shadow: none;
+        }
+
+        .accordion-button::after {
+            filter: brightness(0) invert(1);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .accordion-button.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .accordion-button:not(.collapsed)::after {
+            transform: rotate(0deg);
+        }
+
+        .accordion-collapse {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .accordion-collapse.collapse:not(.show) {
+            display: none;
+        }
+
+        .accordion-collapse.collapsing {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.35s ease;
+        }
+
+        .accordion-collapse.collapse.show {
+            display: block;
+        }
+    </style>
 </body>
 </html>

@@ -14,7 +14,7 @@ if (!$conn) {
 }
 
 // Process form submission to add new announcement
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add'])) {
     if (isset($_POST['announcement-title']) && isset($_POST['announcement-content'])) {
         $title = mysqli_real_escape_string($conn, $_POST['announcement-title']);
         $content = mysqli_real_escape_string($conn, $_POST['announcement-content']);
@@ -34,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
 }
 
 // Update announcement
-if (isset($_POST['update'])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update'])) {
     $announcement_id = mysqli_real_escape_string($conn, $_POST['announcement-id']);
     $updated_title = mysqli_real_escape_string($conn, $_POST['announcement-title']);
     $updated_content = mysqli_real_escape_string($conn, $_POST['announcement-content']);
@@ -672,6 +672,7 @@ function confirmLogout() {
             $('#announcement-title').val('');
             $('#announcement-content').val('');
             $('#announcementForm').attr('action', '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>');
+            $('#announcementForm').data('action', 'add');
             modal.show();
         });
 
@@ -686,6 +687,7 @@ function confirmLogout() {
             $('#announcement-title').val(title);
             $('#announcement-content').val(content);
             $('#announcementForm').attr('action', '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>');
+            $('#announcementForm').data('action', 'update');
             modal.show();
         });
 
@@ -693,10 +695,8 @@ function confirmLogout() {
         $('#announcementForm').submit(function(e) {
             e.preventDefault();
             const formData = new FormData(this);
-            formData.append('submit', '1'); // For new announcements
-            if ($('#announcement-id').val()) {
-                formData.append('update', '1'); // For updates
-            }
+            const action = $(this).data('action');
+            formData.append(action, '1'); // Append either 'add' or 'update'
 
             $.ajax({
                 url: $(this).attr('action'),

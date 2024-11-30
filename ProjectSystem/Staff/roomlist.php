@@ -67,6 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
         die("Error: Missing required fields.");
     }
 
+    // Validate capacity
+    if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
+        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        exit;
+    }
+
     // Check if the room number already exists
     $sql_check = "SELECT COUNT(*) FROM Rooms WHERE room_number = ?";
     $stmt_check = $conn->prepare($sql_check);
@@ -107,6 +113,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $room_id = $_POST['room_id'];
+
+    // Validate capacity
+    if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
+        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        exit;
+    }
+
+    // Check if new capacity is less than current occupants
+    $check_occupants_sql = "SELECT COUNT(*) as current_occupants FROM roomassignments WHERE room_id = ?";
+    $check_stmt = $conn->prepare($check_occupants_sql);
+    $check_stmt->bind_param("i", $room_id);
+    $check_stmt->execute();
+    $result = $check_stmt->get_result();
+    $current_occupants = $result->fetch_assoc()['current_occupants'];
+    $check_stmt->close();
+
+    if ($current_occupants > $_POST['capacity']) {
+        echo "<script>alert('Error: Cannot reduce capacity below current number of occupants (" . $current_occupants . ").'); window.location.href = 'roomlist.php';</script>";
+        exit;
+    }
 
     // Check if the room number already exists for a different room
     $sql_check = "SELECT COUNT(*) FROM rooms WHERE room_number = ? AND room_id != ?";
@@ -308,6 +334,119 @@ $result = $conn->query($query);
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
+    
+<style>
+    .container {
+        background-color: transparent;
+    }
+
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pagination styling */
+    #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color:  #2B228A;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+        /* Style for DataTables export buttons */
+        .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
 
 </head>
 <body>
@@ -354,29 +493,46 @@ function confirmLogout() {
     <div class="container mt-1">
    <!-- Search and Filter Section -->
 <div class="row mb-1">
+    <!-- Search Input -->
     <div class="col-12 col-md-6">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for rooms, capacity, etc..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    
+
+    <!-- Filter Dropdown -->
     <div class="col-6 col-md-2">
-        <select id="filterSelect" class="form-select">
-            <option value="all" selected>Filter by</option>
-            <option value="room_number">Room</option>
-            <option value="capacity">Capacity</option>
-            <option value="status">Monthly Rent</option>
+        <select id="filterSelect" name="filter" class="form-select" onchange="this.form.submit()">
+            <option value="all" <?php if ($filter === 'all') echo 'selected'; ?>>Filter by</option>
+            <option value="room_number" <?php if ($filter === 'room_number') echo 'selected'; ?>>Room</option>
+            <option value="capacity" <?php if ($filter === 'capacity') echo 'selected'; ?>>Capacity</option>
+            <option value="status" <?php if ($filter === 'status') echo 'selected'; ?>>Monthly Rent</option>
         </select>
     </div>
+
+    <!-- Sort Dropdown -->
     <div class="col-6 col-md-2">
         <select name="sort" class="form-select" id="sort" onchange="applySort()">
-            <option value="" selected>Select Sort</option>
+            <option value="" selected>Sort by</option>
             <option value="capacity_asc">Capacity (Low to High)</option>
             <option value="capacity_desc">Capacity (High to Low)</option>
             <option value="rent_asc">Monthly Rent (Low to High)</option>
             <option value="rent_desc">Monthly Rent (High to Low)</option>
         </select>
     </div>
+
+    <!-- Add Room Button -->
     <div class="col-6 col-md-2">
-        <button type="button" class="custom-btns" data-bs-toggle="modal" data-bs-target="#roomModal">Add Room</button>
+        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#roomModal">
+            Add Room
+        </button>
     </div>
 </div>
 <table  class="table table-bordered" id="roomtable">
@@ -393,76 +549,79 @@ function confirmLogout() {
         </tr>
     </thead>
     <tbody id="room-table-body">
-        <?php
-        // Query to get rooms, capacities, and current occupants
-        $query = "
-            SELECT 
-                r.room_id,
-                r.room_number,
-                r.room_desc,
-                r.capacity AS totalCapacity,
-                r.room_monthlyrent,
-                r.status,
-                r.room_pic,
-                COUNT(ra.assignment_id) AS currentOccupants
-            FROM 
-                rooms r
-            LEFT JOIN 
-                roomassignments ra ON r.room_id = ra.room_id
-            GROUP BY 
-                r.room_id
-        ";
+    <?php
+// Query to get rooms, capacities, and current occupants
+$query = "
+    SELECT 
+        r.room_id,
+        r.room_number,
+        r.room_desc,
+        r.capacity AS totalCapacity,
+        r.room_monthlyrent,
+        r.status,
+        r.room_pic,
+        COUNT(ra.assignment_id) AS currentOccupants
+    FROM 
+        rooms r
+    LEFT JOIN 
+        roomassignments ra ON r.room_id = ra.room_id
+    GROUP BY 
+        r.room_id
+";
 
-        $result = $conn->query($query);
+$result = $conn->query($query);
 
-        if ($result->num_rows > 0) {
-            $counter = 1;
-            while ($row = $result->fetch_assoc()) {
-                // Check if the room is fully occupied and update status
-                $currentOccupants = $row["currentOccupants"];
-                $totalCapacity = $row["totalCapacity"];
-                $status = ($currentOccupants >= $totalCapacity) ? 'Occupied' : 'Available';
+if ($result->num_rows > 0) {
+    $counter = 1;
+    while ($row = $result->fetch_assoc()) {
+        // Check if room status is not maintenance before updating
+        if ($row["status"] !== 'maintenance') {
+            $currentOccupants = $row["currentOccupants"];
+            $totalCapacity = $row["totalCapacity"];
+            $status = ($currentOccupants >= $totalCapacity) ? 'occupied' : 'available';
 
-                // Only update status if it's different from current status
-                if ($status != $row["status"]) {
-                    $updateStatusQuery = "UPDATE rooms SET status = '$status' WHERE room_id = " . $row["room_id"];
-                    $conn->query($updateStatusQuery); // Execute update query
-                }
+            // Only update status if it's different from the current status
+            if ($status !== $row["status"]) {
+                $updateStatusQuery = "UPDATE rooms SET status = '$status' WHERE room_id = " . $row["room_id"];
+                $conn->query($updateStatusQuery);
+            }
+        }
 
-                echo "<tr>";
-                echo "<td>" . $counter++ . "</td>";
-                echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
-                echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
-                echo "<td>" . htmlspecialchars($row["currentOccupants"]) . "/" . htmlspecialchars($row["totalCapacity"]) . " people</td>";
-                echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
-                echo "<td>" . $status . "</td>"; // Display updated status in the table
-                echo "<td>";
+        echo "<tr>";
+        echo "<td>" . $counter++ . "</td>";
+        echo "<td>" . htmlspecialchars($row["room_number"]) . "</td>";
+        echo "<td>" . htmlspecialchars($row["room_desc"]) . "</td>";
+        echo "<td>" . htmlspecialchars($row["currentOccupants"]) . "/" . htmlspecialchars($row["totalCapacity"]) . " people</td>";
+        echo "<td>" . number_format($row["room_monthlyrent"], 2) . "</td>";
+        echo "<td>" . htmlspecialchars($row["status"]) . "</td>"; // Display status
+        echo "<td>";
 
-                if (!empty($row["room_pic"])) {
-                    $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
-                    if (file_exists($imagePath)) {
-                        echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
-                    } else {
-                        echo "Image not found";
-                    }
-                } else {
-                    echo "No Image";
-                }
-
-                echo "</td>";
-                echo "<td>";
-                echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
-                echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                        <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                        <button type='submit' class='custom-btn'>Delete</button>
-                      </form>";
-                echo "</td>";
-                echo "</tr>";
+        if (!empty($row["room_pic"])) {
+            $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
+            if (file_exists($imagePath)) {
+                echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
+            } else {
+                echo "Image not found";
             }
         } else {
-            echo "<tr><td colspan='8'>No rooms found</td></tr>";
+            echo "No Image";
         }
-        ?>
+
+        echo "</td>";
+        echo "<td>";
+        echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='btn btn-primary btn-sm edit-btn'>Edit</a>";
+        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
+                <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
+                <button type='submit' class='btn btn-danger btn-m'>Delete</button>
+              </form>";
+        echo "</td>";
+        echo "</tr>";
+    }
+} else {
+    echo "<tr><td colspan='8'>No rooms found</td></tr>";
+}
+?>
+
     </tbody>
 </table>
 
@@ -831,7 +990,7 @@ function applySort() {
         rows.forEach((row, index) => {
             row.style.display = index >= start && index < end ? '' : 'none';
         });
-        document.getElementById('pageIndicator').innerText = `Page ${page}`;
+        document.getElementById('pageIndicator').textContent = `Page ${page} of ${totalPages}`;
         document.getElementById('prevPage').disabled = page === 1;
         document.getElementById('nextPage').disabled = page === totalPages;
     }

@@ -115,7 +115,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Manage and view the list of rooms</p>
-                                <a href="roomlist.php" class="btn btn-primary btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="roomlist.php" class="btn btn-primary btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -136,7 +136,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Assign rooms to users</p>
-                                <a href="room-assign.php" class="btn btn-success btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="room-assign.php" class="btn btn-success btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -157,7 +157,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Room reassignment requests</p>
-                                <a href="application-room.php" class="btn btn-warning btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="application-room.php" class="btn btn-warning btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -178,7 +178,7 @@ function confirmLogout() {
                             </div>
                             <div class="card-details mt-3">
                                 <p class="text-muted mb-2">Manage move-out requests</p>
-                                <a href="manage_move_out.php" class="btn btn-danger btn-sm">View Manage <i class="fas fa-arrow-right ml-1"></i></a>
+                                <a href="manage_move_out.php" class="btn btn-danger btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
                     </div>

@@ -14,6 +14,101 @@ if ($conn->connect_error) {
 }
 
 
+require 'PHPMailer-master/src/Exception.php';
+require 'PHPMailer-master/src/PHPMailer.php';
+require 'PHPMailer-master/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php'; // Adjust path as needed
+
+function sendReassignmentEmail($userEmail, $firstName, $lastName, $newRoomNumber) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'dormioph@gmail.com';
+        $mail->Password = 'ymrd smvk acxa whdy';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+
+        // Recipients
+        $mail->setFrom('dormioph@gmail.com', 'Dormio Ph');
+        $mail->addAddress($userEmail, "$firstName $lastName");
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Room Reassignment Approved';
+        $mail->Body = "
+            <h2>Room Reassignment Approved</h2>
+            <p>Dear $firstName $lastName,</p>
+            <p>Your room reassignment request has been approved. You have been assigned to Room $newRoomNumber.</p>
+            <p>Please ensure to complete your move within the designated timeframe.</p>
+            <p>Best regards,<br>Dormio Ph Management</p>
+        ";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
+function sendRejectionEmail($userEmail, $firstName, $lastName) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'dormioph@gmail.com';
+        $mail->Password = 'ymrd smvk acxa whdy';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+
+        // Recipients
+        $mail->setFrom('dormioph@gmail.com', 'Dormio Ph');
+        $mail->addAddress($userEmail, "$firstName $lastName");
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Room Reassignment Request Rejected';
+        $mail->Body = "
+            <h2>Room Reassignment Update</h2>
+            <p>Dear $firstName $lastName,</p>
+            <p>We regret to inform you that your room reassignment request has been rejected.</p>
+            <p>If you have any questions, please contact the dormitory management.</p>
+            <p>Best regards,<br>Dormio Ph Management</p>
+        ";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
 // Assuming $conn is the MySQLi connection
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -29,64 +124,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($stmt->execute()) {
             echo "<script>alert('Reassignment status updated successfully.');</script>";
 
-            // Log the activity for updating reassignment status
-            $logQuery = "
-                INSERT INTO activity_logs (user_id, activity_type, activity_details)
-                VALUES (?, 'Reassignment Status Update', ?)
-            ";
-            $logStmt = $conn->prepare($logQuery);
-            $activityDetails = "Reassignment ID: $reassignmentId, New Status: $newStatus";
-            $logStmt->bind_param("is", $_SESSION['id'], $activityDetails);
-            $logStmt->execute();
-            $logStmt->close();
-
-            // Proceed only if the status is approved
-            if ($newStatus === 'approved') {
-                // Fetch reassignment details to get user_id, old_room_id, and new_room_id
-                $fetchDetailsQuery = "
-                    SELECT user_id, old_room_id, new_room_id
-                    FROM room_reassignments
-                    WHERE reassignment_id = ?
+            // Handle both approved and rejected statuses
+            if ($newStatus === 'approved' || $newStatus === 'rejected') {
+                // Fetch user details for email
+                $userQuery = "
+                    SELECT u.email, u.fname, u.lname, r.room_number, rr.user_id, rr.new_room_id 
+                    FROM room_reassignments rr
+                    JOIN users u ON rr.user_id = u.id
+                    LEFT JOIN rooms r ON rr.new_room_id = r.room_id
+                    WHERE rr.reassignment_id = ?
                 ";
-                $fetchDetailsStmt = $conn->prepare($fetchDetailsQuery);
-                $fetchDetailsStmt->bind_param("i", $reassignmentId);
-                $fetchDetailsStmt->execute();
-                $reassignmentDetails = $fetchDetailsStmt->get_result()->fetch_assoc();
-                $fetchDetailsStmt->close();
+                $userStmt = $conn->prepare($userQuery);
+                $userStmt->bind_param("i", $reassignmentId);
+                $userStmt->execute();
+                $userResult = $userStmt->get_result()->fetch_assoc();
+                $userStmt->close();
 
-                if ($reassignmentDetails) {
-                    $userId = $reassignmentDetails['user_id'];
-                    $newRoomId = $reassignmentDetails['new_room_id'];
-
-                    // Update the roomassignments table for the new room
-                    $updateAssignmentQuery = "
-                        UPDATE roomassignments
-                        SET room_id = ?, assignment_date = CURRENT_DATE
-                        WHERE user_id = ?
-                    ";
-                    $updateAssignmentStmt = $conn->prepare($updateAssignmentQuery);
-                    $updateAssignmentStmt->bind_param("ii", $newRoomId, $userId);
-
-                    if ($updateAssignmentStmt->execute()) {
-                        echo "<script>alert('User\'s room assignment updated to new room successfully.');</script>";
-
-                        // Log the activity for room assignment update
-                        $logQuery = "
-                            INSERT INTO activity_logs (user_id, activity_type, activity_details)
-                            VALUES (?, 'Room Assignment Update', ?)
+                if ($userResult) {
+                    if ($newStatus === 'approved') {
+                        // Update roomassignments table
+                        $updateAssignmentQuery = "
+                            UPDATE roomassignments 
+                            SET room_id = ?, assignment_date = CURRENT_DATE
+                            WHERE user_id = ?
                         ";
-                        $logStmt = $conn->prepare($logQuery);
-                        $activityDetails = "User ID: $userId, New Room ID: $newRoomId";
-                        $logStmt->bind_param("is", $_SESSION['id'], $activityDetails);
-                        $logStmt->execute();
-                        $logStmt->close();
-                    } else {
-                        echo "Error updating room assignment: " . $updateAssignmentStmt->error;
+                        $updateAssignmentStmt = $conn->prepare($updateAssignmentQuery);
+                        $updateAssignmentStmt->bind_param("ii", $userResult['new_room_id'], $userResult['user_id']);
+                        
+                        if ($updateAssignmentStmt->execute()) {
+                            // Send approval email
+                            $emailSent = sendReassignmentEmail(
+                                $userResult['email'],
+                                $userResult['fname'],
+                                $userResult['lname'],
+                                $userResult['room_number']
+                            );
+                            
+                            if (!$emailSent) {
+                                echo "<script>alert('Room updated but email notification failed.');</script>";
+                            }
+                        } else {
+                            echo "<script>alert('Error updating room assignment: " . $updateAssignmentStmt->error . "');</script>";
+                        }
+                        $updateAssignmentStmt->close();
+                    } else { // rejected
+                        $emailSent = sendRejectionEmail(
+                            $userResult['email'],
+                            $userResult['fname'],
+                            $userResult['lname']
+                        );
+                        
+                        if (!$emailSent) {
+                            echo "<script>alert('Status updated but rejection email failed.');</script>";
+                        }
                     }
-
-                    $updateAssignmentStmt->close();
-                } else {
-                    echo "<script>alert('Reassignment details not found.');</script>";
                 }
             }
         } else {
@@ -99,27 +190,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+
+
 $sql = "
     SELECT 
         rr.reassignment_id, 
         CONCAT(u.fname, ' ', u.lname) AS resident,
-        ro.room_number AS old_room_number,
+        COALESCE(ro.room_number, 'N/A') AS old_room_number, -- Use COALESCE to handle NULL old rooms
         rn.room_number AS new_room_number,
         rr.reassignment_date,
-        IFNULL(rr.comment, 'No comment') AS comments,
-        rr.status,
-        ra.application_id,
-        ra.application_date,
-        ra.status AS application_status,
-        IFNULL(ra.comments, 'No comments') AS application_comments
+        IFNULL(rr.comment, 'No comment') AS comments, -- Correct field name assumed
+        rr.status
     FROM room_reassignments rr
     JOIN users u ON rr.user_id = u.id
     LEFT JOIN rooms ro ON rr.old_room_id = ro.room_id
     JOIN rooms rn ON rr.new_room_id = rn.room_id
-    LEFT JOIN roomapplications ra ON rr.user_id = ra.user_id AND ra.room_id = rr.old_room_id
     ORDER BY rr.reassignment_id DESC
 ";
-
 
 $result = $conn->query($sql);
 
@@ -174,27 +261,134 @@ $conn->close();
 
 <!-- Bootstrap JS (optional, if you're using Bootstrap components) -->
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<style>
+    .container {
+        background-color: transparent;
+    }
 
+ /* Enhanced table styles */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
 
+.table th, .table td {
+    text-align: center !important; /* Force center alignment */
+    vertical-align: middle !important; /* Vertically center all content */
+}
+
+.table th {
+    background-color: #2B228A;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    padding: 15px;
+    border: none;
+}
+
+/* Add specific alignment for action buttons column if needed */
+.table td:last-child {
+    text-align: center !important;
+}
+
+/* Rest of your existing CSS remains the same */
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    
+
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+     /* Pagination styling */
+     #pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    #pagination button {
+        background-color: #2B228A;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #pagination button:disabled {
+        background-color:  #2B228A;
+        cursor: not-allowed;
+    }
+
+    #pagination button:hover:not(:disabled) {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+    }
+
+    #pageIndicator {
+        margin: 0 15px;
+        font-weight: 600;
+    }
+          /* Style for DataTables export buttons */
+          .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dt-button {
+        background-color: #2B228A !important;
+        color: white !important;
+        border: none !important;
+        padding: 5px 15px !important;
+        border-radius: 4px !important;
+        margin-right: 5px !important;
+    }
+    
+    .dt-button:hover {
+        background-color: #1a1555 !important;
+    }
+</style>
 
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
+<div class="sidebar" id="sidebar">
         <div class="menu" id="hamburgerMenu">
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="admin-room.php" class="nav-link active"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
         <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-
-       
-
         </div>
         <div class="logout">
         <a href="../config/user-logout.php" onclick="return confirmLogout();">
@@ -207,6 +401,7 @@ function confirmLogout() {
 }
 </script>
         </div>
+    </div>
     </div>
 
     <!-- Top bar -->
@@ -226,35 +421,46 @@ function confirmLogout() {
 </div>
 <div class="container mt-1">
 <!-- Search and Filter Section -->
-<div class="row mb-4">
-    <div class="col-12 col-md-8">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for room details...">
+<div class="row mb-1">
+    <!-- Search Input -->
+    <div class="col-12 col-md-6">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control custom-input-small" 
+                    placeholder="Search for room details..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
-    <div class="col-6 col-md-2">
+
+    <!-- Filter Dropdown -->
+    <div class="col-6 col-md-2 mt-1">
         <select id="filterSelect" class="form-select">
             <option value="all" selected>Filter by</option>
             <option value="resident">Resident</option>
-          <!--   <option value="old_room_number">Old Room</option>-->
             <option value="new_room">Reassign Room</option>
             <option value="monthly_rent">Monthly Rent</option>
             <option value="status">Status</option>
         </select>
     </div>
-    <div class="col-5 col-md-2">
-    <!-- Sort Dropdown -->
-    <select id="sortSelect" class="form-select" style="width: 100%;">
-    <option value="all" selected>Sort by</option>
-        <option value="resident_asc">Resident (A to Z)</option>
-        <option value="resident_desc">Resident (Z to A)</option>
-        <!--   <option value="old_room_asc">Old Room (Low to High)</option>
-        <option value="old_room_desc">Old Room (High to Low)</option>-->
-        <option value="new_room_asc">Request Reassigment (Low to High)</option>
-        <option value="new_room_desc">Request Reassigment (High to Low)</option>
-        <option value="status_asc">Status (A to Z)</option>
-        <option value="status_desc">Status (Z to A)</option>
-    </select>
-</div>
 
+    <!-- Sort Dropdown -->
+    <div class="col-6 col-md-2 mt-1">
+        <select id="sortSelect" class="form-select">
+            <option value="" selected>Sort by</option>
+            <option value="resident_asc">Resident (A to Z)</option>
+            <option value="resident_desc">Resident (Z to A)</option>
+            <option value="new_room_asc">Request Reassignment (Low to High)</option>
+            <option value="new_room_desc">Request Reassignment (High to Low)</option>
+            <option value="status_asc">Status (A to Z)</option>
+            <option value="status_desc">Status (Z to A)</option>
+        </select>
+    </div>
+
+  
 </div>
 
    <!-- Table Section -->
@@ -263,7 +469,7 @@ function confirmLogout() {
         <thead>
             <tr>
                 <th>No.</th>
-                 <!--  <th>Old Room</th>-->
+               <!--  <th>Old Room</th>-->
                 <th>Resident</th>
                 <th>Request Reassigment</th>
                 <th>Comment</th>
@@ -278,7 +484,7 @@ function confirmLogout() {
                     ?>
                     <tr>
                         <td><?php echo $no++; ?></td>
-                       <!--  <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>-->
+                     <!--     <td class="old_room_number"><?php echo htmlspecialchars($row['old_room_number'] ?? 'N/A'); ?></td>-->
                         <td class="resident"><?php echo htmlspecialchars($row['resident']); ?></td>
                         <td class="new_room"><?php echo htmlspecialchars($row['new_room_number'] ?? 'N/A'); ?></td>
                         <td><?php echo !empty($row['comments']) ? htmlspecialchars($row['comments']) : 'No comment'; ?></td>
@@ -326,6 +532,21 @@ function confirmLogout() {
 </div>
 
 <style>
+    
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
     /* Style for the entire table */
     .table {
         background-color: #f8f9fa; /* Light background for the table */
@@ -479,6 +700,8 @@ function showPage(page) {
     document.getElementById('pageIndicator').innerText = `Page ${page}`;
     document.getElementById('prevPage').disabled = page === 1;
     document.getElementById('nextPage').disabled = page === totalPages;
+    // Update page indicator
+    document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
 }
 
 function nextPage() {

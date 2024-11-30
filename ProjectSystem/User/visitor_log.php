@@ -217,6 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("sssii", $name, $contactInfo, $purpose, $visitorId, $userId);
 
         if ($stmt->execute()) {
+            logActivity($conn, $userId, "Edit Visitor", "Visitor ID '$visitorId' updated successfully.");
             $_SESSION['swal_success'] = [
                 'title' => 'Success!',
                 'text' => 'Visitor updated successfully',
@@ -235,99 +236,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
-// Check if form data is submitted via POST
-if (isset($_POST['edit_id']) && isset($_POST['edit_msg'])) {
-    // Retrieve visitor ID and the data from the form
-    $visitor_id = $_POST['edit_id'];
-    $name = mysqli_real_escape_string($conn, $_POST['edit_msg']['name']);
-    $contact_info = mysqli_real_escape_string($conn, $_POST['edit_msg']['contact_info']);
-    $purpose = mysqli_real_escape_string($conn, $_POST['edit_msg']['purpose']);
-
-    // Check if any required fields are empty
-    if (empty($name) || empty($contact_info) || empty($purpose)) {
-        // If any field is empty, show an alert and stop execution
-        echo "<script>
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'All fields are required!',
-                    confirmButtonColor: '#2B228A'
-                }).then((result) => {
-                    window.location.href = 'visitors_list.php';
-                });
-              </script>";
-        exit();
-    }
-
-    // Prepare the SQL query to update the visitor details
-    $sql = "UPDATE visitors 
-            SET name = '$name', contact_info = '$contact_info', purpose = '$purpose'
-            WHERE id = '$visitor_id'";
-
-    // Execute the query and check if the update was successful
-    if (mysqli_query($conn, $sql)) {
-        // Success alert and redirect
-        echo "<script>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Visitor updated successfully',
-                    confirmButtonColor: '#2B228A'
-                }).then((result) => {
-                    window.location.href = 'visitor_log.php';
-                });
-              </script>";
-    } else {
-        // Error alert and redirect
-        echo "<script>
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Failed to update visitor',
-                    confirmButtonColor: '#2B228A'
-                }).then((result) => {
-                    window.location.href = 'visitor_log.php';
-                });
-              </script>";
-    }
-} 
-
-
-
-// Assuming you're using $_GET['filter'] to fetch the filter value
+// Fetch Visitors based on filters and sorting
 $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
-$sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
-        FROM visitors v 
-        LEFT JOIN users u ON v.visiting_user_id = u.id";
-
-// Modify query based on selected filter
-if ($filter == 'today') {
-    $sql .= " WHERE DATE(v.check_in_time) = CURDATE()"; // Filter for today's visits
-} elseif ($filter == 'this_week') {
-    $sql .= " WHERE WEEK(v.check_in_time) = WEEK(CURDATE())"; // Filter for this week's visits
-} elseif ($filter == 'this_month') {
-    $sql .= " WHERE MONTH(v.check_in_time) = MONTH(CURDATE())"; // Filter for this month's visits
-}
-
-$result = $conn->query($sql);
-// Assuming you're using $_GET['sort'] to get the sort parameter
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'name'; // Default sort by name
 
 $sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
         FROM visitors v 
         LEFT JOIN users u ON v.visiting_user_id = u.id 
-        ORDER BY v.$sort"; // Sorting by the selected field (name, check_in_time, or check_out_time)
+        WHERE v.visiting_user_id = ?";
 
-$result = $conn->query($sql);
+// Modify query based on selected filter
+if ($filter == 'today') {
+    $sql .= " AND DATE(v.check_in_time) = CURDATE()"; // Filter for today's visits
+} elseif ($filter == 'this_week') {
+    $sql .= " AND WEEK(v.check_in_time) = WEEK(CURDATE())"; // Filter for this week's visits
+} elseif ($filter == 'this_month') {
+    $sql .= " AND MONTH(v.check_in_time) = MONTH(CURDATE())"; // Filter for this month's visits
+}
 
-
-$sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
-        FROM visitors v 
-        LEFT JOIN users u ON v.visiting_user_id = u.id 
-        WHERE v.visiting_user_id = ? 
-        ORDER BY v.check_in_time DESC";  // Assuming you want to order by check-in time, adjust the field as needed
-
+$sql .= " ORDER BY v." . $sort;
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
@@ -337,13 +264,12 @@ $result = $stmt->get_result();
 $conn->close();
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Visitor Log</title>
     <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -1042,3 +968,5 @@ function confirmLogout() {
 </script>
     </body>
     </html>
+
+    

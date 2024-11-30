@@ -577,7 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
             if ($updateStmt->execute()) {
                 $conn->commit();
                 echo "<script>
-                    alert('Status successfully updated to ' . ucfirst($newStatus));
+                    alert('Status successfully updated to " . ucfirst($newStatus) . "');
                     window.location.href = 'manageuser.php';
                 </script>";
                 exit;
@@ -859,6 +859,10 @@ if (isset($_GET['error'])) {
 function confirmLogout() {
     return confirm("Are you sure you want to log out?");
 }
+
+function confirmStatusChange(currentStatus) {
+    return confirm("Are you sure you want to change this user's status from " + currentStatus + "?");
+}
 </script>
         </div>
     </div>
@@ -985,9 +989,8 @@ function confirmLogout() {
                         <input type='hidden' name='user_id' value='" . $row['id'] . "'>
                         <input type='hidden' name='role' value='" . $row['role'] . "'>
                         <button type='submit' name='toggle_status' class='btn btn-warning btn-m edit-btn " . strtolower($row['status']) . "' 
-                            onclick='return confirm(\"Are you sure you want to change this user's status from " . 
-                            addslashes(ucfirst($row['status'])) . "?\");'>" . 
-                            ucfirst($row['status']) . "
+                            onclick='return confirmStatusChange(\"" . htmlspecialchars(ucfirst($row['status']), ENT_QUOTES, 'UTF-8') . "\");'>" . 
+                            ($row['status'] === 'active' ? 'Deactivate' : 'Reactivate') . "
                         </button>
                     </form>
                 </td>

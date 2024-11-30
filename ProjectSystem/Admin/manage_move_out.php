@@ -265,6 +265,8 @@ $result = $stmt->get_result();
     <title>Manage Move-out Requests</title>
     <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
         .requests-container {
     display: grid;
@@ -597,6 +599,102 @@ $result = $stmt->get_result();
         flex: 1 1 auto;
     }
 }
+
+/* Add these styles to your existing CSS */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: -0.5rem;
+}
+
+.col-12 {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding: 0.5rem;
+}
+
+.col-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    padding: 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+    .col-md-2 {
+        flex: 0 0 16.666667%;
+        max-width: 16.666667%;
+    }
+}
+
+.input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+}
+
+.input-group .form-control {
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+    border-radius: 0.25rem 0 0 0.25rem;
+}
+
+.input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.form-select {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    appearance: none;
+}
+
+.btn {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.w-100 {
+    width: 100%!important;
+}
+
+.mb-1 {
+    margin-bottom: 1rem!important;
+}
     </style>
 </head>
 <body>
@@ -635,41 +733,48 @@ $result = $stmt->get_result();
                 </a>
             </div>
             
-            <div class="filters-container">
-                <form method="GET" class="filters-form">
-                    <div class="search-box">
-                        <input type="text" name="search" placeholder="Search by name or room number" 
-                               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                    </div>
-                    
-                    <div class="filter-box">
-                        <select name="status">
-                            <option value="">All Statuses</option>
-                            <option value="pending" <?php echo isset($_GET['status']) && $_GET['status'] === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                            <option value="approved" <?php echo isset($_GET['status']) && $_GET['status'] === 'approved' ? 'selected' : ''; ?>>Approved</option>
-                            <option value="rejected" <?php echo isset($_GET['status']) && $_GET['status'] === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
-                        </select>
-                    </div>
+            <div class="row mb-1">
+                <!-- Search Input -->
+                <div class="col-12 col-md-6 mt-2">
+                    <form method="GET" action="" class="search-form">
+                        <div class="input-group">
+                            <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                                placeholder="Search by name or room number..." 
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </div>
+                    </form>
+                </div>
 
-                    <div class="sort-box">
-                        <select name="sort">
-                            <option value="request_date" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'request_date' ? 'selected' : ''; ?>>Request Date</option>
-                            <option value="target_date" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'target_date' ? 'selected' : ''; ?>>Target Date</option>
-                            <option value="room_number" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'room_number' ? 'selected' : ''; ?>>Room Number</option>
-                            <option value="status" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'status' ? 'selected' : ''; ?>>Status</option>
-                        </select>
-                        
-                        <select name="order">
-                            <option value="DESC" <?php echo isset($_GET['order']) && $_GET['order'] === 'DESC' ? 'selected' : ''; ?>>Descending</option>
-                            <option value="ASC" <?php echo isset($_GET['order']) && $_GET['order'] === 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                        </select>
-                    </div>
+                <!-- Status Filter -->
+                <div class="col-6 col-md-2 mt-3">
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="pending" <?php echo isset($_GET['status']) && $_GET['status'] === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                        <option value="approved" <?php echo isset($_GET['status']) && $_GET['status'] === 'approved' ? 'selected' : ''; ?>>Approved</option>
+                        <option value="rejected" <?php echo isset($_GET['status']) && $_GET['status'] === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                    </select>
+                </div>
 
-                    <button type="submit" class="filter-btn">Apply Filters</button>
-                    <a href="manage_move_out.php" class="reset-btn">
-                        <i class="fas fa-undo"></i>
+                <!-- Sort Options -->
+                <div class="col-6 col-md-2 mt-3">
+                    <select name="sort" class="form-select" onchange="applySorting(this)">
+                        <option value="">Sort by</option>
+                        <option value="request_date" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'request_date' ? 'selected' : ''; ?>>Request Date</option>
+                        <option value="target_date" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'target_date' ? 'selected' : ''; ?>>Target Date</option>
+                        <option value="room_number" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'room_number' ? 'selected' : ''; ?>>Room Number</option>
+                        <option value="status" <?php echo isset($_GET['sort']) && $_GET['sort'] === 'status' ? 'selected' : ''; ?>>Status</option>
+                    </select>
+                </div>
+
+                <!-- Reset Button -->
+                <div class="col-6 col-md-2 mt-3">
+                    <a href="manage_move_out.php" class="btn btn-secondary w-100">
+                        <i class="fas fa-undo"></i> Reset
                     </a>
-                </form>
+                </div>
             </div>
             
             <div class="requests-container">
@@ -802,6 +907,19 @@ $result = $stmt->get_result();
         // Add logout confirmation
         function confirmLogout() {
             return confirm("Are you sure you want to log out?");
+        }
+
+        function applySorting(selectElement) {
+            const currentUrl = new URL(window.location.href);
+            const params = new URLSearchParams(currentUrl.search);
+            
+            if (selectElement.value) {
+                params.set('sort', selectElement.value);
+            } else {
+                params.delete('sort');
+            }
+            
+            window.location.href = `${currentUrl.pathname}?${params.toString()}`;
         }
     </script>
 </body>

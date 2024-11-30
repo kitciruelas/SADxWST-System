@@ -225,7 +225,7 @@ $conn->close();
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -466,6 +466,9 @@ function confirmLogout() {
         $('#pageIndicator').text(`Page ${page}`);
         $('#prevPage').prop('disabled', page === 1);
         $('#nextPage').prop('disabled', page === totalPages);
+
+        // Update page indicator
+        document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
     }
 
     function nextPage() {
@@ -595,6 +598,9 @@ function getFormattedDate() {
         document.getElementById('pageIndicator').innerText = `Page ${page}`;
         document.getElementById('prevPage').disabled = page === 1;
         document.getElementById('nextPage').disabled = page === totalPages;
+
+        // Update page indicator
+        document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
     }
 
     function nextPage() {

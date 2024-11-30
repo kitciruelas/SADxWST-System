@@ -416,7 +416,7 @@ $result = $conn->query($query);
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -611,10 +611,10 @@ if ($result->num_rows > 0) {
 
         echo "</td>";
         echo "<td>";
-        echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='custom-btn edit-btn'>Edit</a>";
+        echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='btn btn-primary btn-sm edit-btn'>Edit</a>";
         echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
                 <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                <button type='submit' class='custom-btn'>Delete</button>
+                <button type='submit' class='btn btn-danger btn-m'>Delete</button>
               </form>";
         echo "</td>";
         echo "</tr>";
@@ -992,7 +992,7 @@ function applySort() {
         rows.forEach((row, index) => {
             row.style.display = index >= start && index < end ? '' : 'none';
         });
-        document.getElementById('pageIndicator').innerText = `Page ${page}`;
+        document.getElementById('pageIndicator').textContent = `Page ${page} of ${totalPages}`;
         document.getElementById('prevPage').disabled = page === 1;
         document.getElementById('nextPage').disabled = page === totalPages;
     }

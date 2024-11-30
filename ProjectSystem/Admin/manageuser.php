@@ -404,7 +404,7 @@ $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $status = isset($_GET['status']) ? $_GET['status'] : 'active';
 
-// Base queries for users and staff
+// Base queries for users and staff with status condition
 $usersQuery = "SELECT 
     id,
     COALESCE(Fname, '') as Fname,
@@ -455,13 +455,13 @@ if (!empty($search)) {
     $staffQuery .= $searchCondition;
 }
 
-// If no specific filter, combine both queries with ORDER BY
+// Execute query based on filter
 if ($filter === 'General User') {
-    $sql = "$usersQuery ORDER BY created_at DESC";
+    $sql = $usersQuery;
 } elseif ($filter === 'Staff') {
-    $sql = "$staffQuery ORDER BY created_at DESC";
+    $sql = $staffQuery;
 } else {
-    // If no specific filter, combine both queries and order the combined results
+    // If no specific filter, combine both queries
     $sql = "($usersQuery) UNION ALL ($staffQuery) ORDER BY created_at DESC";
 }
 
@@ -470,6 +470,16 @@ $result = $conn->query($sql);
 
 if (!$result) {
     die("Query failed: " . $conn->error);
+}
+
+// Add status indicator if viewing inactive users
+if ($status === 'inactive') {
+    echo '<div class="col-12 mb-3">
+        <div class="alert alert-info">
+            Viewing Inactive Users - 
+            <a href="manageuser.php?status=active" class="alert-link">Switch to Active Users</a>
+        </div>
+    </div>';
 }
 
 // Get total rows for pagination
@@ -638,6 +648,25 @@ if (isset($_POST['reactivate_user'])) {
     }
 }
 
+// Add this at the top with your other PHP code
+if (isset($_GET['error'])) {
+    $error = $_GET['error'];
+    switch($error) {
+        case 'empty_fields':
+            echo "<script>alert('Please fill out all required fields.');</script>";
+            break;
+        case 'invalid_contact':
+            echo "<script>alert('Contact number must start with 09 and be 11 digits long.');</script>";
+            break;
+        case 'age_requirement':
+            echo "<script>alert('User must be at least 16 years old.');</script>";
+            break;
+        case 'invalid_address':
+            echo "<script>alert('Please enter a complete address including House/Unit No., Street, Barangay, City/Municipality, and Province.');</script>";
+            break;
+    }
+}
+
 ?>
 
 
@@ -660,9 +689,37 @@ if (isset($_POST['reactivate_user'])) {
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <style>
+.main-content {
+    position: relative; /* Change to relative */
+    margin-left: 200px; /* Matches sidebar width */
+    padding: 20px;
+    background-color: #f4f4f4;
+    min-height: calc(100vh - 70px); /* Adjust height to exclude top bar */
+    transition: all 0.3s ease;
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center align items */
+}
+
+.main-content.inactive {
+    padding-top: 20px; /* Specific to inactive state */
+}
+
+.main-content.active {
+    padding-top: 80px; /* Specific to active state */
+}
     .container {
         background-color: transparent;
     }
@@ -724,9 +781,8 @@ if (isset($_POST['reactivate_user'])) {
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
-
-    /* Pagination styling */
-    #pagination {
+ /* Pagination styling */
+ #pagination {
         margin-top: 20px;
         text-align: center;
     }
@@ -743,7 +799,7 @@ if (isset($_POST['reactivate_user'])) {
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -756,6 +812,7 @@ if (isset($_POST['reactivate_user'])) {
         margin: 0 15px;
         font-weight: 600;
     }
+
           /* Style for DataTables export buttons */
           .dt-buttons {
         margin-bottom: 15px;
@@ -808,35 +865,28 @@ function confirmLogout() {
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Manage Users</h2>
+        <h2>Manage <?php echo ucfirst($status); ?> Users</h2>
     </div>
 
     
     <!-- Main content -->
-    <div class="main-content">   
-    <!-- Search Form -->
+    <div class="main-content <?php echo ($status === 'inactive') ? 'inactive' : 'active'; ?>">
+    <!-- Search Form -->    <!-- Search Form -->
     
-<div class="row mb-1">
-    <!-- Search Input -->
-    <div class="col-12 col-md-6">
-        <form method="GET" action="" id="searchForm">
-            <!-- Preserve filter value if it exists -->
-            <?php if (isset($_GET['filter'])): ?>
-                <input type="hidden" name="filter" value="<?php echo htmlspecialchars($_GET['filter']); ?>">
-            <?php endif; ?>
-            
-            <div class="input-group mt-2">
-                <input type="text" name="search" id="searchInput" class="form-control custom-input-small" 
-                    placeholder="Search for names, roles, etc..." 
-                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
-                    onkeyup="checkSearch()">
-                <button type="submit" class="input-group-text mb-2">
+<div class="row">
+        <!-- Search Input -->
+        <div class="col-12 col-md-4">
+        <form method="GET" action="" class="searchform">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for names, roles, etc..."
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text mb-2">
                     <i class="fas fa-search"></i>
-                </button>
+                </span>
             </div>
         </form>
     </div>
-
     <!-- Filter Dropdown -->
     <div class="col-6 col-md-2 mt-1">
         <form method="GET" action="" id="filterForm">
@@ -859,19 +909,27 @@ function confirmLogout() {
         </select>
     </div>
 
-    <!-- Add View Inactive Button -->
-    <div class="col-6 col-md-2">
-        <button type="button" class="btn btn-secondary w-100" data-bs-toggle="modal" data-bs-target="#inactiveUsersModal">
-            View Inactive Users
-        </button>
+   <!-- Add View Inactive Button -->
+   <div class="col-6 col-md-2 ">
+        <?php if ($status === 'inactive'): ?>
+            <a href="manageuser.php?status=active" class="btn btn-warning w-100 mt-2">
+                View Active Users
+            </a>
+        <?php else: ?>
+            <a href="manageuser.php?status=inactive" class="btn btn-warning w-100 mt-2">
+                View Inactive Users
+            </a>
+        <?php endif; ?>
     </div>
 
     <!-- Add User Button -->
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-2 mb-1">
         <button type="button" class="btn btn-primary w-100" onclick="showModal()">
             Add User
         </button>
     </div>
+
+     
 </div>
 
 
@@ -915,7 +973,7 @@ function confirmLogout() {
                 <td>" . getRoleDisplay($row['role']) . "</td>
                 <td>" . $formattedAccountCreated . "</td>
                 <td>
-                    <button class='btn-edit' onclick='editUserModal(
+                    <button class='btn btn-primary btn-sm edit-btn' onclick='editUserModal(
                         " . json_encode($row["id"]) . ",
                         " . json_encode($row["Fname"]) . ",
                         " . json_encode($row["Lname"]) . ",
@@ -926,7 +984,7 @@ function confirmLogout() {
                     <form method='POST' style='display: inline;'>
                         <input type='hidden' name='user_id' value='" . $row['id'] . "'>
                         <input type='hidden' name='role' value='" . $row['role'] . "'>
-                        <button type='submit' name='toggle_status' class='btn-status " . strtolower($row['status']) . "' 
+                        <button type='submit' name='toggle_status' class='btn btn-warning btn-m edit-btn " . strtolower($row['status']) . "' 
                             onclick='return confirm(\"Are you sure you want to change this user's status from " . 
                             addslashes(ucfirst($row['status'])) . "?\");'>" . 
                             ucfirst($row['status']) . "
@@ -944,6 +1002,20 @@ function confirmLogout() {
 
 <style>
 
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
     /* Style for the entire table */
     .table {
         background-color: #f8f9fa; /* Light background for the table */
@@ -998,22 +1070,87 @@ function confirmLogout() {
 </style>
  
 </div>
-<div style="text-align: center;">
-    <!-- Previous Page Button -->
-    <button <?php if ($currentPage <= 1) { echo 'disabled style="background-color: #ddd; cursor: not-allowed;"'; } ?> 
-        onclick="window.location.href='?page=<?php echo $currentPage - 1; ?>'">
-        Previous
-    </button>
+<!-- Pagination Controls -->
+<div class="pagination-container">
+    <?php if ($totalPages > 1): ?>
+        <!-- Previous button -->
+        <a href="?page=<?php echo max(1, $currentPage - 1); ?><?php 
+            echo isset($_GET['filter']) ? '&filter=' . htmlspecialchars($_GET['filter']) : ''; 
+            echo isset($_GET['search']) ? '&search=' . htmlspecialchars($_GET['search']) : ''; 
+            ?>" 
+           class="page-btn <?php echo ($currentPage <= 1) ? 'disabled' : ''; ?>">
+            Previous
+        </a>
 
-    <!-- Page Indicator -->
-    <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+        <!-- Page indicator -->
+        <span class="page-indicator">
+            Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?>
+        </span>
 
-    <!-- Next Page Button -->
-    <button <?php if ($currentPage >= $totalPages) { echo 'disabled style="background-color: #ddd; cursor: not-allowed;"'; } ?> 
-        onclick="window.location.href='?page=<?php echo $currentPage + 1; ?>'">
-        Next
-    </button>
+        <!-- Next button -->
+        <a href="?page=<?php echo min($totalPages, $currentPage + 1); ?><?php 
+            echo isset($_GET['filter']) ? '&filter=' . htmlspecialchars($_GET['filter']) : ''; 
+            echo isset($_GET['search']) ? '&search=' . htmlspecialchars($_GET['search']) : ''; 
+            ?>" 
+           class="page-btn <?php echo ($currentPage >= $totalPages) ? 'disabled' : ''; ?>">
+            Next
+        </a>
+    <?php endif; ?>
 </div>
+
+<style>
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.page-btn {
+    padding: 8px 16px;
+    background-color: #2B228A;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.page-btn:hover:not(.disabled) {
+    background-color: #1a1654;
+    color: white;
+}
+
+.page-btn.disabled {
+    background-color: #cccccc;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    font-weight: 500;
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .pagination-container {
+        gap: 10px;
+    }
+    
+    .page-btn {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+    
+    .page-indicator {
+        font-size: 14px;
+    }
+}
+</style>
 </div>
 
 
@@ -1292,7 +1429,7 @@ function confirmLogout() {
                 </div>
             </div>
             <div class="modal-buttons">
-                <button type="submit" name="edit_user" class="btn-primary">Update User</button>
+                <button type="submit" name="edit_user" class="btn btn-primary btn-sm edit-btn">Update User</button>
             </div>
         </form>
     </div>
@@ -1310,46 +1447,166 @@ function confirmLogout() {
      
 $(document).ready(function() {
     var table = $('#userTable').DataTable({
-        dom: 'Bfrtip',
+        dom: '<"dt-buttons"B>rtp',
         buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
+            {
+                extend: 'copy',
+                className: 'custom-btn',
+                exportOptions: {
+                    columns: [0, 1, 2, 3]
+                },
+                text: ' Copy',
+                // Export all records
+                action: function(e, dt, button, config) {
+                    // Temporarily remove pagination
+                    var oldLength = dt.page.len();
+                    dt.page.len(-1).draw();
+                    
+                    $.fn.dataTable.ext.buttons.copyHtml5.action.call(this, e, dt, button, config);
+                    
+                    // Restore pagination
+                    dt.page.len(oldLength).draw();
+                }
+            },
+            {
+                extend: 'csv',
+                className: 'custom-btn',
+                title: 'Complete Users List - ' + getFormattedDate(),
+                exportOptions: {
+                    columns: [0, 1, 2, 3],
+                    modifier: {
+                        page: 'all'
+                    }
+                },
+                text: ' CSV'
+            },
+            {
+                extend: 'excel',
+                className: 'custom-btn',
+                title: 'Complete Users List - ' + getFormattedDate(),
+                exportOptions: {
+                    columns: [0, 1, 2, 3],
+                    modifier: {
+                        page: 'all'
+                    }
+                },
+                text: 'Excel'
+            },
+            {
+                extend: 'pdf',
+                className: 'custom-btn',
+                title: 'Complete Users List - ' + getFormattedDate(),
+                exportOptions: {
+                    columns: [0, 1, 2, 3],
+                    modifier: {
+                        page: 'all'
+                    }
+                },
+                text: 'PDF',
+                customize: function(doc) {
+                    // Customize PDF output
+                    doc.content[1].table.widths = ['10%', '30%', '30%', '30%'];
+                    doc.styles.tableHeader = {
+                        fillColor: '#2B228A',
+                        color: 'white',
+                        bold: true
+                    };
+                    doc.styles.tableBodyEven = {
+                        fillColor: '#f8f9fa'
+                    };
+                    
+                    // Add page numbers
+                    var objLayout = {};
+                    objLayout['hLineWidth'] = function(i) { return .5; };
+                    objLayout['vLineWidth'] = function(i) { return .5; };
+                    objLayout['hLineColor'] = function(i) { return '#aaa'; };
+                    objLayout['vLineColor'] = function(i) { return '#aaa'; };
+                    objLayout['paddingLeft'] = function(i) { return 4; };
+                    objLayout['paddingRight'] = function(i) { return 4; };
+                    doc.content[1].layout = objLayout;
+                }
+            },
+            {
+                extend: 'print',
+                className: 'custom-btn',
+                title: '<h2>Complete Users List</h2><p>Generated on: ' + getFormattedDate() + '</p>',
+                exportOptions: {
+                    columns: [0, 1, 2, 3],
+                    modifier: {
+                        page: 'all'
+                    }
+                },
+                text: 'Print',
+                customize: function(win) {
+                    $(win.document.body)
+                        .css('font-family', 'Arial, sans-serif')
+                        .css('padding', '20px');
+                    
+                    // Add custom header styling
+                    $(win.document.body).find('h2')
+                        .css('text-align', 'center')
+                        .css('color', '#2B228A')
+                        .css('margin-bottom', '5px');
+                    
+                    // Style the date
+                    $(win.document.body).find('p')
+                        .css('text-align', 'center')
+                        .css('margin-bottom', '20px')
+                        .css('color', '#666');
+                    
+                    // Style the table
+                    $(win.document.body).find('table')
+                        .addClass('display')
+                        .css('font-size', '14px')
+                        .css('border-collapse', 'collapse')
+                        .css('width', '100%')
+                        .css('margin-bottom', '20px');
+                    
+                    // Style table headers
+                    $(win.document.body).find('thead th')
+                        .css('background-color', '#2B228A')
+                        .css('color', 'white')
+                        .css('padding', '10px')
+                        .css('border', '1px solid #ddd')
+                        .css('font-weight', 'bold');
+                    
+                    // Style table cells
+                    $(win.document.body).find('tbody td')
+                        .css('padding', '8px')
+                        .css('border', '1px solid #ddd');
+                    
+                    // Add zebra striping
+                    $(win.document.body).find('tbody tr:nth-child(even)')
+                        .css('background-color', '#f8f9fa');
+                    
+                    // Add footer with page numbers
+                    $(win.document.body).append(
+                        '<div style="text-align: center; font-size: 12px; color: #666; margin-top: 20px;">' +
+                        'Page ' + document.title + ' of ' + document.title +
+                        '</div>'
+                    );
+                }
+            }
         ],
-        order: [[0, 'asc']], // Sort by first column (No.) by default
+        order: [[0, 'asc']],
         pageLength: 10,
         responsive: true,
         searching: false,
-        paging:false,
-            info: false,
+        paging: false,
+        info: false,
         columnDefs: [
             {
-                targets: -1, // Last column (Actions)
+                targets: -1,
                 orderable: false,
                 searchable: false
             }
-        ],
-        language: {
-            search: "Search:",
-            lengthMenu: "Show _MENU_ entries",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
-            }
-        }
+        ]
     });
 
     // Add filter functionality
     $('#filter').on('change', function() {
-        var filterValue = $(this).val();
-        // Get the current URL
         var url = new URL(window.location.href);
-        
-        // Update or add the filter parameter
-        url.searchParams.set('filter', filterValue);
-        
-        // Redirect to the new URL
+        url.searchParams.set('filter', $(this).val());
         window.location.href = url.toString();
     });
 
@@ -1358,13 +1615,13 @@ $(document).ready(function() {
         var sortValue = $(this).val();
         switch(sortValue) {
             case 'name_asc':
-                table.order([1, 'asc']).draw(); // Sort by Name column ascending
+                table.order([1, 'asc']).draw();
                 break;
             case 'name_desc':
-                table.order([1, 'desc']).draw(); // Sort by Name column descending
+                table.order([1, 'desc']).draw();
                 break;
             default:
-                table.order([0, 'asc']).draw(); // Default sort by No. column
+                table.order([0, 'asc']).draw();
         }
     });
 });
@@ -1432,97 +1689,112 @@ function validateContact() {
 // Modify the nextPage function to include contact validation
 function nextPage() {
     var currentPage = document.querySelector(".form-page:not([style*='display: none'])");
-    var inputs = currentPage.querySelectorAll("input[required], select[required]");
-    var valid = true;
-    var errorMessages = [];
+    
+    // For Personal Info Page
+    if (currentPage.id === "personalInfoPage") {
+        // Check required fields
+        var fname = document.getElementById("fname").value.trim();
+        var lname = document.getElementById("lname").value.trim();
+        var birthdate = document.getElementById("birthdate").value;
+        var sex = document.getElementById("sex").value;
+        var contact = document.getElementById("contact").value;
+        var address = document.getElementById("address").value.trim();
 
-    // Check all inputs first and collect error messages
-    inputs.forEach(function(input) {
-        if (input.type === "text" && input.id === "contact") {
-            var contactRegex = /^09\d{9}$/;
-            if (!contactRegex.test(input.value)) {
-                valid = false;
-                input.style.borderColor = "red";
-                errorMessages.push('Contact number must start with "09" and be 11 digits long');
-            } else {
-                input.style.borderColor = "";
-            }
-        } else if (input.value.trim() === "") {
-            valid = false;
-            input.style.borderColor = "red";
-            errorMessages.push(`${input.previousElementSibling.textContent.replace(':', '')} is required`);
-        } else {
-            input.style.borderColor = "";
+        // Required fields validation
+        if (!fname) {
+            alert("Please enter First Name");
+            return false;
         }
-    });
+        if (!lname) {
+            alert("Please enter Last Name");
+            return false;
+        }
+        if (!birthdate) {
+            alert("Please enter Birthdate");
+            return false;
+        }
+        if (!sex) {
+            alert("Please select Sex");
+            return false;
+        }
+        if (!contact) {
+            alert("Please enter Contact Number");
+            return false;
+        }
+        if (!address) {
+            alert("Please enter Address");
+            return false;
+        }
 
-    // Show all error messages in one alert if there are any
-    if (!valid && errorMessages.length > 0) {
-        alert('Please correct the following:\n\n' + errorMessages.join('\n'));
-        return;
+        // Contact number validation
+        if (!contact.match(/^09\d{9}$/)) {
+            alert("Contact number must start with 09 and be 11 digits long");
+            return false;
+        }
+
+        // Age validation
+        var birthdateObj = new Date(birthdate);
+        var today = new Date();
+        var age = today.getFullYear() - birthdateObj.getFullYear();
+        var m = today.getMonth() - birthdateObj.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthdateObj.getDate())) {
+            age--;
+        }
+        if (age < 16) {
+            alert("User must be at least 16 years old");
+            return false;
+        }
+
+        // Address validation
+        if (address.length < 10) {
+            alert("Please enter a complete address including House/Unit No., Street, Barangay, City/Municipality, and Province");
+            return false;
+        }
+    }
+    
+    // For Account Info Page
+    else if (currentPage.id === "accountInfoPage") {
+        var email = document.getElementById("email").value.trim();
+        var password = document.getElementById("password").value;
+        var role = document.getElementById("role").value;
+
+        // Required fields validation
+        if (!role) {
+            alert("Please select a Role");
+            return false;
+        }
+        if (!email) {
+            alert("Please enter Email");
+            return false;
+        }
+        if (!password) {
+            alert("Please enter Password");
+            return false;
+        }
+
+        // Email format validation
+        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            alert("Please enter a valid email address");
+            return false;
+        }
+
+        // Password length validation
+        if (password.length < 6) {
+            alert("Password must be at least 6 characters long");
+            return false;
+        }
     }
 
-    if (valid) {
-        currentPage.style.display = "none";
-        var nextPage = currentPage.nextElementSibling;
-        if (nextPage) {
-            nextPage.style.display = "block";
-        }
-
-        if (nextPage && nextPage.id === "accountInfoPage") {
+    // If all validations pass, proceed to next page
+    currentPage.style.display = "none";
+    var nextPage = currentPage.nextElementSibling;
+    if (nextPage) {
+        nextPage.style.display = "block";
+        
+        // Update button visibility
+        if (nextPage.id === "accountInfoPage") {
             document.getElementById("previousButton").style.display = "inline-block";
             document.getElementById("nextButton").style.display = "none";
-            document.getElementById("submitButton").style.display = "inline-block";
-        }
-    }
-}
-
-
-// Function to toggle password visibility
-function togglePasswordVisibility(fieldId, icon) {
-    var field = document.getElementById(fieldId);
-    if (field.type === "password") {
-        field.type = "text"; // Show the password
-        icon.classList.remove("fa-eye-slash"); // Remove closed eye icon
-        icon.classList.add("fa-eye"); // Add open eye icon
-        icon.setAttribute("title", "Hide Password"); // Update tooltip text
-    } else {
-        field.type = "password"; // Hide the password
-        icon.classList.remove("fa-eye"); // Remove open eye icon
-        icon.classList.add("fa-eye-slash"); // Add closed eye icon
-        icon.setAttribute("title", "Show Password"); // Update tooltip text
-    }
-}
-
-// Function to validate the form on the "Next" button
-function nextPage() {
-    var currentPage = document.querySelector(".form-page:not([style*='display: none'])");
-    var inputs = currentPage.querySelectorAll("input[required], select[required]");
-    var valid = true;
-
-    // Check if any required input is empty
-    inputs.forEach(function(input) {
-        if (input.value.trim() === "") {
-            valid = false;
-            input.style.borderColor = "red"; // Optional: add red border to highlight the empty input
-            alert('Please fill out all required fields.');
-        } else {
-            input.style.borderColor = ""; // Reset border color if filled
-        }
-    });
-
-    if (valid) {
-        // Hide current page and show next page
-        currentPage.style.display = "none";
-        var nextPage = currentPage.nextElementSibling;
-        if (nextPage) {
-            nextPage.style.display = "block";
-        }
-
-        // Show Previous button on the second page
-        if (nextPage && nextPage.id === "accountInfoPage") {
-            document.getElementById("previousButton").style.display = "inline-block";
-            document.getElementById("nextButton").style.display = "none"; // Hide Next button if it's the last page
             document.getElementById("submitButton").style.display = "inline-block";
         }
     }
@@ -1532,17 +1804,18 @@ function nextPage() {
 function previousPage() {
     var currentPage = document.querySelector(".form-page:not([style*='display: none'])");
     var previousPage = currentPage.previousElementSibling;
+    
     if (previousPage) {
         currentPage.style.display = "none";
         previousPage.style.display = "block";
+        
+        // Reset button visibility
+        document.getElementById("nextButton").style.display = "inline-block";
+        document.getElementById("previousButton").style.display = "none";
+        document.getElementById("submitButton").style.display = "none";
     }
-
-    // Show the "Next" button again when going back to the first page
-    document.getElementById("nextButton").style.display = "inline-block";
-    document.getElementById("previousButton").style.display = "none";
-    document.getElementById("submitButton").style.display = "none";
 }
-    
+
 function togglePasswordVisibility(fieldId, icon) {
     var field = document.getElementById(fieldId);
     if (field.type === "password") {
@@ -1565,7 +1838,7 @@ function calculateAge() {
     var age = new Date().getFullYear() - birthDateObj.getFullYear();
     var m = new Date().getMonth() - birthDateObj.getMonth();
     
-    if (m < 0 || (m === 0 && new Date().getDate() < birthDateObj.getDate())) {
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
         age--;
     }
     
@@ -1619,79 +1892,7 @@ function editUserModal(userId, fname, lname, mi, suffix, role) {
 }
 
             
-   document.addEventListener('DOMContentLoaded', function() {
-    const rowsPerPage = 10; // Limit to 10 rows per page
-    let currentPage = 1;
-    const rows = document.querySelectorAll('#room-table-body tr');
-    const totalPages = Math.ceil(rows.length / rowsPerPage);
-
-    // Show the initial set of rows
-    showPage(currentPage);
-    generatePageLinks();
-
-    function showPage(page) {
-        const start = (page - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-        
-        // Loop through all rows and display or hide them based on the current page
-        rows.forEach((row, index) => {
-            row.style.display = (index >= start && index < end) ? '' : 'none';
-        });
-
-        // Update the page indicator
-        document.getElementById('pageIndicator').innerText = `Page ${page}`;
-
-        // Disable/enable buttons based on the current page
-        document.getElementById('prevPage').disabled = page === 1;
-        document.getElementById('nextPage').disabled = page === totalPages;
-
-        // Update active page link
-        document.querySelectorAll('#pageLinks a').forEach(link => {
-            link.classList.remove('active');
-        });
-        document.querySelector(`#pageLinks a[data-page="${page}"]`).classList.add('active');
-    }
-
-    function generatePageLinks() {
-        const pageLinksContainer = document.getElementById('pageLinks');
-        pageLinksContainer.innerHTML = '';
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageLink = document.createElement('a');
-            pageLink.href = "#";
-            pageLink.textContent = i;
-            pageLink.dataset.page = i;
-            pageLink.onclick = function(event) {
-                event.preventDefault();
-                currentPage = parseInt(this.dataset.page);
-                showPage(currentPage);
-            };
-
-            pageLinksContainer.appendChild(pageLink);
-        }
-    }
-
-    // Function to go to the next page
-    function nextPage() {
-        if (currentPage < totalPages) {
-            currentPage++;
-            showPage(currentPage);
-        }
-    }
-
-    // Function to go to the previous page
-    function prevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            showPage(currentPage);
-        }
-    }
-
-    // Attach nextPage and prevPage functions to window (global scope) so they can be accessed by button clicks
-    window.nextPage = nextPage;
-    window.prevPage = prevPage;
-});
-
+ 
        
 
 function checkSearch() {
@@ -1801,3 +2002,4 @@ window.onclick = function(event) {
 <?php
 $conn->close();
 ?>
+

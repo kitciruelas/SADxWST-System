@@ -324,8 +324,8 @@ $conn->close();
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* Pagination styling */
-    #pagination {
+     /* Pagination styling */
+     #pagination {
         margin-top: 20px;
         text-align: center;
     }
@@ -342,7 +342,7 @@ $conn->close();
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -537,6 +537,21 @@ function confirmLogout() {
 </div>
 
 <style>
+    
+    /* Button styling */
+    .btn-primary {
+        background-color: #2B228A;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #1a1654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
     /* Style for the entire table */
     .table {
         background-color: #f8f9fa; /* Light background for the table */
@@ -690,6 +705,8 @@ function showPage(page) {
     document.getElementById('pageIndicator').innerText = `Page ${page}`;
     document.getElementById('prevPage').disabled = page === 1;
     document.getElementById('nextPage').disabled = page === totalPages;
+    // Update page indicator
+    document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
 }
 
 function nextPage() {

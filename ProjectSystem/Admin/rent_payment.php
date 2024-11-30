@@ -239,9 +239,8 @@ if (isset($_GET['error'])) {
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
-
-    /* Pagination styling */
-    #pagination {
+ /* Pagination styling */
+ #pagination {
         margin-top: 20px;
         text-align: center;
     }
@@ -258,7 +257,7 @@ if (isset($_GET['error'])) {
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -452,12 +451,6 @@ function confirmLogout() {
 
 
 
-<!-- Pagination Controls -->
-<div id="pagination">
-    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
-    <span id="pageIndicator">Page 1</span>
-    <button id="nextPage" onclick="nextPage()">Next</button>
-</div>
 <style>
         
     /* Style for the entire table */
@@ -495,7 +488,15 @@ function confirmLogout() {
 
 </style>
         </div>
+        
     </div>
+    
+<!-- Pagination Controls -->
+<div id="pagination">
+    <button id="prevPage" onclick="prevPage()" disabled>Previous</button>
+    <span id="pageIndicator">Page 1</span>
+    <button id="nextPage" onclick="nextPage()">Next</button>
+</div>
 <!-- Modal for creating rent payment -->
 <div class="modal fade" id="createPaymentModal" tabindex="-1" aria-labelledby="createPaymentModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -877,6 +878,8 @@ const rowsPerPage = 10;
             document.getElementById('pageIndicator').innerText = `Page ${page}`;
             document.getElementById('prevPage').disabled = page === 1;
             document.getElementById('nextPage').disabled = page === totalPages;
+            // Update page indicator
+            document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
         }
 
         // Show the first page when the page is loaded

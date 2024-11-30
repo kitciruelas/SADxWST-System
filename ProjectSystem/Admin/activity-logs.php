@@ -251,7 +251,7 @@ if (isset($_GET['delete_payment_id'])) {
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -671,6 +671,7 @@ function applySort() {
                 row.style.display = index >= start && index < end ? '' : 'none';
             });
             document.getElementById('pageIndicator').innerText = `Page ${page}`;
+            document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
             document.getElementById('prevPage').disabled = page === 1;
             document.getElementById('nextPage').disabled = page === totalPages;
         }

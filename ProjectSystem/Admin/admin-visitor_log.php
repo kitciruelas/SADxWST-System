@@ -193,8 +193,8 @@ $conn->close();
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* Pagination styling */
-    #pagination {
+   /* Pagination styling */
+   #pagination {
         margin-top: 20px;
         text-align: center;
     }
@@ -211,7 +211,7 @@ $conn->close();
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -357,7 +357,7 @@ function confirmLogout() {
                         <form action="admin-visitor_log.php" method="post" style="display: inline;">
                             <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this visitor record?')">
-                                <i class="fas fa-trash"></i>
+                                Delete
                             </button>
                         </form>
                     </td>

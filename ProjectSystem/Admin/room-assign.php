@@ -333,8 +333,8 @@ $conn->close();
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* Pagination styling */
-    #pagination {
+     /* Pagination styling */
+     #pagination {
         margin-top: 20px;
         text-align: center;
     }
@@ -351,7 +351,7 @@ $conn->close();
     }
 
     #pagination button:disabled {
-        background-color: #cccccc;
+        background-color:  #2B228A;
         cursor: not-allowed;
     }
 
@@ -712,7 +712,7 @@ function showPage(page) {
     rows.forEach((row, index) => {
         row.style.display = index >= start && index < end ? '' : 'none';
     });
-    document.getElementById('pageIndicator').innerText = `Page ${page}`;
+    document.getElementById('pageIndicator').textContent = `Page ${page} of ${totalPages}`;
     document.getElementById('prevPage').disabled = page === 1;
     document.getElementById('nextPage').disabled = page === totalPages;
 }

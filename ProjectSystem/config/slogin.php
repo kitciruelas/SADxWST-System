@@ -39,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = "Unknown";
 
     // Step 1: Try finding the user in the 'users' table first
-    $sql = "SELECT id, fname, password, 'General User' as role FROM users WHERE email = ?";
+    $sql = "SELECT id, fname, password, status, 'General User' as role FROM users WHERE email = ?";
     if ($stmt = $conn->prepare($sql)) {
         $stmt->bind_param("s", $param_username);
         $param_username = $username;
@@ -47,8 +47,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->store_result();
 
         if ($stmt->num_rows == 1) {
-            $stmt->bind_result($id, $fname, $hashed_password, $role);
+            $stmt->bind_result($id, $fname, $hashed_password, $status, $role);
             $stmt->fetch();
+
+            if ($status !== 'active') {
+                echo "<script>alert('Your account is inactive. Please contact support.'); window.location.href = '../User/user-login.php';</script>";
+                exit();
+            }
 
             if (password_verify($password, $hashed_password)) {
                 // Successful login
@@ -71,7 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Step 2: If the user is not found in 'users', check the 'staff' table
-    $sql = "SELECT id, fname, password, 'Staff' as role FROM staff WHERE email = ?";
+    $sql = "SELECT id, fname, password, status, 'Staff' as role FROM staff WHERE email = ?";
     if ($stmt = $conn->prepare($sql)) {
         $stmt->bind_param("s", $param_username);
         $param_username = $username;
@@ -79,8 +84,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->store_result();
 
         if ($stmt->num_rows == 1) {
-            $stmt->bind_result($id, $fname, $hashed_password, $role);
+            $stmt->bind_result($id, $fname, $hashed_password, $status, $role);
             $stmt->fetch();
+
+            if ($status !== 'active') {
+                echo "<script>alert('Your account is inactive. Please contact support.'); window.location.href = '../User/user-login.php';</script>";
+                exit();
+            }
 
             if (password_verify($password, $hashed_password)) {
                 // Successful login
@@ -96,10 +106,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 echo "<script>alert('Login successful! Redirecting to staff dashboard...'); window.location.href = '../Staff/user-dashboard.php';</script>";
             } else {
-                echo "<script>alert('Invalid email or password. Please try again.');  window.location.href = '../User/user-login.php';</script>";
+                echo "<script>alert('Invalid email or password. Please try again.'); window.location.href = '../User/user-login.php';</script>";
             }
         } else {
-            echo "<script>alert('Invalid email or password. Please try again.');  window.location.href = '../User/user-login.php';</script>";
+            echo "<script>alert('Invalid email or password. Please try again.'); window.location.href = '../User/user-login.php';</script>";
         }
         $stmt->close();
     }

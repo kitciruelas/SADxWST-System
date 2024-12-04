@@ -12,11 +12,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Basic validation for email, password, and CAPTCHA
     if (empty($username) || empty($password)) {
-        echo "<script>alert('Please enter both email and password.'); window.history.back();</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Please enter both email and password.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
     if (empty($captcha)) {
-        echo "<script>alert('Please complete the CAPTCHA.');  window.location.href = '../User/user-login.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Please complete the CAPTCHA.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
 
@@ -26,10 +36,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $responseData = json_decode($verifyResponse);
 
     if (!$responseData->success) {
-        echo "<script>
-        alert('CAPTCHA verification failed. Please try again.');
-        window.location.href = '../User/user-login.php';
-      </script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'CAPTCHA verification failed',
+            'text' => 'Please try again.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
 
@@ -51,7 +63,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->fetch();
 
             if ($status !== 'active') {
-                echo "<script>alert('Your account is inactive. Please contact support.'); window.location.href = '../User/user-login.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Inactive Account',
+                    'text' => 'Your account is inactive. Please contact support.',
+                    'icon' => 'warning'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit();
             }
 
@@ -67,9 +84,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $activity_type = "Login";
                 $activity_status = "Successful";
 
-                echo "<script>alert('Login successful! Redirecting to user dashboard...'); window.location.href = '../User/user-dashboard.php';</script>";
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'You have logged in successfully.',
+                    'icon' => 'success'
+                ];
+                session_write_close(); // Close the session to ensure the alert is available
+                header("Location: ../User/user-dashboard.php");
+                exit();
             } else {
-                echo "<script>alert('Invalid email or password. Please try again.'); window.location.href = '../User/user-login.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'Invalid email or password.',
+                    'icon' => 'error'
+                ];
+                header("Location: ../User/user-login.php");
+                exit();
             }
         }
         $stmt->close();
@@ -88,7 +118,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->fetch();
 
             if ($status !== 'active') {
-                echo "<script>alert('Your account is inactive. Please contact support.'); window.location.href = '../User/user-login.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Inactive Account',
+                    'text' => 'Your account is inactive. Please contact support.',
+                    'icon' => 'warning'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit();
             }
 
@@ -104,27 +139,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $activity_type = "Login";
                 $activity_status = "Successful";
 
-                echo "<script>alert('Login successful! Redirecting to staff dashboard...'); window.location.href = '../Staff/user-dashboard.php';</script>";
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'You have logged in successfully.',
+                    'icon' => 'success'
+                ];
+                session_write_close(); // Close the session to ensure the alert is available
+                header("Location: ../Staff/user-dashboard.php");
+                exit();
             } else {
-                echo "<script>alert('Invalid email or password. Please try again.'); window.location.href = '../User/user-login.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'Invalid email or password.',
+                    'icon' => 'error'
+                ];
+                header("Location: ../User/user-login.php");
+                exit();
             }
         } else {
-            echo "<script>alert('Invalid email or password. Please try again.'); window.location.href = '../User/user-login.php';</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!', 
+                'text' => 'Invalid email or password.',
+                'icon' => 'error'
+            ];
+            header("Location: ../User/user-login.php");
+            exit();
         }
-        $stmt->close();
     }
-// Log activity
-$activity_type = "Login";
-$activity_details = "$role $fname with email $username logged in."; // Role dynamically added
-$log_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
-if ($log_stmt = $conn->prepare($log_sql)) {
-    $log_stmt->bind_param("iss", $id, $activity_type, $activity_details);
-    $log_stmt->execute();
-    $log_stmt->close();
-}
 
+    // Log activity
+    $activity_type = "Login";
+    $activity_details = "$role $fname with email $username logged in."; // Role dynamically added
+    $log_sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+    if ($log_stmt = $conn->prepare($log_sql)) {
+        $log_stmt->bind_param("iss", $id, $activity_type, $activity_details);
+        $log_stmt->execute();
+        $log_stmt->close();
+    }
 
     $conn->close();
     exit();
 }
-?>
+

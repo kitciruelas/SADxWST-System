@@ -40,6 +40,18 @@ if (!empty($search)) {
     }
 }
 
+// Function to log activity
+function logActivity($conn, $userId, $activityType, $activityDetails) {
+    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)";
+    $logStmt = $conn->prepare($logSql);
+    $logStmt->bind_param("iss", $userId, $activityType, $activityDetails);
+    $logStmt->execute();
+    $logStmt->close();
+}
+
+// Assuming you have a way to get the current user's ID
+$userId = $_SESSION['id']; // Example: Get user ID from session
+
 // Handle form submission for adding a new room
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
     $target_dir = "../uploads/";
@@ -69,7 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
     // Validate capacity
     if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
-        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Capacity must be at least 1 person.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -84,7 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
     if ($count > 0) {
         // If room number exists, show an error
-        echo "<script>alert('Error: Room already exists!'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Room already exists!',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
     } else {
         // Insert room data using prepared statement
         $sql = "INSERT INTO Rooms (room_number, room_desc, room_pic, room_monthlyrent, capacity, status) VALUES (?, ?, ?, ?, ?, ?)";
@@ -92,18 +115,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
         $stmt->bind_param("ssssds", $_POST['room_number'], $_POST['room_desc'], $room_pic, $_POST['room_monthlyrent'], $_POST['capacity'], $_POST['status']);
 
         if ($stmt->execute()) {
-            // Get the total number of rooms after the new insertion
-            $sql_count = "SELECT COUNT(*) FROM Rooms";
-            $stmt_count = $conn->prepare($sql_count);
-            $stmt_count->execute();
-            $stmt_count->bind_result($total_rooms);
-            $stmt_count->fetch();
-            $stmt_count->close();
-
-            // Success message showing the total number of rooms
-            echo "<script>alert('Room added successfully! Total rooms: $total_rooms'); window.location.href = 'roomlist.php';</script>";
+            // Log activity for adding a room
+            logActivity($conn, $userId, 'Create', 'Added room: ' . $_POST['room_number']);
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Room added successfully!',
+                'icon' => 'success'
+            ];
         } else {
-            echo "Error: " . $stmt->error;
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error adding room: ' . $stmt->error,
+                'icon' => 'error'
+            ];
         }
 
         $stmt->close();
@@ -116,7 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
 
     // Validate capacity
     if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
-        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Capacity must be at least 1 person.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -130,7 +159,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $check_stmt->close();
 
     if ($current_occupants > $_POST['capacity']) {
-        echo "<script>alert('Error: Cannot reduce capacity below current number of occupants (" . $current_occupants . ").'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Cannot reduce capacity below current number of occupants (' . $current_occupants . ').',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -144,7 +178,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $stmt_check->close();
 
     if ($count > 0) {
-        echo "<script>alert('Error: Room already exists for another room!'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Room already exists for another room!',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
     } else {
         // Prepare the base SQL update statement
         $sql = "UPDATE rooms SET room_number = ?, capacity = ?, room_monthlyrent = ?, room_desc = ?, status = ?";
@@ -165,7 +205,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
             // Check if upload directory exists and is writable
             if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
                 error_log("Upload directory does not exist or is not writable: " . $uploadDir, 3, 'error.log');
-                echo "<script>alert('Upload directory is not accessible.'); window.location.href = 'roomlist.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'Upload directory is not accessible.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             }
 
@@ -176,7 +221,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
                 $params[] = $fileName; // Add the new file name to the parameters
             } else {
                 error_log("Error moving uploaded file: " . $_FILES['room_picture']['tmp_name'], 3, 'error.log');
-                echo "<script>alert('Error uploading room picture.'); window.location.href = 'roomlist.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'Error uploading room picture.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
                 exit;
             }
         }
@@ -194,19 +244,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
 
             // Execute the update
             if ($stmt->execute()) {
-                if ($stmt->affected_rows > 0) {
-                    echo "<script>alert('Room updated successfully!'); window.location.href = 'roomlist.php';</script>";
-                } else {
-                    echo "<script>alert('No changes made to the room.'); window.location.href = 'roomlist.php';</script>";
-                }
+                // Log activity for updating a room
+                logActivity($conn, $userId, 'Update', 'Updated room: ' . $_POST['room_number']);
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'Room updated successfully!',
+                    'icon' => 'success'
+                ];
             } else {
                 error_log("SQL error: " . $stmt->error, 3, 'error.log');
-                echo "<script>alert('Error updating room in database: " . $stmt->error . "'); window.location.href = 'roomlist.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error',
+                    'text' => 'Error updating room: ' . $stmt->error,
+                    'icon' => 'error'
+                ];
             }
             $stmt->close();
         } else {
             error_log("Prepare statement error: " . $conn->error, 3, 'error.log');
-            echo "<script>alert('Error preparing SQL statement.'); window.location.href = 'roomlist.php';</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error preparing SQL statement.',
+                'icon' => 'error'
+            ];
         }
     }
 }
@@ -226,6 +286,17 @@ if (isset($_GET['delete_room_id'])) {
     $archiveStmt->bind_param('i', $room_id);
 
     if ($archiveStmt->execute()) {
+        // Fetch the room number before archiving
+        $room_number_sql = "SELECT room_number FROM rooms WHERE room_id = ?";
+        $room_number_stmt = $conn->prepare($room_number_sql);
+        $room_number_stmt->bind_param('i', $room_id);
+        $room_number_stmt->execute();
+        $room_number_stmt->bind_result($room_number);
+        $room_number_stmt->fetch();
+        $room_number_stmt->close();
+
+        // Log activity for deleting a room
+        logActivity($conn, $userId, 'Delete', 'Archived and deleted room number: ' . $room_number);
         // Step 2: Delete the room from the original table after archiving
         $deleteSql = "DELETE FROM rooms WHERE room_id = ?";
         $deleteStmt = $conn->prepare($deleteSql);
@@ -233,21 +304,33 @@ if (isset($_GET['delete_room_id'])) {
 
         if ($deleteStmt->execute()) {
             // Use JavaScript for alert and redirection after success
-            echo "<script>
-                    alert('Room archived and deleted successfully');
-                    window.location.href = 'roomlist.php?delete_success=1';
-                  </script>";
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Room archived and deleted successfully!',
+                'icon' => 'success'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
             exit(); // Ensure no further code is executed after redirection
         } else {
-            echo "Error deleting room from the original table: " . $conn->error;
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error deleting room: ' . $conn->error,
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
         }
 
-        $deleteStmt->close();
     } else {
-        echo "Error archiving room: " . $archiveStmt->error;
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Error archiving room: ' . $archiveStmt->error,
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
     }
 
-    $archiveStmt->close();
 }
 
 
@@ -334,7 +417,10 @@ $result = $conn->query($query);
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
-    
+<!-- Include SweetAlert CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     .container {
         background-color: transparent;
@@ -465,16 +551,42 @@ $result = $conn->query($query);
         <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
         </div>
         <div class="logout">
-        <a href="../config/user-logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -610,8 +722,7 @@ if ($result->num_rows > 0) {
         echo "</td>";
         echo "<td>";
         echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='btn btn-primary btn-sm edit-btn'>Edit</a>";
-        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
+        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete(" . htmlspecialchars($row["room_id"]) . ")'>
                 <button type='submit' class='btn btn-danger btn-m'>Delete</button>
               </form>";
         echo "</td>";
@@ -972,9 +1083,35 @@ function applySort() {
             .catch(error => console.error('Error:', error));
     }
 
-    function confirmDelete() {
-    return confirm("Are you sure you want to delete this room?");
-}
+    function confirmDelete(roomId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This action cannot be undone!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create and submit the form programmatically
+                const form = document.createElement('form');
+                form.method = 'GET'; // Use GET to match the delete action
+                form.action = 'roomlist.php'; // Ensure this points to the correct action file
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_room_id'; // Ensure this matches the expected parameter
+                input.value = roomId;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+        return false; // Prevent the default form submission
+    }
+
      // JavaScript for client-side pagination
      const rowsPerPage = 10; // Limit to 10 rows per page
     let currentPage = 1;
@@ -1074,5 +1211,88 @@ function applySort() {
         }
     });
     </script>
+    <script>
+        // Function to display SweetAlert messages based on session variables
+        function displaySwalMessages() {
+            <?php if (isset($_SESSION['swal_success'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_success']['icon']; ?>'
+                });
+                <?php unset($_SESSION['swal_success']); // Clear the message after displaying ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['swal_error'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_error']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_error']['icon']; ?>'
+                });
+                <?php unset($_SESSION['swal_error']); // Clear the message after displaying ?>
+            <?php endif; ?>
+        }
+
+        // Call the function to display messages when the page loads
+        window.onload = displaySwalMessages;
+
+        // Function to handle checkout confirmation
+        function handleCheckout(visitorId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you want to check out this visitor?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, check out!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'visitor_log.php';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'visitor_id';
+                    input.value = visitorId;
+                    
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+
+        // Function to handle delete confirmation
+        function handleDelete(visitorId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This action cannot be undone!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'visitor_log.php';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'delete_visitor_id';
+                    input.value = visitorId;
+                    
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+    </script>
 </body>
 </html>
+
+

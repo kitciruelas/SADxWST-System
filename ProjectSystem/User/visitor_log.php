@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'text' => 'Error adding visitor: ' . $stmt->error,
                 'icon' => 'error'
             ];
-        }
+        } 
         $stmt->close();
         header("Location: visitor_log.php");
         exit();
@@ -338,9 +338,9 @@ $conn->close();
         </div>
         
         <div class="logout">
-            <a href="#" onclick="confirmLogout(); return false;">
-                <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-            </a>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
     </div>
 
@@ -429,11 +429,19 @@ $conn->close();
                             <td><?= $checkInDateTime ?></td>
                             <td><?= $checkOutDateTime ?></td>
                             <td>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="handleCheckout(<?= $row['id'] ?>)" <?= $isCheckedOut ? 'disabled' : '' ?>>Check-Out</button>
-                                
-                                <button type="submit" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editVisitorModal<?= $row['id'] ?>">Edit</button>
+                            <div class="d-flex justify-content-center gap-2">
+                            <?php if (!$isCheckedOut): ?>
+                                <button type="button" class="btn btn-success btn-sm" onclick="handleCheckout(<?= $row['id'] ?>)">Check-Out</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary btn-sm" disabled>Checked-Out</button>
+                            <?php endif; ?>
+                            
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editVisitorModal<?= $row['id'] ?>">Edit</button>
 
-                                <button type="button" class="btn btn-danger btn-sm" onclick="handleDelete(<?= $row['id'] ?>)">Delete</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="handleDelete(<?= $row['id'] ?>)">
+                                Delete
+                            </button>
+                        </div>
                             </td>
                         </tr>
 
@@ -950,22 +958,37 @@ $conn->close();
         </script>
 
 <script>
-function confirmLogout() {
-    Swal.fire({
-        title: 'Are you sure?',
-        text: "You will be logged out of the system",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, logout!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.location.href = '../config/user-logout.php';
-        }
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
     });
-}
-</script>
+    </script>
     </body>
     </html>
 

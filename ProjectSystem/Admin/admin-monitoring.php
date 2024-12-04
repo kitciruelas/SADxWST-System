@@ -369,7 +369,7 @@ function confirmLogout() {
                     echo "<td>";
                     echo "<form method='GET' action='admin-monitoring.php' style='display:inline;' onsubmit='return confirmDelete()'>
                         <input type='hidden' name='delete_attendance_id' value='" . htmlspecialchars($row["ID"]) . "' />
-                        <button type='submit' class='custom-btn delete-btn'>Delete</button>
+                        <button type='submit' class='btn btn-danger btn-sm'>Delete</button>
                     </form>";
                     echo "</td>";
                     echo "</tr>";

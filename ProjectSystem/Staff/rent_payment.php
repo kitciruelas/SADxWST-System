@@ -13,7 +13,27 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Get user ID from session
+$userId = $_SESSION['id'];
 
+// Function to log activities
+function logActivity($conn, $user_id, $activity_type, $activity_details) {
+    $activity_type = mysqli_real_escape_string($conn, $activity_type);
+    $activity_details = mysqli_real_escape_string($conn, $activity_details);
+    $sql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
+            VALUES ('$user_id', '$activity_type', '$activity_details')";
+    mysqli_query($conn, $sql);
+}
+
+// Function to get resident name by user ID
+function getResidentName($conn, $user_id) {
+    $sql = "SELECT fname, lname FROM users WHERE id = '$user_id'";
+    $result = mysqli_query($conn, $sql);
+    if ($row = mysqli_fetch_assoc($result)) {
+        return htmlspecialchars($row['fname']) . ' ' . htmlspecialchars($row['lname']);
+    }
+    return 'Unknown Resident';
+}
 
 // SQL query to fetch users from the users table
 $sql = "SELECT id, fname, lname FROM users ORDER BY id;";
@@ -54,7 +74,6 @@ if (isset($_POST['user_id'])) {
     }
 }
 
-
 // Check if the form is submitted (for both create and update)
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Check if it's a payment creation (no payment_id in the form)
@@ -73,9 +92,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Execute the query
         if (mysqli_query($conn, $query)) {
-            header('Location: rent_payment.php?message=Payment created successfully');
+            $residentName = getResidentName($conn, $user_id);
+            // Log the activity
+            logActivity($conn, $userId, 'Create Payment', "Payment of $amount created for resident $residentName");
+
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Payment created successfully!',
+                'icon' => 'success'
+            ];
         } else {
-            header('Location: rent_payment.php?error=Failed to create payment');
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Failed to create payment',
+                'icon' => 'error'
+            ];
         }
     }
 
@@ -83,6 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     elseif (isset($_POST['payment_id'])) {
         // Update Payment
         $payment_id = mysqli_real_escape_string($conn, $_POST['payment_id']);
+        
+        // Fetch the user ID associated with the payment ID
+        $sql = "SELECT user_id FROM rentpayment WHERE payment_id = '$payment_id'";
+        $result = mysqli_query($conn, $sql);
+        $user_id = ($row = mysqli_fetch_assoc($result)) ? $row['user_id'] : null;
+
         $amount = mysqli_real_escape_string($conn, $_POST['amount']);
         $status = mysqli_real_escape_string($conn, $_POST['status']);
         $payment_method = mysqli_real_escape_string($conn, $_POST['payment_method']);
@@ -98,9 +135,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Execute the query
         if (mysqli_query($conn, $sql)) {
-            header('Location: rent_payment.php?message=Payment updated successfully');
+            $residentName = getResidentName($conn, $user_id);
+            // Log the activity
+            logActivity($conn, $userId, 'Update Payment', "Payment ID $payment_id updated for resident $residentName");
+
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Payment updated successfully!',
+                'icon' => 'success'
+            ];
         } else {
-            header('Location: rent_payment.php?error=Failed to update payment');
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Failed to update payment',
+                'icon' => 'error'
+            ];
         }
     }
 }
@@ -108,18 +157,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_GET['delete_payment_id'])) {
     $payment_id = mysqli_real_escape_string($conn, $_GET['delete_payment_id']);
 
+    // Fetch the user ID before deleting
+    $sql = "SELECT user_id FROM rentpayment WHERE payment_id = '$payment_id'";
+    $result = mysqli_query($conn, $sql);
+    $user_id = ($row = mysqli_fetch_assoc($result)) ? $row['user_id'] : null;
+
     // Prepare the SQL query to delete the payment
     $query = "DELETE FROM rentpayment WHERE payment_id = '$payment_id'";
 
     // Execute the query
     if (mysqli_query($conn, $query)) {
-        // Redirect to the same page with a success message
-        header('Location: rent_payment.php?message=Payment deleted successfully');
+        $residentName = getResidentName($conn, $user_id);
+        // Log the activity
+        logActivity($conn, $userId, 'Delete Payment', "Payment ID $payment_id deleted for resident $residentName");
+
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Payment deleted successfully!',
+            'icon' => 'success'
+        ];
     } else {
-        // Redirect with an error message if deletion fails
-        header('Location: rent_payment.php?error=Failed to delete payment');
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Failed to delete payment',
+            'icon' => 'error'
+        ];
     }
 
+    // Redirect back to the rent_payment.php page
+    header("Location: rent_payment.php");
     exit();
 }
 // Check for the 'message' query parameter and display an alert if it exists
@@ -308,16 +374,42 @@ if (isset($_GET['error'])) {
         <a href="rent_payment.php" class="nav-link active"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
         </div>
         <div class="logout">
-        <a href="../config/user-logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -333,7 +425,7 @@ function confirmLogout() {
        
     <div class="container mt-1">
     <div class="row mb-1">
-    <div class="col-12 col-md-6">
+    <div class="col-12 col-md-5">
         <form method="GET" action="" class="search-form">
             <div class="input-group">
                 <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
@@ -365,7 +457,7 @@ function confirmLogout() {
         </select>
     </div>
 
-    <div class="col-6 col-md-2 mt-2">
+    <div class="col-6 col-md-3 mt-2">
         <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
             Add Rent Payment
         </button>
@@ -383,7 +475,7 @@ function confirmLogout() {
             <th>Payment Date</th>
             <th>Status</th>
             <th>Payment Method</th>
-            <th>Reference Number (if online)</th>
+            <th>Reference (if online)</th>
             <th>Action</th>
         </tr>
     </thead>
@@ -395,7 +487,7 @@ function confirmLogout() {
         INNER JOIN users u ON rp.user_id = u.id
         INNER JOIN roomassignments ra ON rp.user_id = ra.user_id
         INNER JOIN rooms r ON ra.room_id = r.room_id
-        ORDER BY rp.payment_date DESC";  // Example ordering by payment date in descending order
+        ORDER BY rp.payment_id DESC";  // Example ordering by payment date in descending order
 
 
         $result = mysqli_query($conn, $sql);
@@ -424,10 +516,7 @@ function confirmLogout() {
                             data-reference='" . htmlspecialchars($row['reference_number']) . "'>
                             Edit
                         </button>
-                        <form method='GET' action='rent_payment.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                            <input type='hidden' name='delete_payment_id' value='" . htmlspecialchars($row['payment_id']) . "' />
-                            <button type='submit' class='btn btn-danger btn-sm'>Delete</button>
-                        </form>
+                        <button type='button' class='btn btn-danger btn-sm' onclick='handleDelete(" . htmlspecialchars($row['payment_id']) . ")'>Delete</button>
                     </td>";
                 echo "</tr>";
             }
@@ -625,17 +714,17 @@ $(document).ready(function() {
             {
                 extend: 'copy',
                 exportOptions: { columns: ':not(:last-child)' },
-                title: 'Reassign List Report - ' + getFormattedDate(),
+                title: 'Rent Payment List Report - ' + getFormattedDate(),
             },
             {
                 extend: 'csv',
                 exportOptions: { columns: ':not(:last-child)' },
-                title: 'Reassign List Report - ' + getFormattedDate(),
+                title: 'Rent Payment List Report - ' + getFormattedDate(),
             },
             {
                 extend: 'excel',
                 exportOptions: { columns: ':not(:last-child)' },
-                title: 'Reassign List Report - ' + getFormattedDate(),
+                title: 'Rent Payment List Report - ' + getFormattedDate(),
             },
             {
                 extend: 'print',
@@ -650,7 +739,7 @@ $(document).ready(function() {
                         lineHeight: '1.6',
                         backgroundColor: '#ffffff',
                     });
-                    $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Reassign List Report</h1>');
+                    $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Rent Payment List Report</h1>');
                     $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
                 },
             }
@@ -734,14 +823,11 @@ function filterTable() {
 
     // Determine the column to filter by
     switch (filterSelect) {
-        case "room_number":
-            colIndex = 2;
-            break;
         case "amount":
-            colIndex = 3;
+            colIndex = 2; // Assuming 'Amount' is the 3rd column
             break;
         case "status":
-            colIndex = 5;
+            colIndex = 4; // Assuming 'Status' is the 5th column
             break;
         default:
             colIndex = -1;
@@ -760,7 +846,7 @@ function filterTable() {
                     break;
                 }
             }
-        } else if (cells[colIndex] && cells[colIndex].innerText.toLowerCase().includes(searchInput)) {
+        } else if (colIndex !== -1 && cells[colIndex] && cells[colIndex].innerText.toLowerCase().includes(searchInput)) {
             match = true;
         }
 
@@ -967,6 +1053,91 @@ const rowsPerPage = 10;
             }
         }
     });
+    function applySort() {
+    const sortValue = document.getElementById('sort').value;
+    const table = document.getElementById('paymentTable');
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    rows.sort((rowA, rowB) => {
+        let cellA, cellB;
+
+        switch (sortValue) {
+            case 'amount_asc':
+                cellA = parseFloat(rowA.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellB = parseFloat(rowB.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                return cellA - cellB;
+            case 'amount_desc':
+                cellA = parseFloat(rowA.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellB = parseFloat(rowB.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                return cellB - cellA;
+            case 'payment_date_asc':
+                cellA = new Date(rowA.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(rowB.querySelector('td:nth-child(4)').textContent.trim());
+                return cellA - cellB;
+            case 'payment_date_desc':
+                cellA = new Date(rowA.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(rowB.querySelector('td:nth-child(4)').textContent.trim());
+                return cellB - cellA;
+            default:
+                return 0;
+        }
+    });
+
+    rows.forEach(row => table.querySelector('tbody').appendChild(row));
+}
+    </script>
+
+    <!-- Include SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+    // Function to handle delete confirmation
+    function handleDelete(paymentId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This action cannot be undone!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create and submit the form programmatically
+                const form = document.createElement('form');
+                form.method = 'GET';
+                form.action = 'rent_payment.php';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_payment_id';
+                input.value = paymentId;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    // Display SweetAlert messages from PHP session
+    <?php if (isset($_SESSION['swal_success'])): ?>
+        Swal.fire({
+            title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+            text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+            icon: '<?php echo $_SESSION['swal_success']['icon']; ?>'
+        });
+        <?php unset($_SESSION['swal_success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['swal_error'])): ?>
+        Swal.fire({
+            title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+            text: '<?php echo $_SESSION['swal_error']['text']; ?>',
+            icon: '<?php echo $_SESSION['swal_error']['icon']; ?>'
+        });
+        <?php unset($_SESSION['swal_error']); ?>
+    <?php endif; ?>
     </script>
 </body>
 </html>

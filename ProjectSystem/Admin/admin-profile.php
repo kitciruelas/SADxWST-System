@@ -338,30 +338,42 @@ $conn->close();
         </div>
         
         <div class="logout">
-        <a href="../config/user-logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return Swal.fire({
-        title: 'Confirm Logout',
-        text: 'Are you sure you want to log out?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, logout',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            return true;
-        }
-        return false;
-    });
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
    <!-- Top bar -->
@@ -633,26 +645,7 @@ function confirmLogout() {
                                                               <i class="fas fa-sign-out-alt"></i>
                                                           </button>
                                                       </div>
-                                                      <div class="device-item mb-2 d-flex justify-content-between align-items-center">
-                                                          <div>
-                                                              <i class="fas fa-mobile-alt text-secondary me-2"></i>
-                                                              <span>iPhone 12</span>
-                                                              <small class="text-muted d-block">Last active: Today</small>
-                                                          </div>
-                                                          <button class="btn btn-sm btn-outline-danger" onclick="signOutDevice('device2')">
-                                                              <i class="fas fa-sign-out-alt"></i>
-                                                          </button>
-                                                      </div>
-                                                      <div class="device-item d-flex justify-content-between align-items-center">
-                                                          <div>
-                                                              <i class="fas fa-tablet-alt text-secondary me-2"></i>
-                                                              <span>iPad Pro</span>
-                                                              <small class="text-muted d-block">Last active: Yesterday</small>
-                                                          </div>
-                                                          <button class="btn btn-sm btn-outline-danger" onclick="signOutDevice('device3')">
-                                                              <i class="fas fa-sign-out-alt"></i>
-                                                          </button>
-                                                      </div>
+                                                    
                                                   </div>
                                               </div>
                                           </div>
@@ -701,36 +694,37 @@ function confirmLogout() {
 
                                       <!-- Add this JavaScript -->
                                       <script>
-                                          function signOutDevice(deviceId) {
-                                              Swal.fire({
-                                                  title: 'Sign Out Device?',
-                                                  text: 'Are you sure you want to sign out from this device?',
-                                                  icon: 'warning',
-                                                  showCancelButton: true,
-                                                  confirmButtonColor: '#d33',
-                                                  cancelButtonColor: '#3085d6',
-                                                  confirmButtonText: 'Sign Out',
-                                                  cancelButtonText: 'Cancel'
-                                              }).then((result) => {
-                                                  if (result.isConfirmed) {
-                                                      Swal.fire({
-                                                          title: 'Success!',
-                                                          text: 'Device has been signed out successfully.',
-                                                          icon: 'success',
-                                                          confirmButtonColor: '#3085d6'
-                                                      }).then(() => {
-                                                          // Here you would typically make an API call to sign out the device
-                                                          // For now, we'll just remove the device from the UI
-                                                          const deviceElement = document.querySelector(`[onclick="signOutDevice('${deviceId}')"]`).closest('.device-item');
-                                                          deviceElement.style.opacity = '0';
-                                                          setTimeout(() => {
-                                                              deviceElement.style.display = 'none';
-                                                          }, 300);
-                                                      });
-                                                  }
-                                              });
-                                          }
-
+                                       function signOutDevice(deviceId) {
+        Swal.fire({
+            title: 'Sign Out Device?',
+            text: 'Are you sure you want to sign out from this device?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sign Out',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Device has been signed out successfully.',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6'
+                }).then(() => {
+                    // Here you would typically make an API call to sign out the device
+                    // For now, we'll just remove the device from the UI
+                    const deviceElement = document.querySelector(`[onclick="signOutDevice('${deviceId}')"]`).closest('.device-item');
+                    deviceElement.style.opacity = '0';
+                    setTimeout(() => {
+                        deviceElement.style.display = 'none';
+                        // Redirect to user-dashboard.php after sign out
+                        window.location.href = '../config/logout.php';
+                    }, 300);
+                });
+            }
+        });
+    }
                                           // Add a function to format dates nicely
                                           function formatDate(date) {
                                               const options = { 
@@ -835,9 +829,13 @@ function confirmLogout() {
               </select>
             </div>
             <div class="col-md-6">
-              <label for="contact" class="form-label">Contact</label>
-              <input type="text" class="form-control" name="contact" value="<?php echo htmlspecialchars($user['contact']); ?>" required />
-            </div>
+                          <label for="contact" class="form-label">Contact</label>
+                          <input type="tel" class="form-control" name="contact" 
+                                 value="<?php echo htmlspecialchars($user['contact']); ?>" 
+                                 pattern="09\d{9}" 
+                                 title="Please enter a valid 11-digit contact number starting with 09" 
+                                 required />
+                        </div>
           </div>
           
           <!-- Address Field -->

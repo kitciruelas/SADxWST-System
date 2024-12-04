@@ -147,7 +147,9 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <!-- Custom CSS -->
 <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
-
+<!-- Include SweetAlert CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -171,23 +173,48 @@ while ($row = mysqli_fetch_assoc($result)) {
         
  
         </div>
-        
         <div class="logout">
-        <a href="../config/user-logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Welcome to Dormio, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
+        <h2>Welcome to Dormio Staff, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
 
         <a href="profile.php" class="profile-btn">
             <i class="fas fa-user"></i>
@@ -1085,6 +1112,7 @@ function toggleChartType(chartId) {
         
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.min.js"></script>
 
     <!-- Script -->
 
@@ -1218,6 +1246,31 @@ function validateForm() {
   
   
 </script>
+
+    <!-- SweetAlert Messages -->
+    <?php if (isset($_SESSION['swal_success'])): ?>
+        <script>
+            Swal.fire({
+                title: <?= json_encode($_SESSION['swal_success']['title']) ?>,
+                text: <?= json_encode($_SESSION['swal_success']['text']) ?>,
+                icon: <?= json_encode($_SESSION['swal_success']['icon']) ?>,
+                confirmButtonText: 'OK'
+            });
+        </script>
+        <?php unset($_SESSION['swal_success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['swal_error'])): ?>
+        <script>
+            Swal.fire({
+                title: <?= json_encode($_SESSION['swal_error']['title']) ?>,
+                text: <?= json_encode($_SESSION['swal_error']['text']) ?>,
+                icon: <?= json_encode($_SESSION['swal_error']['icon']) ?>,
+                confirmButtonText: 'OK'
+            });
+        </script>
+        <?php unset($_SESSION['swal_error']); ?>
+    <?php endif; ?>
 </body>
 </html>
 

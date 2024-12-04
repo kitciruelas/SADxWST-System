@@ -52,22 +52,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($deleteStmt) {
                     $deleteStmt->bind_param("i", $visitor_id);
                     if ($deleteStmt->execute()) {
-                        echo "Visitor archived and deleted successfully.";
+                        $_SESSION['swal_success'] = [
+                            'title' => 'Success!',
+                            'text' => 'Visitor archived and deleted successfully!',
+                            'icon' => 'success'
+                        ];
                         header("Location: admin-visitor_log.php"); // Redirect after archiving
                         exit;
                     } else {
-                        echo "Error deleting visitor from the original table.";
+                        $_SESSION['swal_error'] = [
+                            'title' => 'Error',
+                            'text' => 'Error deleting visitor from the original table.',
+                            'icon' => 'error'
+                        ];
                     }
                     $deleteStmt->close();
                 } else {
-                    echo "Failed to prepare the delete statement.";
+                    $_SESSION['swal_error'] = [
+                        'title' => 'Error',
+                        'text' => 'Failed to prepare the delete statement.',
+                        'icon' => 'error'
+                    ];
                 }
             } else {
-                echo "Error archiving visitor.";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error',
+                    'text' => 'Error archiving visitor.',
+                    'icon' => 'error'
+                ];
             }
             $archiveStmt->close();
         } else {
-            echo "Failed to prepare the archive statement.";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Failed to prepare the archive statement.',
+                'icon' => 'error'
+            ];
         }
 
     }
@@ -80,7 +100,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userId = $_SESSION['id']; // Current logged-in staff user
 
         if (empty($visitorName) || empty($contactInfo) || empty($purpose) || empty($checkInTime) || empty($_POST['visiting_user_id'])) {
-            echo "<script>alert('All fields are required!'); window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'All fields are required!',
+                'icon' => 'error'
+            ];
+            header("Location: admin-visitor_log.php");
             exit();
         }
 
@@ -94,7 +119,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         if ($userExists == 0) {
-            echo "<script>alert('Invalid user ID!'); window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Invalid user ID!',
+                'icon' => 'error'
+            ];
+            header("Location: admin-visitor_log.php");
             exit();
         }
 
@@ -108,15 +138,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt->execute()) {
             logActivity($conn, $userId, "Add Visitor", "Visitor '$visitorName' added successfully.");
-            echo "<script>alert('Visitor added successfully!'); window.location.href='admin-visitor_log.php';</script>";
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Visitor added successfully!',
+                'icon' => 'success'
+            ];
+            header("Location: admin-visitor_log.php");
         } else {
-            echo "<script>alert('Error adding visitor: " . $stmt->error . "'); window.history.back();</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error adding visitor: ' . $stmt->error,
+                'icon' => 'error'
+            ];
+            header("Location: admin-visitor_log.php");
         }
         $stmt->close();
         exit();
     }
+    // Check-Out Visitor Logic
+    elseif (isset($_POST['checkout_id'])) {
+        $visitorId = (int)$_POST['checkout_id'];
+        $userId = $_SESSION['id']; // Assuming this is the current logged-in user
+
+        $stmt = $conn->prepare(
+            "UPDATE visitors SET check_out_time = NOW() WHERE id = ?"
+        );
+        if ($stmt === false) {
+            die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+        }
+
+        $stmt->bind_param("i", $visitorId);
+
+        if ($stmt->execute()) {
+            // Fetch visitor's name for logging
+            $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
+            $nameStmt = $conn->prepare($fetchNameSql);
+            if ($nameStmt) {
+                $nameStmt->bind_param("i", $visitorId);
+                $nameStmt->execute();
+                $nameStmt->bind_result($visitorName);
+                $nameStmt->fetch();
+                $nameStmt->close();
+
+                logActivity($conn, $userId, "Check-Out Visitor", "Visitor '$visitorName' checked out.");
+            }
+
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Check-out successful!',
+                'icon' => 'success'
+            ];
+            header("Location: admin-visitor_log.php");
+            exit();
+        } else {
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error updating check-out time: ' . $stmt->error,
+                'icon' => 'error'
+            ];
+            header("Location: admin-visitor_log.php");
+            exit();
+        }
+    }
+    // Handle visitor editing
+    elseif (isset($_POST['edit_id'])) {
+        $edit_id = intval($_POST['edit_id']);
+        $edit_msg = $_POST['edit_msg'];
+
+        // Sanitize and validate inputs
+        $name = trim($edit_msg['name']);
+        $contactInfo = trim($edit_msg['contact_info']);
+        $purpose = trim($edit_msg['purpose']);
+        $userId = $_SESSION['id']; // Current logged-in staff user
+
+        // Basic validation
+        if (empty($name) || empty($contactInfo) || empty($purpose)) {
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'All fields are required for editing!',
+                'icon' => 'error'
+            ];
+            header("Location: admin-visitor_log.php");
+            exit();
+        }
+
+        // Use prepared statement for update
+        $stmt = $conn->prepare("UPDATE visitors SET name = ?, contact_info = ?, purpose = ? WHERE id = ?");
+        if ($stmt === false) {
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Prepare failed: ' . $conn->error,
+                'icon' => 'error'
+            ];
+            header("Location: admin-visitor_log.php");
+            exit();
+        }
+
+        $stmt->bind_param("sssi", $name, $contactInfo, $purpose, $edit_id);
+
+        if ($stmt->execute()) {
+            logActivity($conn, $userId, "Edit Visitor", "Visitor ID '$edit_id' updated successfully.");
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Visitor updated successfully.',
+                'icon' => 'success'
+            ];
+        } else {
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Failed to update visitor: ' . $stmt->error,
+                'icon' => 'error'
+            ];
+        }
+        $stmt->close();
+        header("Location: admin-visitor_log.php");
+        exit();
+    }
     else {
-        echo "Invalid request: Missing required parameters.";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Invalid request: Missing required parameters.',
+            'icon' => 'error'
+        ];
+        header("Location: admin-visitor_log.php");
+        exit();
     }
 }
 
@@ -159,9 +304,11 @@ $query = "
     SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person
     FROM visitors v
     LEFT JOIN users u ON v.visiting_user_id = u.id
-    WHERE 1=1 $dateCondition
-    ORDER BY v.check_in_time DESC
+    ORDER BY v.check_out_time IS NOT NULL, v.check_in_time,v.id DESC
 ";
+
+
+
 $result = $conn->query($query);
 
 $conn->close();
@@ -210,7 +357,11 @@ $conn->close();
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+<!-- Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+<!-- Bootstrap 5 JS Bundle (includes Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <style>
     .container {
         background-color: transparent;
@@ -323,7 +474,8 @@ $conn->close();
         background-color: #1a1555 !important;
     }
 </style>
- 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body>
 
@@ -345,16 +497,42 @@ $conn->close();
         </div>
         
         <div class="logout">
-        <a href="../config/user-logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -429,6 +607,7 @@ function confirmLogout() {
             if ($result && $result->num_rows > 0): 
                 $counter = 1;
                 while ($row = $result->fetch_assoc()):
+                    $isCheckedOut = !empty($row['check_out_time']);
             ?>
                 <tr>
                     <td><?= $counter++ ?></td>
@@ -437,16 +616,56 @@ function confirmLogout() {
                     <td><?= htmlspecialchars($row['purpose']) ?></td>
                     <td><?= htmlspecialchars($row['visiting_person']) ?></td>
                     <td><?= date("M d, Y g:i A", strtotime($row['check_in_time'])) ?></td>
-                    <td><?= !empty($row['check_out_time']) ? date("M d, Y g:i A", strtotime($row['check_out_time'])) : 'N/A' ?></td>
+                    <td><?= $isCheckedOut ? date("M d, Y g:i A", strtotime($row['check_out_time'])) : 'N/A' ?></td>
                     <td>
-                        <form action="admin-visitor_log.php" method="post" style="display: inline;">
-                            <input type="hidden" name="visitor_id" value="<?= $row['id'] ?>">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this visitor record?')">
+                        <div class="d-flex justify-content-center gap-2">
+                            <?php if (!$isCheckedOut): ?>
+                                <button type="button" class="btn btn-success btn-sm" onclick="handleCheckout(<?= $row['id'] ?>)">Check-Out</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary btn-sm" disabled>Checked-Out</button>
+                            <?php endif; ?>
+                            
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editVisitorModal<?= $row['id'] ?>">Edit</button>
+
+                            <button type="button" class="btn btn-danger btn-sm" onclick="handleDelete(<?= $row['id'] ?>)">
                                 Delete
                             </button>
-                        </form>
+                        </div>
                     </td>
                 </tr>
+
+                <!-- Edit Modal -->
+                <div class="modal fade" id="editVisitorModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editVisitorModalLabel<?= $row['id'] ?>" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editVisitorModalLabel<?= $row['id'] ?>">Edit Visitor</h5>
+<!-- Modal Close Button -->
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>                            </div>
+                            <div class="modal-body">
+                                <form action="admin-visitor_log.php" method="post">
+                                    <input type="hidden" name="edit_id" value="<?= $row['id'] ?>">
+                                    <div class="mb-3">
+                                        <label for="editVisitorName<?= $row['id'] ?>" class="form-label">Visitor's Name</label>
+                                        <input type="text" class="form-control" id="editVisitorName<?= $row['id'] ?>" name="edit_msg[name]" value="<?= htmlspecialchars($row['name']) ?>" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editContactInfo<?= $row['id'] ?>" class="form-label">Contact Info</label>
+                                        <input type="text" class="form-control" id="editContactInfo<?= $row['id'] ?>" name="edit_msg[contact_info]" value="<?= htmlspecialchars($row['contact_info']) ?>" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editPurpose<?= $row['id'] ?>" class="form-label">Purpose</label>
+                                        <input type="text" class="form-control" id="editPurpose<?= $row['id'] ?>" name="edit_msg[purpose]" value="<?= htmlspecialchars($row['purpose']) ?>" required>
+                                    </div>
+                                    <div class="text-center">
+                                        <button type="submit" class="btn btn-success">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
             <?php 
                 endwhile; 
             else: 
@@ -829,7 +1048,6 @@ function validateForm() {
             <div class="modal-header">
                 <h5 class="modal-title" id="visitorModalLabel">Log New Visitor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                    <i class="fas fa-times"></i> <!-- Font Awesome icon for close -->
                 </button>
             </div>
             <div class="modal-body">
@@ -875,5 +1093,93 @@ function validateForm() {
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 <?php endif; ?>
-</body>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+ <!-- JavaScript HandleDelete Function -->
+ <script>
+    function handleDelete(visitorId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This action cannot be undone!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create and submit the form programmatically
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'admin-visitor_log.php'; // Ensure this matches your PHP file
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'visitor_id'; // Align with PHP's expected POST parameter
+                input.value = visitorId;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+    </script>
+
+    <!-- SweetAlert Messages -->
+    <?php if (isset($_SESSION['swal_success'])): ?>
+        <script>
+            Swal.fire({
+                title: <?= json_encode($_SESSION['swal_success']['title']) ?>,
+                text: <?= json_encode($_SESSION['swal_success']['text']) ?>,
+                icon: <?= json_encode($_SESSION['swal_success']['icon']) ?>,
+                confirmButtonText: 'OK'
+            });
+        </script>
+        <?php unset($_SESSION['swal_success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['swal_error'])): ?>
+        <script>
+            Swal.fire({
+                title: <?= json_encode($_SESSION['swal_error']['title']) ?>,
+                text: <?= json_encode($_SESSION['swal_error']['text']) ?>,
+                icon: <?= json_encode($_SESSION['swal_error']['icon']) ?>,
+                confirmButtonText: 'OK'
+            });
+        </script>
+        <?php unset($_SESSION['swal_error']); ?>
+    <?php endif; ?>
+
+    <!-- JavaScript HandleCheckout Function -->
+    <script>
+    function handleCheckout(visitorId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Do you want to check out this visitor?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, check out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create and submit the form programmatically
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'admin-visitor_log.php'; // Ensure this matches your PHP file
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'checkout_id'; // Align with PHP's expected POST parameter
+                input.value = visitorId;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+    </script>
+</body> 
 </html>

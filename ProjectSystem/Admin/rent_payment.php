@@ -336,7 +336,7 @@ function confirmLogout() {
        
     <div class="container mt-1">
     <div class="row mb-1">
-    <div class="col-12 col-md-6">
+    <div class="col-12 col-md-5">
         <form method="GET" action="" class="search-form">
             <div class="input-group">
                 <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
@@ -368,7 +368,7 @@ function confirmLogout() {
         </select>
     </div>
 
-    <div class="col-6 col-md-2 mt-2">
+    <div class="col-6 col-md-3 mt-2">
         <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
             Add Rent Payment
         </button>
@@ -525,7 +525,7 @@ function confirmLogout() {
           <!-- Payment Date -->
           <div class="mb-3">
             <label for="payment_date" class="form-label">Payment Date</label>
-            <input type="date" name="payment_date" id="payment_date" class="form-control" required>
+            <input type="date" name="payment_date" id="payment_date" class="form-control" required max="<?php echo date('Y-m-d'); ?>">
           </div>
 
           <!-- Status -->
@@ -628,17 +628,17 @@ $(document).ready(function() {
             {
                 extend: 'copy',
                 exportOptions: { columns: ':not(:last-child)' },
-                title: 'Reassign List Report - ' + getFormattedDate(),
+                title: 'Rent Payment List Report - ' + getFormattedDate(),
             },
             {
                 extend: 'csv',
                 exportOptions: { columns: ':not(:last-child)' },
-                title: 'Reassign List Report - ' + getFormattedDate(),
+                title: 'Rent Payment List Report - ' + getFormattedDate(),
             },
             {
                 extend: 'excel',
                 exportOptions: { columns: ':not(:last-child)' },
-                title: 'Reassign List Report - ' + getFormattedDate(),
+                title: 'Rent Payment List Report - ' + getFormattedDate(),
             },
             {
                 extend: 'print',
@@ -653,7 +653,7 @@ $(document).ready(function() {
                         lineHeight: '1.6',
                         backgroundColor: '#ffffff',
                     });
-                    $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Reassign List Report</h1>');
+                    $(doc.body).prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Rent Payment List Report</h1>');
                     $(doc.body).prepend('<p style="text-align:center; font-size: 12pt;">' + getFormattedDate() + '</p><hr>');
                 },
             }
@@ -672,15 +672,39 @@ function getFormattedDate() {
 }
 
     function applySort() {
-    var sortValue = document.getElementById("sort").value;
-    
-    // If a sort option is selected, reload the page with the sort parameter in the URL
-    if (sortValue) {
-        window.location.href = window.location.pathname + "?sort=" + sortValue;
-    } else {
-        // If no sort option is selected, reload the page without the sort parameter
-        window.location.href = window.location.pathname;
-    }
+    const sortValue = document.getElementById('sort').value;
+    const table = document.getElementById('paymentTable');
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    // Sort rows based on selected option
+    rows.sort((rowA, rowB) => {
+        let cellA, cellB;
+
+        switch (sortValue) {
+            case 'amount_asc':
+                cellA = parseFloat(rowA.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellB = parseFloat(rowB.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                return cellA - cellB; // Ascending order
+            case 'amount_desc':
+                cellA = parseFloat(rowA.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellB = parseFloat(rowB.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                return cellB - cellA; // Descending order
+            case 'payment_date_asc':
+                cellA = new Date(rowA.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(rowB.querySelector('td:nth-child(4)').textContent.trim());
+                return cellA - cellB; // Ascending order (Oldest to Newest)
+            case 'payment_date_desc':
+                cellA = new Date(rowA.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(rowB.querySelector('td:nth-child(4)').textContent.trim());
+                return cellB - cellA; // Descending order (Newest to Oldest)
+            default:
+                return 0;
+        }
+    });
+
+    // Append sorted rows back to the table body
+    const tbody = table.querySelector('tbody');
+    rows.forEach(row => tbody.appendChild(row));
 }
 
 // Bind data to the Edit Payment Modal
@@ -737,14 +761,11 @@ function filterTable() {
 
     // Determine the column to filter by
     switch (filterSelect) {
-        case "room_number":
-            colIndex = 2;
-            break;
         case "amount":
-            colIndex = 3;
+            colIndex = 2; // Assuming "Amount" is the third column
             break;
         case "status":
-            colIndex = 5;
+            colIndex = 4; // Assuming "Status" is the fifth column
             break;
         default:
             colIndex = -1;
@@ -783,29 +804,21 @@ function applySort() {
         let cellA, cellB;
 
         switch (sortValue) {
-            case 'room_number_asc':
-                cellA = rowA.querySelector('td:nth-child(3)').textContent.trim(); // Room Number
-                cellB = rowB.querySelector('td:nth-child(3)').textContent.trim();
-                return cellA.localeCompare(cellB); // Ascending order
-            case 'room_number_desc':
-                cellA = rowA.querySelector('td:nth-child(3)').textContent.trim();
-                cellB = rowB.querySelector('td:nth-child(3)').textContent.trim();
-                return cellB.localeCompare(cellA); // Descending order
             case 'amount_asc':
-                cellA = parseFloat(rowA.querySelector('td:nth-child(4)').textContent.trim().replace(/[^\d.-]/g, ''));
-                cellB = parseFloat(rowB.querySelector('td:nth-child(4)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellA = parseFloat(rowA.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellB = parseFloat(rowB.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
                 return cellA - cellB; // Ascending order
             case 'amount_desc':
-                cellA = parseFloat(rowA.querySelector('td:nth-child(4)').textContent.trim().replace(/[^\d.-]/g, ''));
-                cellB = parseFloat(rowB.querySelector('td:nth-child(4)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellA = parseFloat(rowA.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
+                cellB = parseFloat(rowB.querySelector('td:nth-child(3)').textContent.trim().replace(/[^\d.-]/g, ''));
                 return cellB - cellA; // Descending order
             case 'payment_date_asc':
-                cellA = new Date(rowA.querySelector('td:nth-child(5)').textContent.trim());
-                cellB = new Date(rowB.querySelector('td:nth-child(5)').textContent.trim());
+                cellA = new Date(rowA.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(rowB.querySelector('td:nth-child(4)').textContent.trim());
                 return cellA - cellB; // Ascending order (Oldest to Newest)
             case 'payment_date_desc':
-                cellA = new Date(rowA.querySelector('td:nth-child(5)').textContent.trim());
-                cellB = new Date(rowB.querySelector('td:nth-child(5)').textContent.trim());
+                cellA = new Date(rowA.querySelector('td:nth-child(4)').textContent.trim());
+                cellB = new Date(rowB.querySelector('td:nth-child(4)').textContent.trim());
                 return cellB - cellA; // Descending order (Newest to Oldest)
             default:
                 return 0;
@@ -813,7 +826,8 @@ function applySort() {
     });
 
     // Append sorted rows back to the table body
-    rows.forEach(row => table.querySelector('tbody').appendChild(row));
+    const tbody = table.querySelector('tbody');
+    rows.forEach(row => tbody.appendChild(row));
 }
 
 

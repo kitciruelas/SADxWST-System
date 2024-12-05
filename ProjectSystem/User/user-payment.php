@@ -62,6 +62,8 @@ function generateReceiptHTML($payment) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment History</title>
+    <link rel="icon" href="../img-icon/money.png" type="image/png">
+
     <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -157,10 +159,19 @@ function generateReceiptHTML($payment) {
     <!-- Search, Filter, and Sort Controls -->
 <div class="row mb-4">
     <div class="col-12 col-md-6">
-        <input type="text" id="searchInput" class="form-control custom-input-small" placeholder="Search for payment details..." onkeyup="filterTable()">
+        <form method="GET" action="" class="search-form">
+            <div class="input-group">
+                <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                    placeholder="Search for rooms, capacity, etc..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </form>
     </div>
     
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-2 mt-2">
         <select id="filterSelect" class="form-select" onchange="filterTable()">
             <option value="all" selected>Filter by</option>
             <option value="amount">Amount</option>
@@ -168,10 +179,9 @@ function generateReceiptHTML($payment) {
         </select>
     </div>
 
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-2 mt-2">
         <select name="sort" class="form-select" id="sort" onchange="applySort()">
             <option value="" selected>Select Sort</option>
-
             <option value="amount_asc">Amount (Low to High)</option>
             <option value="amount_desc">Amount (High to Low)</option>
             <option value="payment_date_asc">Payment Date (Oldest to Newest)</option>
@@ -230,14 +240,14 @@ function generateReceiptHTML($payment) {
             $month_id = str_replace(' ', '', $month);
             ?>
             <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#<?php echo $month_id; ?>">
+                <h2 class="accordion-header" id="heading<?php echo $month_id; ?>">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?php echo $month_id; ?>" aria-expanded="false" aria-controls="collapse<?php echo $month_id; ?>">
                         <i class="fas fa-calendar-alt me-2"></i>
                         <?php echo $month; ?>
                         <span class="badge bg-primary ms-2"><?php echo count($payments); ?> payments</span>
                     </button>
                 </h2>
-                <div id="<?php echo $month_id; ?>" class="accordion-collapse collapse">
+                <div id="collapse<?php echo $month_id; ?>" class="accordion-collapse collapse" aria-labelledby="heading<?php echo $month_id; ?>">
                     <div class="accordion-body">
                         <table class="table">
                             <thead>
@@ -318,6 +328,155 @@ function generateReceiptHTML($payment) {
 
 <!-- Updated CSS -->
 <style>
+            
+        
+            /* Controls section styling */
+          
+            /* Search input styling */
+            .input-group .form-control {
+                border-radius: 8px;
+                padding: 0.75rem 2.25rem 0.75rem 1rem;
+                border: 2px solid #e0e0e0;
+                transition: all 0.3s ease;
+            }
+
+            .input-group .form-control:focus {
+                border-color: #2B228A;
+                box-shadow: 0 0 0 0.2rem rgba(43, 34, 138, 0.1);
+            }
+
+            /* Filter and Sort controls */
+            .form-select {
+                border-radius: 8px;
+                border: 2px solid #e0e0e0;
+                background-color: white;
+                cursor: pointer;
+                min-width: 160px;
+            }
+
+            .form-select:focus {
+                border-color: #2B228A;
+                box-shadow: 0 0 0 0.2rem rgba(43, 34, 138, 0.1);
+            }
+
+            /* Labels */
+            .form-label {
+                color: #495057;
+                font-weight: 500;
+                margin-bottom: 0;
+            }
+
+            /* Log Visitor button */
+            .btn-primary {
+                background-color: #2B228A;
+                border: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 8px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+            }
+
+            .btn-primary:hover {
+                background-color: #201b68;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+
+            /* Table styling */
+            .table-responsive {
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 0 15px rgba(0,0,0,0.05);
+            }
+
+            .table {
+                margin-bottom: 0;
+            }
+
+            .table thead th {
+                background-color: #2B228A;
+                color: white;
+                font-weight: 500;
+                padding: 1rem;
+                border: none;
+                white-space: nowrap;
+            }
+
+            .table tbody tr {
+                transition: all 0.3s ease;
+            }
+
+            .table tbody tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            .table td {
+                padding: 1rem;
+                vertical-align: middle;
+                border-color: #e9ecef;
+            }
+
+            /* Action buttons */
+            .btn-sm {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.875rem;
+                border-radius: 6px;
+                margin: 0 0.2rem;
+            }
+
+            .btn-secondary {
+                background-color: #6c757d;
+                border: none;
+            }
+
+            .btn-danger {
+                background-color: #dc3545;
+                border: none;
+            }
+
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .container {
+                    padding: 1rem;
+                }
+                
+                .controls-wrapper {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                
+                .input-group {
+                    width: 100% !important;
+                }
+                
+                .d-flex {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                
+                .form-select {
+                    width: 100%;
+                }
+            }
+            .btn-close {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+.btn-close span {
+    font-size: 1.5rem;
+    color: #fff;
+    line-height: 1;
+}
+
 /* Updated Container Styling */
 .container {
     max-width: 1200px;
@@ -677,5 +836,58 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function filterTable() {
+    let searchInput = document.getElementById('searchInput').value.toLowerCase();
+    let filterSelect = document.getElementById('filterSelect').value;
+    let accordionItems = document.querySelectorAll('.accordion-item');
+
+    accordionItems.forEach(item => {
+        let rows = item.querySelectorAll('tbody tr');
+        let visibleRows = 0;
+
+        rows.forEach(row => {
+            let columns = row.querySelectorAll('td');
+            let matchesSearch = false;
+            let matchesFilter = true;
+
+            columns.forEach(column => {
+                let text = column.textContent.toLowerCase();
+                if (text.includes(searchInput)) {
+                    matchesSearch = true;
+                }
+            });
+
+            // Additional filter logic
+            if (filterSelect !== 'all') {
+                let filterColumn = row.querySelector('.' + filterSelect);
+                if (filterColumn) {
+                    let filterText = filterColumn.textContent.toLowerCase();
+                    matchesFilter = filterText.includes(searchInput);
+                }
+            }
+
+            // Show or hide row
+            if (matchesSearch && matchesFilter) {
+                row.style.display = '';
+                visibleRows++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Show/hide accordion section based on whether it has visible rows
+        if (visibleRows > 0) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Ensure the filterTable function is called when the search input changes
+document.getElementById('searchInput').addEventListener('input', filterTable);
+</script>
 </body>
 </html>

@@ -433,6 +433,7 @@ if ($result === false) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
+    <link rel="icon" href="../img-icon/home1.png" type="image/png">
 
 
 <!-- Font Awesome CSS for icons -->

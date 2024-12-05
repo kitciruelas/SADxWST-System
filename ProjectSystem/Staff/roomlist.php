@@ -382,7 +382,7 @@ $result = $conn->query($query);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room List</title>
-    <link rel="icon" href="img-icon/rlist.png" type="image/png">
+    <link rel="icon" href="../img-icon/a-room.webp" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">

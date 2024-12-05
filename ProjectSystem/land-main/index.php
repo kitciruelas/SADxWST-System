@@ -146,7 +146,7 @@ $conn->close();
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="land-img/style.css">
+    <link rel="stylesheet" href="land-img/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
@@ -513,65 +513,181 @@ $conn->close();
 
 
  <!-- Contact Us Section -->
-<section id="contact-us" style="background-color: #e3e7fa; padding: 40px 0;">
+<section id="contact-us" style="background-color: #e3e7fa; padding: 30px 0;">
     <div class="container-fluid" style="max-width: 1200px; margin: 0 auto;">
-        <h2 class="text-center" style="font-weight: bold; margin-bottom: 30px;">CONTACT US</h2>
-        <div class="row">
+        <h2 class="text-center" style="font-weight: bold; margin-bottom: 20px;">CONTACT US</h2>
+        <div class="row justify-content-center align-items-stretch">
            <!-- Get in Touch Form -->
-<div class="col-md-6" style="border: 1px solid #ccc; padding: 20px; border-radius: 5px;">
-    <h4 style="margin-bottom: 20px;">Get in Touch</h4>
-    <form>
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label for="name">Name</label>
-            <input type="text" class="form-control" id="name" placeholder="Enter your name" style="padding: 10px; width: 100%;">
-        </div>
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label for="email">Email</label>
-            <input type="email" class="form-control" id="email" placeholder="Enter your email" style="padding: 10px; width: 100%;">
-        </div>
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label for="subject">Subject</label>
-            <input type="text" class="form-control" id="subject" placeholder="Enter subject" style="padding: 10px; width: 100%;">
-        </div>
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label for="message">Message</label>
-            <textarea class="form-control" id="message" rows="4" placeholder="Write your message here" style="padding: 10px; width: 100%;"></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary" style="background-color: #0056b3; border: none; padding: 10px 20px;">Send Message</button>
-    </form>
-</div>
+           <div class="col-md-6 mb-5 mb-md-0">
+                <div class="h-100 glass-container">
+                    <h4 style="margin-bottom: 20px; color: #2B228A;">Get in Touch</h4>
+                    <form action="https://formsubmit.co/dormioph@gmail.com" method="POST" class="contact-form" id="contactForm">
+                        <div class="form-group" style="margin-bottom: -20px;">
+                            <label for="name" class="form-label">Name</label>
+                            <input 
+                                type="text" 
+                                id="name"
+                                name="name" 
+                                placeholder="Your Name" 
+                                required
+                                class="form-control"
+                                autocomplete="name">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: -20px;">
+                            <label for="email" class="form-label">Email</label>
+                            <input 
+                                type="email" 
+                                id="email"
+                                name="email" 
+                                placeholder="Your Email" 
+                                required
+                                class="form-control"
+                                autocomplete="email">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: -20px;">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input 
+                                type="tel" 
+                                id="phone"
+                                name="phone" 
+                                placeholder="Phone Number" 
+                                required
+                                class="form-control"
+                                pattern="[0-9]{11}"
+                                title="Please enter a valid phone number"
+                                autocomplete="tel">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: -20px;">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea 
+                                id="message"
+                                name="message" 
+                                placeholder="Your Message" 
+                                required
+                                class="form-control"
+                                rows="4"></textarea>
+                        </div>
+                        
+                        <!-- Hidden fields -->
+                        <input type="hidden" name="_captcha" value="false">
+                        <input type="hidden" name="_template" value="table">
+                        <input type="hidden" name="_subject" value="New Contact Form Submission">
+                        <input type="hidden" name="_next" value="<?php echo $_SERVER['PHP_SELF']; ?>">
+                        
+                        <button type="submit" id="submitBtn" class="btn btn-primary" style="margin-top: 10px;">
+                            <i class="fas fa-paper-plane me-2"></i><span id="buttonText">Send Message</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
 
             <!-- Location Information -->
             <div class="col-md-6">
-                <h4 style="margin-bottom: 20px;">Our Location</h4>
-                <p><strong>Address:</strong> Purok 2, Inosluban Lipa City</p>
-                <p><strong>Phone:</strong> +123 456 7890</p>
-                <p><strong>Email:</strong> <a href="mailto:dormio@gmail.com" style="color: #0056b3;">dormio@gmail.com</a></p>
+                <div class="h-100 glass-container">
+                    <h4 style="margin-bottom: 25px; color: #2B228A;">Our Location</h4>
+                    <p><strong>Address:</strong> Purok 2, Inosluban Lipa City</p>
+                    <p><strong>Phone:</strong> +123 456 7890</p>
+                    <p><strong>Email:</strong> <a href="mailto:dormio@gmail.com" style="color: #0056b3;">dormio@gmail.com</a></p>
 
-                <!-- Google Maps Embed -->
-                <div class="map-container" style="margin-top: 20px;">
-                    <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31347.122208155236!2d121.1572098!3d13.9422049!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd6e6f73b6eb6f%3A0x60c5d72722509f56!2sInosluban%2C%20Lipa%2C%20Batangas%2C%20Philippines!5e0!3m2!1sen!2sph!4v1691743080705!5m2!1sen!2sph"
-                        width="100%"
-                        height="300"
-                        style="border:0; border-radius: 10px;"
-                        allowfullscreen=""
-                        loading="lazy"></iframe>
+                    <!-- Google Maps Embed -->
+                    <div class="map-container" style="margin-top: 20px;">
+                        <iframe
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31347.122208155236!2d121.1572098!3d13.9422049!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd6e6f73b6eb6f%3A0x60c5d72722509f56!2sInosluban%2C%20Lipa%2C%20Batangas%2C%20Philippines!5e0!3m2!1sen!2sph!4v1691743080705!5m2!1sen!2sph"
+                            width="100%"
+                            height="300"
+                            style="border:0; border-radius: 10px;"
+                            allowfullscreen=""
+                            loading="lazy"></iframe>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Additional CSS for Styling -->
 <style>
-    .form-control {
-        border: 1px solid #ccc;
-        border-radius: 5px;
+/* Transparent glass effect */
+.glass-container {
+    background: rgba(255, 255, 255, 0.15);  /* Very light background */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Form controls with transparent background */
+.form-control {
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 12px 15px;
+    font-size: 1rem;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(43, 34, 138, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(43, 34, 138, 0.15);
+}
+
+.form-control::placeholder {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+/* Button styling */
+.btn-primary {
+    background: rgba(43, 34, 138, 0.8);
+    border: none;
+    padding: 12px 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: rgba(43, 34, 138, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(43, 34, 138, 0.2);
+}
+
+/* Labels */
+.form-label {
+    color: #2B228A;
+    font-weight: 500;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+
+/* Contact info */
+.contact-info p {
+    color: #333;
+    margin-bottom: 15px;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.contact-info a {
+    color: #2B228A;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-info a:hover {
+    color: #201b66;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .glass-container {
+        margin-bottom: 20px;
     }
-    .btn-primary:hover {
-        background-color: #004494;
-    }
+}
 </style>
 
 
@@ -685,5 +801,82 @@ applyNowBtn.onclick = function() {
             });
         });
     </script>
+
+    <!-- Add this JavaScript at the bottom of your file, before the closing </body> tag -->
+    <script>
+    let isSubmitEnabled = true;
+    const submitButton = document.getElementById('submitBtn');
+    const buttonText = document.getElementById('buttonText');
+    const cooldownTime = 3; // Cooldown time in seconds
+
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!isSubmitEnabled) {
+            return;
+        }
+        
+        // Disable submit button and start cooldown
+        isSubmitEnabled = false;
+        submitButton.disabled = true;
+        let timeLeft = cooldownTime;
+        
+        // Submit the form
+        fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => {
+            // Show success message
+            alert('Message sent successfully!');
+            // Reset the form
+            this.reset();
+            
+            // Start the cooldown timer
+            const countdown = setInterval(() => {
+                if (timeLeft <= 0) {
+                    // Reset button after cooldown
+                    clearInterval(countdown);
+                    buttonText.textContent = 'Send Message';
+                    submitButton.disabled = false;
+                    isSubmitEnabled = true;
+                } else {
+                    // Update button text during cooldown
+                    buttonText.textContent = `Wait ${timeLeft}s`;
+                    timeLeft--;
+                }
+            }, 1000);
+        })
+        .catch(error => {
+            alert('There was an error sending your message. Please try again.');
+            // Reset button immediately if there's an error
+            buttonText.textContent = 'Send Message';
+            submitButton.disabled = false;
+            isSubmitEnabled = true;
+        });
+    });
+
+    // Optional: Add hover effect to show cooldown status
+    submitButton.addEventListener('mouseover', function() {
+        if (!isSubmitEnabled) {
+            this.title = 'Please wait before sending another message';
+        } else {
+            this.title = '';
+        }
+    });
+    </script>
+
+    <style>
+    /* Add styles for disabled button state */
+    .btn-primary:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    /* Add transition effect for button text */
+    #buttonText {
+        transition: all 0.3s ease;
+    }
+    </style>
 </body>
 </html>

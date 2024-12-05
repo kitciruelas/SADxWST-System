@@ -70,6 +70,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password</title>
+    <link rel="icon" href="../img-icon/otp.png" type="image/png">
+
     <link rel="stylesheet" href="email-otp-style.css">
 </head>
 

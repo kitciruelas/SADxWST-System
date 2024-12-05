@@ -270,6 +270,8 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor Log</title>
+    <link rel="icon" href="../img-icon/visit1.webp" type="image/png">
+
     <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -352,37 +354,42 @@ $conn->close();
     <div class="main-content">      
     <div class="container mt-1">
         <div class="controls-wrapper mb-4">
-            <div class="row g-3 align-items-center">
+            <div class="row g-4 align-items-center">
                 <!-- Search Input -->
-                <div class="col-md-3">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="searchInput" placeholder="Search for visitors..." onkeyup="searchTable()">
-                    </div>
+                <div class="col-12 col-md-5 mt-2">
+                    <form method="GET" action="" class="search-form">
+                        <div class="input-group">
+                            <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
+                                placeholder="Search for visitors..." 
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </div>
+                    </form>
                 </div>
 
                 <!-- Filter Section -->
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <label for="filterSelect" class="form-label me-2">Filter by:</label>
-                        <select class="form-select" id="filterSelect" onchange="filterTable()">
-                            <option value="">All</option>
-                            <option value="today">Today</option>
-                            <option value="this_week">This Week</option>
-                            <option value="this_month">This Month</option>
-                        </select>
-                    </div>
+                <div class="col-6 col-md-2">
+                    <select id="filterSelect" class="form-select" onchange="filterTable()">
+                        <option value="">All</option>
+                        <option value="today">Today</option>
+                        <option value="this_week">This Week</option>
+                        <option value="this_month">This Month</option>
+                    </select>
                 </div>
 
                 <!-- Sort Section -->
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <label for="sortSelect" class="form-label me-2">Sort by:</label>
-                        <select class="form-select" id="sortSelect" onchange="sortTable()">
-                            <option value="name" selected>Name</option>
-                            <option value="check_in_time">Check-In Time</option>
-                            <option value="check_out_time">Check-Out Time</option>
-                        </select>
-                    </div>
+                <div class="col-6 col-md-2">
+                    <select id="sortSelect" class="form-select" onchange="sortTable()">
+                        <option value="" selected>Sort by</option>
+                        <option value="Visiting Person_asc">Visiting Person (A to Z)</option>
+                        <option value="Visiting Person_desc">Visiting Person (Z to A)</option>
+                        <option value="check_in_asc">Check-In (Earliest)</option>
+                        <option value="check_in_desc">Check-In (Latest)</option>
+                        <option value="check_out_asc">Check-Out (Earliest)</option>
+                        <option value="check_out_desc">Check-Out (Latest)</option>
+                    </select>
                 </div>
 
                 <!-- Log Visitor Button -->
@@ -822,26 +829,39 @@ $conn->close();
     function sortTable() {
         const sortBy = document.getElementById("sortSelect").value;
         const rows = Array.from(document.querySelectorAll("#visitorTable tbody tr"));
-        const compareFunc = (a, b) => {
+        
+        rows.sort((a, b) => {
             let valueA, valueB;
-            if (sortBy === "name") {
-                valueA = a.querySelector("td:nth-child(5)").textContent.trim().toLowerCase();
-                valueB = b.querySelector("td:nth-child(5)").textContent.trim().toLowerCase();
-            } else if (sortBy === "check_in_time") {
-                valueA = new Date(a.querySelector("td:nth-child(6)").textContent);
-                valueB = new Date(b.querySelector("td:nth-child(6)").textContent);
-            } else if (sortBy === "check_out_time") {
-                valueA = new Date(a.querySelector("td:nth-child(7)").textContent);
-                valueB = new Date(b.querySelector("td:nth-child(7)").textContent);
-            }
             
-            if (valueA < valueB) return -1;
-            if (valueA > valueB) return 1;
-            return 0;
-        };
-
-        // Sort the rows based on the selected option
-        rows.sort(compareFunc);
+            switch (sortBy) {
+                case "Visiting Person_asc":
+                    valueA = a.querySelector("td:nth-child(2)").textContent.trim().toLowerCase();
+                    valueB = b.querySelector("td:nth-child(2)").textContent.trim().toLowerCase();
+                    return valueA.localeCompare(valueB);
+                case "Visiting Person_desc":
+                    valueA = a.querySelector("td:nth-child(2)").textContent.trim().toLowerCase();
+                    valueB = b.querySelector("td:nth-child(2)").textContent.trim().toLowerCase();
+                    return valueB.localeCompare(valueA);
+                case "check_in_asc":
+                    valueA = new Date(a.querySelector("td:nth-child(5)").textContent);
+                    valueB = new Date(b.querySelector("td:nth-child(5)").textContent);
+                    return valueA - valueB;
+                case "check_in_desc":
+                    valueA = new Date(a.querySelector("td:nth-child(5)").textContent);
+                    valueB = new Date(b.querySelector("td:nth-child(5)").textContent);
+                    return valueB - valueA;
+                case "check_out_asc":
+                    valueA = new Date(a.querySelector("td:nth-child(6)").textContent);
+                    valueB = new Date(b.querySelector("td:nth-child(6)").textContent);
+                    return valueA - valueB;
+                case "check_out_desc":
+                    valueA = new Date(a.querySelector("td:nth-child(6)").textContent);
+                    valueB = new Date(b.querySelector("td:nth-child(6)").textContent);
+                    return valueB - valueA;
+                default:
+                    return 0;
+            }
+        });
 
         // Reattach the sorted rows to the table body
         const tbody = document.querySelector("#visitorTable tbody");
@@ -989,6 +1009,27 @@ $conn->close();
         });
     });
     </script>
+
+<script>
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchQuery = this.value.toLowerCase();
+        const rows = document.querySelectorAll("#visitorTable tbody tr");
+
+        rows.forEach(row => {
+            const cells = row.getElementsByTagName('td');
+            let match = false;
+
+            for (let i = 0; i < cells.length; i++) {
+                if (cells[i].textContent.toLowerCase().includes(searchQuery)) {
+                    match = true;
+                    break;
+                }
+            }
+
+            row.style.display = match ? '' : 'none';
+        });
+    });
+</script>
     </body>
     </html>
 

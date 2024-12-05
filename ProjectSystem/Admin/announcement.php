@@ -166,6 +166,8 @@ mysqli_close($conn);
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
     <title>Announcements</title>
+    <link rel="icon" href="../img-icon/bell1.webp" type="image/png">
+
     <style>
     .container {
         background-color: transparent;

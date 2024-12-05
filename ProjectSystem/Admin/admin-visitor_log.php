@@ -92,7 +92,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor Logs</title>
-    <link rel="icon" href="img-icon/visit.png" type="image/png">
+    <link rel="icon" href="../img-icon/visit1.webp" type="image/png">
 
     <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -436,10 +436,69 @@ function confirmLogout() {
     <!-- JavaScript -->
     <script>
         
-$(document).ready(function() {
-    $('#visitorTable').DataTable({
+        $(document).ready(function() {
+    // Initialize DataTable
+    var table = $('#visitorTable').DataTable({
         dom: 'Bfrtip',
-        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        buttons: [
+            {
+                extend: 'copy',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Visitor Log - ' + getFormattedDate()
+            },
+            {
+                extend: 'csv',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Visitor Log - ' + getFormattedDate()
+            },
+            {
+                extend: 'excel',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Visitor Log - ' + getFormattedDate()
+            },
+            {
+                extend: 'pdf',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                title: 'Visitor Log - ' + getFormattedDate()
+            },
+            {
+                extend: 'print',
+                title: '', // No title
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                },
+                customize: function (win) {
+                    var doc = win.document;
+
+                    $(doc.body)
+                        .css('font-family', 'Arial, sans-serif')
+                        .css('font-size', '12pt')
+                        .prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Visitor Log Report</h1>')
+                        .prepend('<p style="text-align:center; font-size: 12pt; margin-bottom: 20px;">' + getFormattedDate() + '</p><hr>');
+
+                    $(doc.body).find('table').addClass('display').css({
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        marginTop: '20px',
+                        border: '1px solid #ddd'
+                    });
+
+                    $(doc.body).find('table th, table td').css({
+                        border: '1px solid #ddd',
+                        padding: '8px',
+                        textAlign: 'left'
+                    });
+                }
+            }
+        ],
         pageLength: 10,
         ordering: true,
         searching: false,
@@ -456,33 +515,30 @@ $(document).ready(function() {
 
     // Custom search
     $('#searchInput').on('keyup', function() {
-        $('#visitorTable').DataTable().search(this.value).draw();
+        table.search(this.value).draw();
     });
 
     // Custom filter
     $('#filterSelect').on('change', function() {
         const column = parseInt($(this).val());
         if (!isNaN(column)) {
-            $('#visitorTable').DataTable()
+            table
                 .columns().search('')
                 .column(column)
                 .search($('#searchInput').val())
                 .draw();
         } else {
-            $('#visitorTable').DataTable()
+            table
                 .search($('#searchInput').val())
                 .draw();
         }
     });
 });
 
-
-// Function to get the current date and time in a formatted string
+// Helper function for formatted date
 function getFormattedDate() {
-  var now = new Date();
-  var date = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
-  var time = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2);
-  return date + ' ' + time;
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 // Function to get the current date and time in a formatted string

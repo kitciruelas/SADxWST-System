@@ -1,0 +1,782 @@
+
+
+.navbar, #footer {
+  animation: fadeIn 2s ease-in-out;
+}
+
+/* Hero Section Animation */
+.hero-section {
+  background: url('dorm.jpg') no-repeat center center;
+  background-size: cover;
+  color: white;
+  min-height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  opacity: 0;
+  animation: slideIn 2s ease forwards;
+  padding: 140px 30px;
+  background: url('image.png') no-repeat center center/cover;
+
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+  0% {
+      opacity: 0;
+      transform: translateY(-100px);
+  }
+  100% {
+      opacity: 1;
+      transform: translateY(0);
+  }
+}
+
+.navbar {
+  transition: background-color 0.3s;
+  background-color: #ffffff; /* Base navbar color */
+  width: 100%; /* Make navbar take the full width */
+  max-width: 1200px; /* Optional: Limit max width */
+  margin: 0 auto; /* Center the navbar if using max-width */
+}
+
+
+/* Navbar link default state */
+.navbar-nav .nav-link {
+color: #2B228A; /* Default text color */
+transition: background-color 0.3s ease, color 0.3s ease, border-bottom 0.3s ease; /* Smooth transition for background, color, and border-bottom */
+border-radius: 30px; /* Rounded corners */
+padding: 10px 10px; /* Add padding for better spacing */
+display: inline-block; /* Ensure the links don't stretch the width */
+width: auto; /* Prevents links from taking full width */
+border-bottom: 3px solid transparent; /* Transparent border initially for smooth transition */
+}
+
+/* Hover effect for border bottom */
+.navbar-nav .nav-link:hover {
+background-color: rgb(8, 8, 120); /* Background color on hover */
+color: #ffffff; /* Text color on hover */
+border-bottom: 3px solid #ffffff; /* White bottom border on hover */
+}
+
+
+
+
+/* Navbar list styling */
+.navbar-nav {
+list-style: none; /* Remove default list styling */
+padding-left: 0; /* Remove default padding */
+display: flex; /* Align the list horizontally */
+font-family: 'Arial', sans-serif; /* Change this to your desired font */
+
+}
+
+/* Individual list item */
+.nav-item {
+margin-right: 15px; /* Add spacing between nav items */
+
+}
+
+/* Styling for the links in the nav */
+.nav-link {
+text-decoration: none; /* Remove underline */
+color: #555; /* Default link color */
+font-size: 16px; /* Font size */
+padding: 10px 15px; /* Padding for spacing */
+display: block;
+transition: color 0.3s ease; /* Smooth transition for hover effects */
+font-family: 'Arial', sans-serif; /* Replace with your desired font */
+
+}
+
+/* Ensure "Login" button text remains white */
+.nav-link.text-white {
+color: white;
+}
+
+/* General navbar link styles */
+.nav-link {
+font-family: 'Arial', sans-serif; /* Replace with your desired font */
+font-size: 16px; /* Font size for navbar links */
+font-weight: 400; /* Normal font weight */
+color: #555; /* Default color for the links */
+text-decoration: none; /* Remove underline */
+padding: 10px 15px; /* Padding for spacing */
+display: block;
+transition: color 0.3s ease; /* Smooth transition on hover */
+}
+
+
+
+
+
+.btn-primary {
+  transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.social-icons a {
+  transition: transform 0.3s ease;
+}
+
+.social-icons a:hover {
+  transform: scale(1.2);
+}
+
+.card {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Footer text alignment */
+#about-us {
+  text-align: justify;
+}
+
+/* Custom styles to align navbar-collapse to the left */
+@media (max-width: 991.98px) {
+  .navbar-collapse {
+      left: 0; /* Aligns the navbar-collapse to the left */
+      right: auto; /* Resets the right position */
+  }
+}
+
+#footer {
+background-color: #343a40; /* Dark background for the footer */
+color: white; /* White text color */
+}
+
+.footer-section h5 {
+color: #ffc107; /* Gold color for section titles */
+margin-bottom: 10px; /* Space below section titles */
+}
+
+.footer-section ul {
+list-style-type: none; /* Remove default list styles */
+padding: 0; /* Remove padding */
+}
+
+.footer-links a {
+color: white; /* White color for links */
+text-decoration: none; /* Remove underline */
+margin: 0 5px; /* Space between links */
+}
+
+.footer-links a:hover {
+text-decoration: underline; /* Underline on hover for better visibility */
+}
+
+.social-icons a {
+color: white; /* White color for social media icons */
+text-decoration: none; /* Remove underline */
+margin-right: 10px; /* Space between icons */
+}
+
+.social-icons a:hover {
+color: #ffc107; /* Change color on hover */
+}
+.footer-section h5 {
+font-size: 1.25rem; /* Adjust heading size if necessary */
+margin-bottom: 0.5rem; /* Space below section headings */
+}
+
+.footer-section p {
+margin-bottom: 0.5rem; /* Adjust spacing for paragraphs */
+}
+.social-icons i {
+font-size: 24px; /* Adjust the size as needed */
+transition: color 0.3s; /* Smooth color transition */
+}
+
+.social-icons a:hover i {
+color: #ffc107; /* Change color on hover */
+}
+
+
+
+/* Login */
+
+body {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f2f2f2;
+}
+
+header {
+  background-color: #ffffff;
+  padding: 10px;
+}
+
+header .logo {
+  width: 100px;
+  height: auto;
+}
+
+header .logo img {
+  width: 100%;
+  height: auto;
+}
+
+/*login*/
+body {
+  justify-content: center; /* Center the login option container */
+  align-items: center; /* Center vertically */
+  height: 100vh; /* Full height of the viewport */
+  margin: 0; /* Remove default margin */
+  background-color: #f0f0f0; /* Optional background color */
+}
+
+#login-options {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  width: 650px; /* Set a specific width */
+  height: 400px; /* Set a specific height */
+  border-radius: 10px; /* Optional: Rounded corners */
+  background-color: #ffffff; /* Change background to white for a clean look */
+  position: fixed;
+  top: 50%; /* Center vertically */
+  left: 50%; /* Center horizontally */
+  transform: translate(-50%, -50%); /* Adjust position to center */
+  padding: 20px; /* Add some padding inside the border */
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2); /* Enhanced shadow for a more modern look */
+}
+.left-align-container {
+  width: 100%; /* Make it take full width */
+  display: flex; /* Use flexbox for layout */
+  justify-content: flex-start; /* Align items to the left */
+  align-items: center; /* Vertically center items */
+}
+
+.btn-with-icon {
+  background: none; /* No background initially */
+  border: none; /* No border */
+  color: #000; /* Set text and icon color */
+  font-size: 16px; /* Adjust font size */
+  cursor: pointer; /* Change cursor to pointer */
+  display: inline-flex; /* Align icon and text horizontally */
+  align-items: center; /* Vertically center icon and text */
+  padding: 5px 10px; /* Add padding for a larger clickable area */
+  transition: background-color 0.3s ease, border-radius 0.3s ease; /* Smooth transition */
+}
+
+
+.btn-with-icon i {
+  margin-right: 8px; /* Add space between icon and text */
+  font-size: 20px; /* Adjust icon size */
+}
+
+.btn-with-icon:hover {
+    background-color: #d3d3d3; /* Light gray background on hover */
+    border-radius: 20px; /* Rounded corners on hover */
+    color: #000; /* Keep the text and icon color the same */
+    transition: background-color 0.3s ease, border-radius 0.3s ease; /* Smooth hover effect */
+  }
+
+.btn-with-icon:focus {
+  outline: none; /* Remove focus outline */
+}
+  
+
+/* Ensuring equal height for all cards */
+.card {
+  height: 100%; /* Make all cards fill the same height */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f8f9fa; /* Optional: Light background color for cards */
+  border: none; /* No border */
+  border-radius: 10px; /* Optional: Rounded corners */
+  box-shadow: none; /* Optional: Remove any shadow */
+  padding: 20px; /* Optional: Padding inside cards */
+  margin: 10px; /* Optional: Margin between cards */
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-text {
+  font-size: 1.2rem; /* Adjust font size for consistency */
+}
+
+.card i {
+  font-size: 5rem; /* Ensures all icons are the same size */
+  margin-bottom: 10px; /* Consistent margin below icons */
+}
+
+
+
+/* Apply the animation to all cards */
+.card {
+  animation: slideInFromLeftFadeIn 0.8s ease-out; /* Animation duration and easing */
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* Hover transition */
+}
+
+/* Hover effect: zoom and shadow */
+.card:hover {
+  transform: scale(1.05); /* Slight zoom */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Shadow effect */
+}
+
+/* Delay animations for staggered entrance */
+.card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+/* ROOM APP */
+
+/* Card styling with hover effects */
+.room-card {
+transition: transform 0.3s ease, box-shadow 0.3s ease;
+border: none;
+position: relative;
+padding: 20px;
+border-radius: 10px;
+margin-bottom: 20px;
+}
+
+/* Hover effects for cards */
+.room-card:hover {
+transform: translateY(-10px);
+box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Hover effect on text within the card */
+.room-card:hover .room-price, 
+.room-card:hover .room-text {
+opacity: 0.85;
+transition: opacity 0.3s ease;
+}
+
+/* Room card image styling */
+.room-card img {
+width: 100%;
+height: 200px;
+border-radius: 10px;
+object-fit: cover; /* Ensures the image fits inside the container */
+}
+
+/* Room price styling */
+.room-price {
+font-weight: bold;
+margin-top: 10px; /* Add spacing above the price */
+}
+
+/* Apply button styling */
+.apply-btn {
+background-color: #fff;
+color: #000;
+font-weight: bold;
+border-radius: 10px;
+padding: 10px 20px;
+margin-top: 10px;
+border: none;
+cursor: pointer; /* Change cursor to pointer on hover */
+transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for hover */
+}
+
+/* Hover effect for the apply button */
+.apply-btn:hover {
+background-color: #ccc;
+color: #000;
+}
+/* ROOM ASSIGN */
+.container {
+min-height: 100vh; /* Full height for vertical centering */
+}
+
+.card {
+border-radius: 10px; /* Rounded corners for the card */
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow for the card */
+}
+
+/* Card Title */
+.card-title {
+font-size: 24px;
+font-weight: bold;
+color: #2B228A; /* Dark blue for title */
+margin-bottom: 10px;
+}
+
+/* Text Styling */
+.card-text {
+font-size: 16px;
+color: #555;
+margin: 8px 0;
+}
+
+/* Image Styling */
+.card-body img {
+margin-top: 20px;
+border-radius: 8px;
+box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+max-width: 100%;
+}
+
+/* No Picture Text */
+.card-text p {
+color: #888;
+font-style: italic;
+}
+
+.img-fluid {
+border-radius: 5px; /* Rounded corners for the image */
+margin-top: 1rem; /* Space between text and image */
+max-width: 100%; /* Ensure the image scales properly */
+height: auto; /* Maintain aspect ratio */
+}
+
+p {
+font-size: 1rem;
+}
+
+.apply-btn {
+background-color: #007bff; /* Default button color */
+color: white; /* Text color */
+border: none; /* No border */
+border-radius: 5px; /* Rounded corners */
+padding: 10px 15px; /* Padding for better size */
+font-size: 16px; /* Font size */
+cursor: pointer; /* Pointer cursor on hover */
+transition: background-color 0.3s ease; /* Smooth background color transition */
+display: inline-block; /* Keep buttons inline */
+text-align: center; /* Center text */
+margin: 5px; /* Space between buttons */
+}
+
+.apply-btn:hover:not(:disabled) {
+background-color: white; /* Darker blue on hover for active buttons */
+}
+
+.apply-btn:disabled {
+background-color: #ccc; /* Gray background for disabled buttons */
+color: #666; /* Darker gray text for disabled buttons */
+cursor: not-allowed; /* Not-allowed cursor for disabled buttons */
+
+}
+
+/* Additional styles for specific button states */
+.apply-btn.maintenance {
+background-color: #f0ad4e; /* Orange for maintenance */
+}
+.btn {
+padding: 5px 12px; /* Make the button bigger */
+background-color: #2B228A; /* Transparent background */
+color: white; /* Text color */
+border: 2px solid #2B228A; /* Border color */
+border-radius: 30px; /* Rounded corners */
+cursor: pointer; /* Pointer cursor on hover */
+transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+}
+
+/* Hover effect */
+.apply-btn:hover {
+color: #2B228A; /* Text color on hover */
+border-color: #2B228A; /* Maintain border color on hover */
+}
+
+
+
+/* Badge for status */
+.badge-status {
+position: absolute;
+top: 10px;
+right: 10px;
+background-color: #2B228A;
+color: white;
+font-size: 12px;
+padding: 5px 10px;
+border-radius: 10px;
+}
+
+/* Button hover effect */
+.btn-primary:hover {
+background-color: #2B228A;
+}
+
+/* Responsive behavior */
+.room-row {
+display: flex;
+justify-content: center;
+gap: 20px;
+margin-top: 20px;
+flex-wrap: wrap;
+}
+
+h5 {
+font-size: 20px;
+font-weight: bold;
+margin-top: 10px; /* Adjust top space */
+margin-bottom: 10px; /* Adjust bottom space */
+}
+
+/* Pagination styles */
+/* Pagination container */
+#pagination {
+display: flex;
+justify-content: center;
+align-items: center;
+margin-top: 20px;
+}
+
+/* Styling for Previous and Next buttons */
+#pagination button {
+padding: 5px 12px; /* Make the button bigger */
+background-color: transparent; /* Transparent background */
+color: #2B228A; /* Text color */
+border: 2px solid #2B228A; /* Border color */
+border-radius: 20px; /* Rounded corners */
+cursor: pointer; /* Pointer cursor on hover */
+font-size: 16px; /* Increase font size */
+display: inline-block; /* Align buttons inline */
+margin-right: 10px; /* Add spacing between buttons */
+transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+}
+
+/* Hover effect on buttons */
+#pagination button:hover:not(:disabled) {
+background-color: #2B228A; /* Background color on hover */
+color: white; /* Change text color to white on hover */
+border-color: #2B228A; /* Border color on hover */
+}
+
+/* Disabled button style */
+#pagination button:disabled {
+background-color: transparent; /* Keep background transparent when disabled */
+color: #cccccc; /* Gray color for disabled buttons */
+border-color: #cccccc; /* Gray border for disabled buttons */
+cursor: not-allowed; /* Disabled cursor */
+}
+
+/* Page indicator styling */
+#pageIndicator {
+font-size: 16px;
+font-weight: bold;
+margin: 0 10px;
+}
+
+/* Contact Form Styles */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 14px;
+  width: 100%;
+  transition: border-color 0.3s ease;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  outline: none;
+  border-color: #2B228A;
+  box-shadow: 0 0 5px rgba(43, 34, 138, 0.2);
+}
+
+.contact-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.contact-form button {
+  background-color: #2B228A;
+  color: white;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+  width: fit-content;
+}
+
+.contact-form button:hover {
+  background-color: #201b66;
+}
+
+/* Contact Section Layout */
+#contact-us {
+  background-color: #e3e7fa;
+  padding: 60px 0;
+}
+
+#contact-us .container-fluid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+#contact-us .row {
+  margin: 0 -15px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+#contact-us .col-md-6 {
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+/* Map Container Styles */
+.map-container {
+  height: 100%;
+  min-height: 300px;
+  margin-top: 20px;
+}
+
+.map-container iframe {
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #contact-us .col-md-6 {
+      padding: 15px;
+  }
+  
+  .contact-form button {
+      width: 100%;
+  }
+}
+
+/* Form Group Styling */
+.form-group {
+  margin-bottom: 1.2rem;
+  position: relative;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #495057;
+  background-color: #fff;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;  /* Added spacing between form controls */
+}
+
+.form-control:focus {
+  border-color: #2B228A;
+  box-shadow: 0 0 0 0.2rem rgba(43, 34, 138, 0.25);
+  outline: none;
+}
+
+/* Button Enhancement */
+.contact-form .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: #2B228A;
+  border: none;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  width: auto;
+  min-width: 160px;
+  margin-top: 20px;  /* Added spacing above button */
+}
+
+.contact-form .btn-primary:hover {
+  background-color: #201b66;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(43, 34, 138, 0.2);
+}
+
+.contact-form .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Placeholder Styling */
+.form-control::placeholder {
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+/* Invalid Input Styling */
+.form-control:invalid:not(:placeholder-shown) {
+  border-color: #dc3545;
+}
+
+/* Valid Input Styling */
+.form-control:valid:not(:placeholder-shown) {
+  border-color: #28a745;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .form-control {
+      padding: 0.625rem 0.875rem;
+      margin-bottom: 15px;  /* Adjusted spacing for mobile */
+  }
+  
+  .contact-form .btn-primary {
+      width: 100%;
+      margin-top: 15px;  /* Adjusted spacing for mobile */
+  }
+}
+
+/* Form Label Styling */
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2B228A;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Adjust form group spacing */
+.form-group {
+  margin-bottom: 25px;
+}
+
+/* Last form group (message) should have more space */
+.form-group:last-of-type {
+  margin-bottom: 30px;
+}
+
+/* Increase spacing after the heading */
+#contact-us h4 {
+  margin-bottom: 30px;
+}
+
+/* Add space before the submit button */
+.contact-form button[type="submit"] {
+  margin-top: 10px;
+}

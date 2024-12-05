@@ -220,7 +220,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reassign Room</title>
-    <link rel="icon" href="img-icon/rreas.svg" type="image/png">
+    <link rel="icon" href="../img-icon/alt.webp" type="image/png">
 
     <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>

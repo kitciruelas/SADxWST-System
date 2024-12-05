@@ -245,7 +245,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Profile</title>
+    <link rel="icon" href="../img-icon/profile1.webp" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -421,10 +422,7 @@ $conn->close();
                     </div>
                 <?php endif; ?>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-lg mb-3" 
-                    data-toggle="modal" data-target="#userProfileModal">
-                <i class="fas fa-qrcode me-2"></i> QR Code
-            </button>
+            
         </div>
 
         <!-- Personal Info Fields -->

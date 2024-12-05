@@ -106,9 +106,9 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presence Monitoring</title>
-    <link rel="icon" href="img-icon/eye.png" type="image/png">
+    <link rel="icon" href="../img-icon/eye1.png" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
@@ -257,6 +257,7 @@ $conn->close();
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
 <body>
@@ -266,27 +267,52 @@ $conn->close();
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
-            <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown"><i class="fas fa-building"></i> <span>Room Manager</span>
-            <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link active"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
-            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
-            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
-            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
+        <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
+        <a href="admin-monitoring.php" class="nav-link active"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
+        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+
+        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/user-logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -329,7 +355,7 @@ function confirmLogout() {
 
     <!-- Sort Dropdown -->
     <div class="col-6 col-md-2 mt-2">
-        <select name="sort" id="sortSelect" class="form-select" onchange="applySort()">
+        <select name="sort" id="sortSelect" class="form-select">
             <option value="">Sort by</option>
             <option value="resident_asc">Resident Name (A-Z)</option>
             <option value="resident_desc">Resident Name (Z-A)</option>
@@ -348,30 +374,25 @@ function confirmLogout() {
     <table class="table table-bordered" id="monitoring">
         <thead class="table-light">
             <tr>
-                <th>ID</th>
+                <th>No.</th>
                 <th>Resident Name</th>
                 <th>Room</th>
                 <th>Check-In Time</th>
                 <th>Check-Out Time</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             <?php
             if ($result->num_rows > 0) {
+                $rowNumber = 1;  // Initialize counter
                 while ($row = $result->fetch_assoc()) {
                     echo "<tr>";
-                    echo "<td>" . htmlspecialchars($row["ID"]) . "</td>";
+                    echo "<td>" . $rowNumber++ . "</td>";  // Display and increment row number
                     echo "<td>" . htmlspecialchars($row["Resident_Name"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Room_Number"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Check_In_Time"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["Check_Out_Time"]) . "</td>";
-                    echo "<td>";
-                    echo "<form method='GET' action='admin-monitoring.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                        <input type='hidden' name='delete_attendance_id' value='" . htmlspecialchars($row["ID"]) . "' />
-                        <button type='submit' class='btn btn-danger btn-sm'>Delete</button>
-                    </form>";
-                    echo "</td>";
+                   
                     echo "</tr>";
                 }
             }
@@ -436,133 +457,173 @@ function confirmLogout() {
 
     <!-- Hamburger Menu Script -->
     <script>
-   $(document).ready(function() {
-    // Initialize DataTable with pagination disabled
-    var table = $('#monitoring').DataTable({
+ // Initialize DataTable
+ function initializeDataTable() {
+    return $('#monitoring').DataTable({
         dom: 'Bfrtip',
         buttons: [
-            'copy', 'csv', 'excel', 'print'
+            {
+                extend: 'copy',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Presence Monitoring - ' + getFormattedDate()
+            },
+            {
+                extend: 'csv',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Presence Monitoring - ' + getFormattedDate()
+            },
+            {
+                extend: 'excel',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Presence Monitoring - ' + getFormattedDate()
+            },
+            {
+                extend: 'pdf',
+                exportOptions: { columns: ':not(:last-child)' },
+                title: 'Presence Monitoring - ' + getFormattedDate()
+            },
+            {
+                extend: 'print',
+                title: '',
+                exportOptions: { columns: ':not(:last-child)' },
+                customize: customizePrintView
+            }
         ],
-        paging: false,      // Disable DataTables pagination
-        info: false,        // Remove "Showing X of Y entries" info
-        lengthChange: false,
+        pageLength: 10,
+        ordering: true,
         searching: false,
-        order: []
+        lengthChange: false,
+        info: false,
+        responsive: true,
+        paging: false,
+        order: [[3, 'desc']] // Sort by check-in time by default
+    });
+}
+
+// Custom print view
+function customizePrintView(win) {
+    var doc = win.document;
+    
+    $(doc.body)
+        .css({
+            'font-family': 'Arial, sans-serif',
+            'font-size': '12pt'
+        })
+        .prepend('<h1 style="text-align:center; font-size: 20pt; font-weight: bold;">Presence Monitoring Report</h1>')
+        .prepend('<p style="text-align:center; font-size: 12pt; margin-bottom: 20px;">' + getFormattedDate() + '</p><hr>');
+
+    $(doc.body).find('table')
+        .addClass('display')
+        .css({
+            width: '100%',
+            borderCollapse: 'collapse',
+            marginTop: '20px',
+            border: '1px solid #ddd'
+        });
+
+    $(doc.body).find('table th, table td').css({
+        border: '1px solid #ddd',
+        padding: '8px',
+        textAlign: 'left'
+    });
+}
+
+// Separate search functionality
+$(document).ready(function() {
+    $('#searchInput').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        const filterValue = $('#filterSelect').val();
+        const table = $('#monitoring tbody');
+
+        table.find('tr').each(function() {
+            const row = $(this);
+            let searchText;
+
+            // Get text based on filter selection
+            switch(filterValue) {
+                case '1': // Resident Name
+                    searchText = row.find('td:nth-child(2)').text().toLowerCase();
+                    break;
+                case '2': // Room
+                    searchText = row.find('td:nth-child(3)').text().toLowerCase();
+                    break;
+                case '3': // Check-In Time
+                    searchText = row.find('td:nth-child(4)').text().toLowerCase();
+                    break;
+                case '4': // Check-Out Time
+                    searchText = row.find('td:nth-child(5)').text().toLowerCase();
+                    break;
+                default: // Search all columns except Actions
+                    searchText = row.find('td:not(:last-child)').text().toLowerCase();
+                    break;
+            }
+
+            // Show/hide row based on search match
+            if (searchText.includes(searchTerm)) {
+                row.show();
+            } else {
+                row.hide();
+            }
+        });
     });
 
-    // Custom pagination logic
-    const rowsPerPage = 10;
-    let currentPage = 1;
-    const rows = $('#monitoring tbody tr');
-    const totalPages = Math.ceil(rows.length / rowsPerPage);
-
-    function showPage(page) {
-        const start = (page - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-        
-        rows.hide();
-        rows.slice(start, end).show();
-        
-        $('#pageIndicator').text(`Page ${page}`);
-        $('#prevPage').prop('disabled', page === 1);
-        $('#nextPage').prop('disabled', page === totalPages);
-
-        // Update page indicator
-        document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
-    }
-
-    function nextPage() {
-        if (currentPage < totalPages) {
-            currentPage++;
-            showPage(currentPage);
-        }
-    }
-
-    function prevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            showPage(currentPage);
-        }
-    }
-
-    // Initialize pagination
-    showPage(1);
-
-    // Bind pagination buttons
-    $('#prevPage').on('click', prevPage);
-    $('#nextPage').on('click', nextPage);
-
-    // Update pagination when search/filter changes
-    table.on('search.dt', function() {
-        currentPage = 1;
-        rows = $('#monitoring tbody tr:visible');
-        totalPages = Math.ceil(rows.length / rowsPerPage);
-        showPage(1);
-    });
-
-    // Handle custom search
-    $('#searchInput').on('keyup', function() {
-        table.search(this.value).draw();
-    });
-
-    // Handle custom filter
+    // Update search when filter changes
     $('#filterSelect').on('change', function() {
-        var columnIndex = $(this).val();
-        if (columnIndex === 'all') {
-            table.search($('#searchInput').val()).draw();
-        } else {
-            table.column(columnIndex).search($('#searchInput').val()).draw();
-        }
+        $('#searchInput').trigger('input');
     });
+});
 
-    // Handle custom sort
-    $('#sortSelect').on('change', function() {
-        var value = $(this).val();
+// Separate sort functionality
+$('#sortSelect').on('change', function() {
+    const value = $(this).val();
+    const tbody = $('#monitoring tbody');
+    const rows = tbody.find('tr').toArray();
+
+    rows.sort((a, b) => {
+        let aVal, bVal;
         
         switch(value) {
             case 'resident_asc':
-                table.order([1, 'asc']).draw();
-                break;
             case 'resident_desc':
-                table.order([1, 'desc']).draw();
+                aVal = $(a).find('td:eq(1)').text();
+                bVal = $(b).find('td:eq(1)').text();
                 break;
             case 'room_asc':
-                table.order([2, 'asc']).draw();
-                break;
             case 'room_desc':
-                table.order([2, 'desc']).draw();
+                aVal = $(a).find('td:eq(2)').text();
+                bVal = $(b).find('td:eq(2)').text();
                 break;
             case 'checkin_asc':
-                table.order([3, 'asc']).draw();
-                break;
             case 'checkin_desc':
-                table.order([3, 'desc']).draw();
+                aVal = new Date($(a).find('td:eq(3)').text());
+                bVal = new Date($(b).find('td:eq(3)').text());
                 break;
             case 'checkout_asc':
-                table.order([4, 'asc']).draw();
-                break;
             case 'checkout_desc':
-                table.order([4, 'desc']).draw();
+                aVal = new Date($(a).find('td:eq(4)').text());
+                bVal = new Date($(b).find('td:eq(4)').text());
                 break;
             default:
-                table.order([]).draw();
+                return 0;
         }
+
+        let comparison = 0;
+        if (aVal > bVal) comparison = 1;
+        if (aVal < bVal) comparison = -1;
+
+        // Reverse for descending order
+        if (value.endsWith('desc')) comparison *= -1;
+
+        return comparison;
     });
 
-    // Hamburger menu
-    const sidebar = $('#sidebar');
-    const hamburgerMenu = $('#hamburgerMenu');
-    const mainContent = $('.main-content');
-    const topbar = $('.topbar');
+    tbody.empty();
+    tbody.append(rows);
+});
 
-    hamburgerMenu.on('click', function() {
-        sidebar.toggleClass('collapsed');
-        mainContent.toggleClass('expanded');
-        topbar.toggleClass('expanded');
-        
-        const icon = hamburgerMenu.find('i');
-        icon.toggleClass('fa-bars fa-times');
-    });
+// Initialize everything when document is ready
+$(document).ready(function() {
+    const table = initializeDataTable();
 });
 
 function confirmDelete() {

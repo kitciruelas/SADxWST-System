@@ -29,9 +29,13 @@ if (!isset($_SESSION['login_time'])) {
 
 
 // SQL query to fetch only displayed announcements
-$sql = "SELECT * FROM announce WHERE is_displayed = 1";
+// ... existing code ...
+
+// Display only active and displayed announcements from the database in descending order by date
+$sql = "SELECT * FROM announce WHERE is_displayed = 1 AND archive_status = 'active' ORDER BY date_published DESC";
 $result = mysqli_query($conn, $sql);
 
+// ... existing code ...
 $announcements = [];
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {

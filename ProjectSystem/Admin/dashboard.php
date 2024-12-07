@@ -28,9 +28,13 @@ if (!isset($_SESSION['login_time'])) {
 
 
 
-// SQL query to fetch only displayed announcements
-$sql = "SELECT * FROM announce WHERE is_displayed = 1";
+// ... existing code ...
+
+// Display only active and displayed announcements from the database in descending order by date
+$sql = "SELECT * FROM announce WHERE is_displayed = 1 AND archive_status = 'active' ORDER BY date_published DESC";
 $result = mysqli_query($conn, $sql);
+
+// ... existing code ...
 
 $announcements = [];
 if ($result) {
@@ -147,6 +151,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <!-- Custom CSS -->
 <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
 <body>
@@ -171,16 +176,42 @@ while ($row = mysqli_fetch_assoc($result)) {
         </div>
         
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->

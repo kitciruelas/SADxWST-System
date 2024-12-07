@@ -362,65 +362,35 @@ if (isset($_POST['edit_user'])) {
 if (isset($_POST['delete_user'])) {
     $userId = intval($_POST['user_id']);
     
-    // Archive user from users table
-    $archiveUsers = $conn->prepare("INSERT INTO users_archive (id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, archived_at)
-                                    SELECT id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, NOW()
-                                    FROM users WHERE id = ?");
+    // Remove the archiving logic
+    $deleteUserQuery = "DELETE FROM users WHERE id = ?";
+    $deleteStaffQuery = "DELETE FROM staff WHERE id = ?";
     
-    if ($archiveUsers) {
-        $archiveUsers->bind_param("i", $userId);
-        if ($archiveUsers->execute()) {
-            // Archive staff if applicable
-            $archiveStaff = $conn->prepare("INSERT INTO staff_archive (id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, archived_at)
-                                            SELECT id, fname, lname, mi, age, address, contact, sex, role, email, password, created_at, NOW()
-                                            FROM staff WHERE id = ?");
-            
-            if ($archiveStaff) {
-                $archiveStaff->bind_param("i", $userId);
-                if ($archiveStaff->execute()) {
-                    // Proceed to delete the user and staff after archiving
-                    $deleteUserQuery = "DELETE FROM users WHERE id = ?";
-                    $deleteStaffQuery = "DELETE FROM staff WHERE id = ?";
-                    
-                    // Prepare and execute the delete query for the user
-                    $stmtDeleteUser = $conn->prepare($deleteUserQuery);
-                    if ($stmtDeleteUser) {
-                        $stmtDeleteUser->bind_param("i", $userId);
-                        if ($stmtDeleteUser->execute()) {
-                            echo "<script>
-                                alert('User has been successfully archived and deleted!');
-                                window.location.href = 'manageuser.php';
-                            </script>";
-                            exit;
-                        } else {
-                            showErrorMessage('Error deleting user: ' . $stmtDeleteUser->error);
-                        }
-                    }
-
-                    // Prepare and execute the delete query for the staff
-                    $stmtDeleteStaff = $conn->prepare($deleteStaffQuery);
-                    if ($stmtDeleteStaff) {
-                        $stmtDeleteStaff->bind_param("i", $userId);
-                        if ($stmtDeleteStaff->execute()) {
-                            // Optionally alert if staff entry was deleted
-                        } else {
-                            showErrorMessage('Error deleting staff: ' . $stmtDeleteStaff->error);
-                        }
-                        $stmtDeleteStaff->close();
-                    }
-                } else {
-                    showErrorMessage('Error archiving staff: ' . $archiveStaff->error);
-                }
-                $archiveStaff->close();
-            } else {
-                showErrorMessage('Error preparing statement for staff archiving: ' . $conn->error);
-            }
+    // Prepare and execute the delete query for the user
+    $stmtDeleteUser = $conn->prepare($deleteUserQuery);
+    if ($stmtDeleteUser) {
+        $stmtDeleteUser->bind_param("i", $userId);
+        if ($stmtDeleteUser->execute()) {
+            echo "<script>
+                alert('User has been successfully deleted!');
+                window.location.href = 'manageuser.php';
+            </script>";
+            exit;
         } else {
-            showErrorMessage('Error archiving user: ' . $archiveUsers->error);
+            showErrorMessage('Error deleting user: ' . $stmtDeleteUser->error);
         }
-        $archiveUsers->close();
-    } else {
-        showErrorMessage('Error preparing statement for user archiving: ' . $conn->error);
+    }
+
+    // Prepare and execute the delete query for the staff
+    $stmtDeleteStaff = $conn->prepare($deleteStaffQuery);
+    if ($stmtDeleteStaff) {
+        $stmtDeleteStaff->bind_param("i", $userId);
+        if ($stmtDeleteStaff->execute()) {
+            // Optionally alert if staff entry was deleted
+        } else {
+            showErrorMessage('Error deleting staff: ' . $stmtDeleteStaff->error);
+        }
+        $stmtDeleteStaff->close();
     }
 }
 
@@ -857,6 +827,7 @@ if (isset($_GET['error'])) {
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
 <body>
@@ -876,20 +847,42 @@ if (isset($_GET['error'])) {
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-
-function confirmStatusChange(currentStatus) {
-    return confirm("Are you sure you want to change this user's status from " + currentStatus + "?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -2030,4 +2023,24 @@ window.onclick = function(event) {
 <?php
 $conn->close();
 ?>
+
+<!-- Add an event listener to the search input -->
+<script>
+document.getElementById('searchInput').addEventListener('input', function() {
+    var searchTerm = this.value.toLowerCase();
+    var tableRows = document.querySelectorAll('#userTable tbody tr');
+
+    tableRows.forEach(function(row) {
+        // Get all cells except the last one (actions)
+        var cells = Array.from(row.cells).slice(0, -1);
+        var rowText = cells.map(cell => cell.textContent.toLowerCase()).join(' ');
+
+        if (rowText.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+</script>
 

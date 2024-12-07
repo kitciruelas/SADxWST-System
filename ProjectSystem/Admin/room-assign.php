@@ -21,6 +21,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 
 }
+$userId = $_SESSION['id']; // Example: Get user ID from session
 
 // Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -52,7 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Check if the room is at capacity
     if ($currentCount >= $roomCapacity) {
         // Alert for full capacity
-        echo "<script>alert('Cannot assign room. Room is at full capacity.');</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Cannot assign room. Room is at full capacity.',
+            'icon' => 'error'
+        ];
     } else {
         // Check if the user already has a room assigned
         $checkAssignmentQuery = "SELECT assignment_id FROM roomassignments WHERE user_id = ?";
@@ -67,9 +72,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($updateRoomStmt = mysqli_prepare($conn, $updateRoomQuery)) {
                     mysqli_stmt_bind_param($updateRoomStmt, 'ii', $roomId, $userId);
                     if (mysqli_stmt_execute($updateRoomStmt)) {
-                        echo "<script>alert('Room assignment updated successfully.');</script>";
+                        $_SESSION['swal_success'] = [
+                            'title' => 'Success!',
+                            'text' => 'Room assignment updated successfully!',
+                            'icon' => 'success'
+                        ];
+                        // Fetch the room number for logging
+                        $roomNumberQuery = "SELECT room_number FROM rooms WHERE room_id = ?";
+                        if ($roomNumberStmt = mysqli_prepare($conn, $roomNumberQuery)) {
+                            mysqli_stmt_bind_param($roomNumberStmt, 'i', $roomId);
+                            mysqli_stmt_execute($roomNumberStmt);
+                            mysqli_stmt_bind_result($roomNumberStmt, $roomNumber);
+                            mysqli_stmt_fetch($roomNumberStmt);
+                            mysqli_stmt_close($roomNumberStmt);
+                        }
                     } else {
-                        echo "<script>alert('Error updating room assignment.');</script>";
+                        $_SESSION['swal_error'] = [
+                            'title' => 'Error',
+                            'text' => 'Error updating room assignment: ' . $updateRoomStmt->error,
+                            'icon' => 'error'
+                        ];
                     }
                     mysqli_stmt_close($updateRoomStmt);
                 }
@@ -79,9 +101,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($insertRoomStmt = mysqli_prepare($conn, $insertRoomQuery)) {
                     mysqli_stmt_bind_param($insertRoomStmt, 'ii', $userId, $roomId);
                     if (mysqli_stmt_execute($insertRoomStmt)) {
-                        echo "<script>alert('Room assigned successfully.');</script>";
+                        $_SESSION['swal_success'] = [
+                            'title' => 'Success!',
+                            'text' => 'Room assigned successfully!',
+                            'icon' => 'success'
+                        ];
+                        // Fetch the room number for logging
+                        $roomNumberQuery = "SELECT room_number FROM rooms WHERE room_id = ?";
+                        if ($roomNumberStmt = mysqli_prepare($conn, $roomNumberQuery)) {
+                            mysqli_stmt_bind_param($roomNumberStmt, 'i', $roomId);
+                            mysqli_stmt_execute($roomNumberStmt);
+                            mysqli_stmt_bind_result($roomNumberStmt, $roomNumber);
+                            mysqli_stmt_fetch($roomNumberStmt);
+                            mysqli_stmt_close($roomNumberStmt);
+                        }
                     } else {
-                        echo "<script>alert('Error assigning room.');</script>";
+                        $_SESSION['swal_error'] = [
+                            'title' => 'Error',
+                            'text' => 'Error assigning room.',
+                            'icon' => 'error'
+                        ];
                     }
                     mysqli_stmt_close($insertRoomStmt);
                 }
@@ -230,10 +269,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ro
 
     // Set a flag if the assignment is successful
     if ($success) {
-        $_SESSION['assignment_success'] = true;
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Room assigned successfully!',
+            'icon' => 'success'
+        ];
+    } else {
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Error assigning room: ' . $stmt->error,
+            'icon' => 'error'
+        ];
     }
 }
-
 
 $conn->close();
 
@@ -247,7 +295,7 @@ $conn->close();
     <title>Room Assign</title>
     <link rel="icon" href="../img-icon/key1.png" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -383,6 +431,9 @@ $conn->close();
     }
 </style>
 
+<!-- Add SweetAlert script -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body>
     <!-- Sidebar -->
@@ -391,28 +442,53 @@ $conn->close();
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
+        <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link active" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+            <a href="admin-room.php" class="nav-link active"> <i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
-
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -778,5 +854,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     </script>
     
+    <script>
+        // Check for success message
+        <?php if (isset($_SESSION['swal_success'])): ?>
+            Swal.fire({
+                title: '<?php echo addslashes($_SESSION['swal_success']['title']); ?>',
+                text: '<?php echo addslashes($_SESSION['swal_success']['text']); ?>',
+                icon: '<?php echo $_SESSION['swal_success']['icon']; ?>',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'OK'
+            });
+            <?php unset($_SESSION['swal_success']); ?>
+        <?php endif; ?>
+
+        // Check for error message
+        <?php if (isset($_SESSION['swal_error'])): ?>
+            Swal.fire({
+                title: '<?php echo addslashes($_SESSION['swal_error']['title']); ?>',
+                text: '<?php echo addslashes($_SESSION['swal_error']['text']); ?>',
+                icon: '<?php echo $_SESSION['swal_error']['icon']; ?>',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'OK'
+            });
+            <?php unset($_SESSION['swal_error']); ?>
+        <?php endif; ?>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Any additional DOMContentLoaded logic can go here
+        });
+    </script>
 </body>
 </html>

@@ -157,19 +157,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_GET['delete_payment_id'])) {
     $payment_id = mysqli_real_escape_string($conn, $_GET['delete_payment_id']);
 
-    // Fetch the user ID before deleting
+    // Fetch the user ID before archiving
     $sql = "SELECT user_id FROM rentpayment WHERE payment_id = '$payment_id'";
     $result = mysqli_query($conn, $sql);
     $user_id = ($row = mysqli_fetch_assoc($result)) ? $row['user_id'] : null;
 
-    // Prepare the SQL query to delete the payment
-    $query = "DELETE FROM rentpayment WHERE payment_id = '$payment_id'";
+    // Prepare the SQL query to update the archive_status to 'archived'
+    $query = "UPDATE rentpayment SET archive_status = 'archived' WHERE payment_id = '$payment_id'";
 
     // Execute the query
     if (mysqli_query($conn, $query)) {
         $residentName = getResidentName($conn, $user_id);
         // Log the activity
-        logActivity($conn, $userId, 'Delete Payment', "Payment ID $payment_id deleted for resident $residentName");
+        logActivity($conn, $userId, 'Archive Payment', "Payment ID $payment_id archived for resident $residentName");
 
         $_SESSION['swal_success'] = [
             'title' => 'Success!',
@@ -179,7 +179,7 @@ if (isset($_GET['delete_payment_id'])) {
     } else {
         $_SESSION['swal_error'] = [
             'title' => 'Error',
-            'text' => 'Failed to delete payment',
+            'text' => 'Failed to archive payment',
             'icon' => 'error'
         ];
     }
@@ -482,11 +482,13 @@ if (isset($_GET['error'])) {
     <tbody id="rentpayment-page">
         <?php
         // Fetch rent payment data
-        $sql = "SELECT rp.payment_id, u.fname, u.lname, r.room_number, rp.amount, rp.payment_date, rp.status, rp.payment_method, rp.reference_number
+// Fetch rent payment data
+$sql = "SELECT rp.payment_id, u.fname, u.lname, r.room_number, rp.amount, rp.payment_date, rp.status, rp.payment_method, rp.reference_number
         FROM rentpayment rp
         INNER JOIN users u ON rp.user_id = u.id
         INNER JOIN roomassignments ra ON rp.user_id = ra.user_id
         INNER JOIN rooms r ON ra.room_id = r.room_id
+        WHERE rp.archive_status = 'active'
         ORDER BY rp.payment_id DESC";  // Example ordering by payment date in descending order
 
 

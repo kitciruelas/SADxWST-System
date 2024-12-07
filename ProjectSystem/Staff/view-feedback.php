@@ -18,24 +18,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['feedback_id'])) {
         $feedback_id = intval($_POST['feedback_id']);
         
-        // Debug line - you can remove this after confirming it works
-        error_log("Attempting to delete feedback ID: " . $feedback_id);
-        
-        $sql = "DELETE FROM roomfeedback WHERE id = ?";
+        $sql = "UPDATE roomfeedback SET archive_status = 'archived' WHERE id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $feedback_id);
         
         if ($stmt->execute()) {
-            // Add debug line
-            error_log("Successfully deleted feedback ID: " . $feedback_id);
-            header("Location: view-feedback.php");
-            exit();
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Feedback deleted successfully!',
+                'icon' => 'success'
+            ];
         } else {
-            // Add error logging
-            error_log("Error deleting feedback: " . $conn->error);
-            echo "Error deleting record: " . $conn->error;
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error archiving feedback: ' . $conn->error,
+                'icon' => 'error'
+            ];
         }
         $stmt->close();
+        header("Location: view-feedback.php");
+        exit();
     }
 }
 
@@ -49,6 +51,7 @@ FROM roomfeedback f
 LEFT JOIN users u ON f.user_id = u.id
 LEFT JOIN roomassignments ra ON f.assignment_id = ra.assignment_id
 LEFT JOIN rooms r ON ra.room_id = r.room_id
+WHERE f.archive_status != 'archived'
 ORDER BY f.submitted_at DESC";
 
 
@@ -211,8 +214,7 @@ if ($result->num_rows > 0) {
         // Delete button with improved styling
         echo "<form method='POST' action='" . htmlspecialchars($_SERVER['PHP_SELF']) . "' class='delete-form'>";
         echo "<input type='hidden' name='feedback_id' value='" . htmlspecialchars($row['feedback_id']) . "'>";
-        echo "<button type='submit' class='btn delete-btn' 
-              onclick='return confirm(\"Are you sure you want to delete this feedback?\");'>";
+        echo "<button type='button' class='btn delete-btn' onclick='handleDelete(" . htmlspecialchars($row['feedback_id']) . ")'>";
         echo "<i class='bi bi-x-circle'></i>";
         echo "</button>";
         echo "</form>";
@@ -639,5 +641,40 @@ document.getElementById("searchInput").addEventListener("keyup", function() {
         });
     </script>
     
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function handleDelete(feedbackId) {
+                console.log("Delete button clicked for feedback ID:", feedbackId); // Debugging line
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = ''; // Current page
+
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'feedback_id';
+                        input.value = feedbackId;
+
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            }
+
+            // Expose the function to the global scope
+            window.handleDelete = handleDelete;
+        });
+    </script>
 </body>
 </html>

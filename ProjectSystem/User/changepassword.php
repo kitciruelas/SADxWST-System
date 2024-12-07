@@ -17,13 +17,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Validate new password
     if (empty($newPassword) || empty($confirmPassword)) {
-        echo "<script>alert('Both password fields are required.');</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Both password fields are required.',
+            'icon' => 'error'
+        ];
     } elseif ($newPassword !== $confirmPassword) {
         // Check if the new password and confirm password match
-        echo "<script>alert('Passwords do not match.');</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Passwords do not match.',
+            'icon' => 'error'
+        ];
     } elseif (strlen($newPassword) < 6) {
         // Check if the new password is at least 6 characters long
-        echo "<script>alert('Password must be at least 6 characters long.');</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Password must be at least 6 characters long.',
+            'icon' => 'error'
+        ];
     } else {
         // Hash the new password securely
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
@@ -48,10 +60,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 unset($_SESSION['otp']); // Clear OTP as well
                 unset($_SESSION['otp_sent']); // Clear OTP sent flag
 
-                // Success message and redirect to login page
-                echo "<script>alert('Password successfully changed!'); window.location.href = '../User/user-login.php';</script>";
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'Password successfully changed!',
+                    'icon' => 'success'
+                ];
             } else {
-                echo "<script>alert('Error updating password. Please try again.');</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error',
+                    'text' => 'Error updating password. Please try again.',
+                    'icon' => 'error'
+                ];
             }
 
             // Close the statement
@@ -70,8 +89,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password</title>
-    <link rel="icon" href="../img-icon/otp.png" type="image/png">
-
     <link rel="stylesheet" href="email-otp-style.css">
 </head>
 
@@ -254,6 +271,10 @@ label {
     transition: all 0.3s ease;
 }
 
+.eye-icon i {
+    color: gray; /* Set the icon color to gray */
+}
+
 </style>
 <!-- Include Font Awesome -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
@@ -265,16 +286,16 @@ label {
         <div class="form-group">
             <input type="password" id="new_password" name="new_password" required placeholder="">
             <label for="new_password">New Password</label>
-            <button type="button" class="eye-icon" onclick="togglePasswordVisibility('new_password')">
-                <i class="fas fa-eye" id="eye-icon-new"></i>
+            <button type="button" class="eye-icon" onclick="togglePasswordVisibility('new_password', this.querySelector('i'))">
+                <i class="fas fa-eye-slash" id="eye-icon-new" style="color: gray;"></i>
             </button>
         </div>
 
         <div class="form-group">
             <input type="password" id="confirm_password" name="confirm_password" required placeholder="">
             <label for="confirm_password">Confirm New Password</label>
-            <button type="button" class="eye-icon" onclick="togglePasswordVisibility('confirm_password')">
-                <i class="fas fa-eye" id="eye-icon-confirm"></i>
+            <button type="button" class="eye-icon" onclick="togglePasswordVisibility('confirm_password', this.querySelector('i'))">
+                <i class="fas fa-eye-slash" id="eye-icon-confirm" style="color: gray;"></i>
             </button>
         </div>
 
@@ -282,24 +303,42 @@ label {
     </form>
 </div>
 <script>
-    function togglePasswordVisibility(fieldId) {
-    const passwordField = document.getElementById(fieldId);
-    const eyeIcon = document.getElementById(`eye-icon-${fieldId.split('_')[0]}`);
-    const currentType = passwordField.type;
-    
-    // Toggle password visibility by changing the input type
-    passwordField.type = currentType === 'password' ? 'text' : 'password';
-    
-    // Toggle the eye icon between showing and hiding the password
-    if (passwordField.type === 'text') {
-        eyeIcon.classList.remove('fa-eye');
-        eyeIcon.classList.add('fa-eye-slash');
-    } else {
-        eyeIcon.classList.remove('fa-eye-slash');
-        eyeIcon.classList.add('fa-eye');
+    function togglePasswordVisibility(fieldId, icon) {
+        var field = document.getElementById(fieldId);
+        if (field.type === "password") {
+            field.type = "text"; // Show the password
+            icon.classList.remove("fa-eye-slash"); // Remove closed eye icon
+            icon.classList.add("fa-eye"); // Add open eye icon
+            icon.setAttribute("title", "Hide Password"); // Update tooltip text
+        } else {
+            field.type = "password"; // Hide the password
+            icon.classList.remove("fa-eye"); // Remove open eye icon
+            icon.classList.add("fa-eye-slash"); // Add closed eye icon
+            icon.setAttribute("title", "Show Password"); // Update tooltip text
+        }
     }
-}
-
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        <?php if (isset($_SESSION['swal_success'])): ?>
+            Swal.fire({
+                title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+                text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+                icon: '<?php echo $_SESSION['swal_success']['icon']; ?>'
+            }).then(() => {
+                window.location.href = '../User/user-login.php';
+            });
+            <?php unset($_SESSION['swal_success']); ?>
+        <?php elseif (isset($_SESSION['swal_error'])): ?>
+            Swal.fire({
+                title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+                text: '<?php echo $_SESSION['swal_error']['text']; ?>',
+                icon: '<?php echo $_SESSION['swal_error']['icon']; ?>'
+            });
+            <?php unset($_SESSION['swal_error']); ?>
+        <?php endif; ?>
+    });
 </script>
 
 

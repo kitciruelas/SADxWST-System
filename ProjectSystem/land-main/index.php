@@ -149,7 +149,471 @@ $conn->close();
     <link rel="stylesheet" href="land-img/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Room Box Styling */
+    .room-box {
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+        margin: 20px 30px; /* Adjusted margin */
+        max-width: calc(100% - 60px); /* Account for left/right margin */
+    }
+
+    .room-box h2 {
+        color: #2c3e50;
+        font-size: 28px;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e74c3c;
+    }
+
+    .room-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 10px;
+    }
+
+    .room-item {
+        background: #ffffff;
+        border: none;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 0; /* Remove bottom margin */
+    }
+
+    .room-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #3498db;
+    }
+
+    .room-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .room-item h3 {
+        color: #2c3e50;
+        font-size: 20px;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .room-item p {
+        color: #555;
+        line-height: 1.6;
+        margin-bottom: 12px;
+    }
+
+    .room-image {
+        position: relative;
+    }
+
+    .room-image img {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+
+    .status-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    .room-details {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .room-price {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .occupancy {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .occupancy i {
+        margin-right: 5px;
+    }
+
+    .description {
+        margin-bottom: 12px;
+    }
+
+    .btn-maintenance {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-maintenance:hover {
+        background: linear-gradient(135deg, #c0392b, #992d22);
+        transform: translateY(-2px);
+    }
+
+    .btn-apply {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-apply:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-2px);
+    }
+
+    .btn-occupied {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-occupied:hover {
+        background: linear-gradient(135deg, #c0392b, #992d22);
+        transform: translateY(-2px);
+    }
+
+    /* Room Header with Filter */
+    .room-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #3498db;
+    }
+
+    .room-header h2 {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .filter-container {
+        min-width: 200px;
+    }
+
+    .form-select {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 2px solid #3498db;
+        background-color: white;
+        color: #2c3e50;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
     
+
+    .form-select:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    @media (max-width: 768px) {
+        .room-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .filter-container {
+            width: 100%;
+        }
+    }
+
+    /* Modal Styles */
+    .modal-content {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        padding: 20px;
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .modal-title i {
+        margin-right: 10px;
+    }
+
+    .btn-close {
+        color: white;
+        opacity: 1;
+    }
+
+    .modal-body {
+        padding: 25px;
+    }
+
+    /* Room Details Section */
+    .room-details-section {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .detail-item i {
+        color: #3498db;
+        font-size: 1.2rem;
+        margin-top: 3px;
+    }
+
+    .detail-item label {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 2px;
+    }
+
+    .detail-item p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    /* Reasons Section */
+    .reasons-section {
+        margin-bottom: 20px;
+    }
+
+    .reasons-section label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .reasons-section textarea {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .reasons-section textarea:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        outline: none;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+        border-top: 1px solid #eee;
+        padding: 20px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn i {
+        margin-right: 8px;
+    }
+
+    .btn-secondary {
+        background-color: #e0e0e0;
+        border: none;
+        color: #333;
+    }
+
+    .btn-secondary:hover {
+        background-color: #d0d0d0;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-1px);
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .room-details-section {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .modal-dialog {
+            margin: 10px;
+        }
+    }
+
+    /* Room Description Section */
+    .room-description-section {
+        margin-bottom: 20px;
+    }
+
+    .room-description-section label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .room-description-section textarea {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .room-description-section textarea:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        outline: none;
+    }
+
+    /* Profile Button Styling */
+    .profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-radius: 20px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .profile-btn:hover {
+        background: linear-gradient(135deg, #2980b9, #2573a7);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+
+    .profile-btn i {
+        font-size: 1.1rem;
+    }
+
+    .profile-btn span {
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    /* Update existing topbar styles if needed */
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 30px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+ 
+.room-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 300px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.room-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.room-details {
+    padding: 15px;
+}
+
+.btn-apply, .btn-maintenance, .btn-occupied {
+    width: 100%;
+    margin-top: 10px;
+}
+.btn-pending-request {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+        cursor: not-allowed;
+    }
+
+    .btn-pending-request:hover {
+        background: linear-gradient(135deg, #e67e22, #d35400);
+    }
+    </style>
 </head>
 <body>
     <!-- Header and Navbar -->
@@ -205,94 +669,62 @@ $conn->close();
 
 <!-- Room List -->
 <div class="container-fluid">
-    <div id="roomCarousel" class="carousel slide" data-bs-ride="carousel">
-        <div class="carousel-inner">
-            <?php
-            if ($result === false) {
-                echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
-            } elseif ($result->num_rows > 0) {
-                $cards = array();
-                while ($row = $result->fetch_assoc()) {
-                    $currentOccupants = $row['current_occupants'] ?? 0; 
-                    $totalCapacity = $row['capacity'] ?? 0;
+    <div class="row justify-content-center">
+        <?php
+        if ($result === false) {
+            echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
+        } elseif ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $currentOccupants = $row['current_occupants'] ?? 0; 
+                $totalCapacity = $row['capacity'] ?? 0;
 
-                    // Determine room status
-                    if ($currentOccupants >= $totalCapacity) {
-                        $status = 'Occupied';
-                    } elseif (strtolower($row['status']) === 'maintenance') {
-                        $status = 'Maintenance';
-                    } else {
-                        $status = 'Available';
-                    }
+                // Determine room status
+                if ($currentOccupants >= $totalCapacity) {
+                    $status = 'Occupied';
+                } elseif (strtolower($row['status']) === 'maintenance') {
+                    $status = 'Maintenance';
+                } else {
+                    $status = 'Available';
+                }
 
-                    // Store each card HTML in array
-                    ob_start();
-                    ?>
-                    <div class="col-md-4 room-card" data-status="<?php echo htmlspecialchars($status); ?>">
-                        <div class="card custom-card h-100">
-                            <?php 
-                            $imagePath = "../uploads/" . ($row['room_pic'] ?? '');
-                            if (!empty($row['room_pic']) && file_exists($imagePath)): ?>
-                                <img src="<?php echo htmlspecialchars($imagePath); ?>" 
-                                     alt="Room Image" 
-                                     class="card-img-top custom-card-img" 
-                                     style="cursor: pointer;" 
-                                     onclick="openModal('<?php echo htmlspecialchars($imagePath); ?>')">
-                            <?php else: ?>
-                                <img src="path/to/default/image.jpg" alt="No Image Available" class="card-img-top custom-card-img">
-                            <?php endif; ?>
-
-                            <div class="card-body d-flex flex-column">
-                                <h5 class="card-title">Room: <?php echo htmlspecialchars($row['room_number']); ?></h5>
-                                <p class="room-price">
-                                    Rent Price: <?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly
-                                </p>
-                                <p><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                // Get image paths
+                $imagePaths = explode(',', $row['room_pic']);
+                ?>
+                <div class="col-md-4 d-flex justify-content-center" style="margin-bottom: 20px;">
+                    <div class="room-item" style="padding: 15px; margin: 10px;">
+                        <div class="position-relative">
+                            <div id="carousel-<?php echo $row['room_id']; ?>" class="carousel slide" data-bs-ride="carousel">
+                                <div class="carousel-inner">
+                                    <?php foreach ($imagePaths as $index => $imagePath): ?>
+                                        <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                            <?php if (!empty($imagePath) && file_exists("../uploads/" . $imagePath)): ?>
+                                                <img src="<?php echo htmlspecialchars("../uploads/" . $imagePath); ?>" 
+                                                     class="d-block w-100 room-image" 
+                                                     alt="Room Image"
+                                                     data-bs-toggle="modal" 
+                                                     data-bs-target="#imageModal" 
+                                                     onclick="showImageModal('<?php echo htmlspecialchars("../uploads/" . $imagePath); ?>')">
+                                            <?php else: ?>
+                                                <img src="path/to/default/image.jpg" class="d-block w-100 room-image" alt="No Image Available">
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
                         </div>
+                        <div class="room-details">
+                            <h3>Room <?php echo htmlspecialchars($row['room_number']); ?></h3>
+                            <p class="room-price">₱<?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
+                            <p class="description"><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                        </div>
                     </div>
-                    <?php
-                    $cards[] = ob_get_clean();
-                }
-
-                // Adjust number of cards per slide based on screen size
-                $cardsPerSlide = 3;
-                $totalCards = count($cards);
-                for ($i = 0; $i < $totalCards; $i += $cardsPerSlide) {
-                    $activeClass = ($i === 0) ? 'active' : '';
-                    echo '<div class="carousel-item ' . $activeClass . '">';
-                    echo '<div class="row justify-content-center">'; // Added justify-content-center
-                    
-                    // Add cards to this slide
-                    for ($j = $i; $j < min($i + $cardsPerSlide, $totalCards); $j++) {
-                        echo $cards[$j];
-                    }
-                    
-                    // Fill empty spaces with blank cards if needed
-                    for ($k = min($i + $cardsPerSlide, $totalCards); $k < $i + $cardsPerSlide; $k++) {
-                        echo '<div class="col-md-4 room-card invisible"></div>';
-                    }
-                    
-                    echo '</div>';
-                    echo '</div>';
-                }
-            } else {
-                echo "<p class='text-center'>No rooms available.</p>";
+                </div>
+                <?php
             }
-            ?>
-        </div>
-        
-        <!-- Custom Navigation Buttons -->
-        <div class="custom-carousel-controls">
-            <button class="custom-carousel-btn prev" type="button" data-bs-target="#roomCarousel" data-bs-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Previous</span>
-            </button>
-            <button class="custom-carousel-btn next" type="button" data-bs-target="#roomCarousel" data-bs-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Next</span>
-            </button>
-        </div>
+        } else {
+            echo "<p class='text-center'>No rooms available.</p>";
+        }
+        ?>
     </div>
 </div>
 
@@ -878,5 +1310,26 @@ applyNowBtn.onclick = function() {
         transition: all 0.3s ease;
     }
     </style>
+
+    <!-- Modal Structure -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Room Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <img id="modalImage" src="" class="img-fluid" alt="Room Image">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showImageModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+        }
+    </script>
 </body>
 </html>

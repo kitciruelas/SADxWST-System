@@ -513,7 +513,6 @@ button.left-align {
 
 button:hover {
     background-color:  rgba(43, 34, 138, 0.1);
-    color:#2B228A; /* White text on hover */
 }
 .btn-delete {
     padding: 6px 10px; /* Button padding */

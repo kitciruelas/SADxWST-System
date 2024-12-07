@@ -267,17 +267,18 @@ $conn->close();
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-        <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
-        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
-        <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Visitor log</span></a>
-        <a href="admin-monitoring.php" class="nav-link active"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+        <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
+            <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
+            <a href="admin-room.php" class="nav-link" ><i class="fas fa-building"></i> <span>Room Manager</span> </a>
+            <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+            <a href="admin-monitoring.php" class="nav-link active"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
 
-        <a href="staff-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
-
-        <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
+            <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
+            <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-        <a href="../config/user-logout.php" id="logoutLink">
+        <a href="../config/logout.php" id="logoutLink">
             <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
         </a>
         </div>

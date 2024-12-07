@@ -273,64 +273,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
 
 
 
-// Handle room archiving instead of deletion
+// Handle room deletion
 if (isset($_GET['delete_room_id'])) {
     $room_id = intval($_GET['delete_room_id']); // Sanitize input
 
-    // Step 1: Archive the room by copying it to the archive table
-    $archiveSql = "INSERT INTO rooms_archive (room_id, room_number, room_desc, room_pic, room_monthlyrent, capacity, status, created_at, archived_at)
-                   SELECT room_id, room_number, room_desc, room_pic, room_monthlyrent, capacity, status, created_at, NOW()
-                   FROM rooms WHERE room_id = ?";
-    
-    $archiveStmt = $conn->prepare($archiveSql);
-    $archiveStmt->bind_param('i', $room_id);
+    // Check if the room has any assignments
+    $assignmentCheckSql = "SELECT COUNT(*) as assignment_count FROM roomassignments WHERE room_id = ?";
+    $assignmentCheckStmt = $conn->prepare($assignmentCheckSql);
+    $assignmentCheckStmt->bind_param('i', $room_id);
+    $assignmentCheckStmt->execute();
+    $assignmentCheckStmt->bind_result($assignment_count);
+    $assignmentCheckStmt->fetch();
+    $assignmentCheckStmt->close();
 
-    if ($archiveStmt->execute()) {
-        // Fetch the room number before archiving
-        $room_number_sql = "SELECT room_number FROM rooms WHERE room_id = ?";
-        $room_number_stmt = $conn->prepare($room_number_sql);
-        $room_number_stmt->bind_param('i', $room_id);
-        $room_number_stmt->execute();
-        $room_number_stmt->bind_result($room_number);
-        $room_number_stmt->fetch();
-        $room_number_stmt->close();
-
-        // Log activity for deleting a room
-        logActivity($conn, $userId, 'Delete', 'Archived and deleted room number: ' . $room_number);
-        // Step 2: Delete the room from the original table after archiving
-        $deleteSql = "DELETE FROM rooms WHERE room_id = ?";
-        $deleteStmt = $conn->prepare($deleteSql);
-        $deleteStmt->bind_param('i', $room_id);
-
-        if ($deleteStmt->execute()) {
-            // Use JavaScript for alert and redirection after success
-            $_SESSION['swal_success'] = [
-                'title' => 'Success!',
-                'text' => 'Room archived and deleted successfully!',
-                'icon' => 'success'
-            ];
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit(); // Ensure no further code is executed after redirection
-        } else {
-            $_SESSION['swal_error'] = [
-                'title' => 'Error',
-                'text' => 'Error deleting room: ' . $conn->error,
-                'icon' => 'error'
-            ];
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit();
-        }
-
-    } else {
+    if ($assignment_count > 0) {
+        // If there are assignments, show an error message
         $_SESSION['swal_error'] = [
             'title' => 'Error!',
-            'text' => 'Error archiving room: ' . $archiveStmt->error,
+            'text' => 'Cannot delete room with active assignments.',
             'icon' => 'error'
         ];
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
 
+    // Fetch the room number before archiving
+    $room_number_sql = "SELECT room_number FROM rooms WHERE room_id = ?";
+    $room_number_stmt = $conn->prepare($room_number_sql);
+    $room_number_stmt->bind_param('i', $room_id);
+    $room_number_stmt->execute();
+    $room_number_stmt->bind_result($room_number);
+    $room_number_stmt->fetch();
+    $room_number_stmt->close();
+
+    // Log activity for archiving a room
+    logActivity($conn, $userId, 'Archive', 'Archived room number: ' . $room_number);
+
+    // Update the room's archive status to 'archived'
+    $archiveSql = "UPDATE rooms SET archive_status = 'archived' WHERE room_id = ?";
+    $archiveStmt = $conn->prepare($archiveSql);
+    $archiveStmt->bind_param('i', $room_id);
+
+    if ($archiveStmt->execute()) {
+        // Use JavaScript for alert and redirection after success
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Room deleted successfully!',
+            'icon' => 'success'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit(); // Ensure no further code is executed after redirection
+    } else {
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Error archiving room: ' . $conn->error,
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    }
 }
 
 
@@ -350,25 +351,6 @@ if (isset($_GET['edit_room_id'])) {
     $stmt->close();
 }
 
-// Query to get rooms, capacities, and current occupants
-$query = "
-    SELECT 
-        r.room_id,
-        r.room_number,
-        r.room_desc,
-        r.capacity AS totalCapacity,
-        r.room_monthlyrent,
-        r.status,
-        r.room_pic,
-        COUNT(ra.assignment_id) AS currentOccupants
-    FROM 
-        rooms r
-    LEFT JOIN 
-        roomassignments ra ON r.room_id = ra.room_id
-    GROUP BY 
-        r.room_id
-";
-$result = $conn->query($query);
 
 
 
@@ -532,6 +514,23 @@ $result = $conn->query($query);
     .dt-button:hover {
         background-color: #1a1555 !important;
     }
+    .room-image {
+        width: 100px;
+        height: auto;
+        margin: 5px;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+
+    .action-buttons .btn {
+        margin: 0;
+        padding: 5px 10px;
+        font-size: 0.9rem;
+        display: inline-block;
+        width: 80px; /* Ensure both buttons have the same width */
+        text-align: center; /* Center the text within the button */
+    }
 </style>
 
 </head>
@@ -677,11 +676,15 @@ $query = "
         rooms r
     LEFT JOIN 
         roomassignments ra ON r.room_id = ra.room_id
+    WHERE 
+        r.archive_status = 'active'
     GROUP BY 
         r.room_id
+    ORDER BY 
+        r.room_id DESC
 ";
-
 $result = $conn->query($query);
+
 
 if ($result->num_rows > 0) {
     $counter = 1;
@@ -709,21 +712,24 @@ if ($result->num_rows > 0) {
         echo "<td>";
 
         if (!empty($row["room_pic"])) {
-            $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
-            if (file_exists($imagePath)) {
-                echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
-            } else {
-                echo "Image not found";
+            $imagePaths = explode(',', $row["room_pic"]); // Assuming multiple images are stored as a comma-separated string
+            foreach ($imagePaths as $imagePath) {
+                $fullPath = "../uploads/" . htmlspecialchars($imagePath);
+                if (file_exists($fullPath)) {
+                    echo "<img src='" . $fullPath . "' alt='Room Image' class='room-image'>";
+                } else {
+                    echo "Image not found";
+                }
             }
         } else {
             echo "No Image";
         }
 
         echo "</td>";
-        echo "<td>";
+        echo "<td class='action-buttons'>";
         echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='btn btn-primary btn-sm edit-btn'>Edit</a>";
         echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete(" . htmlspecialchars($row["room_id"]) . ")'>
-                <button type='submit' class='btn btn-danger btn-m'>Delete</button>
+                <button type='submit' class='btn btn-danger btn-sm mt-3'>Delete</button>
               </form>";
         echo "</td>";
         echo "</tr>";
@@ -820,15 +826,7 @@ if ($result->num_rows > 0) {
                             <textarea class="form-control" id="edit_room_desc" name="room_desc" required><?php echo htmlspecialchars($editRoom['room_desc'] ?? ''); ?></textarea>
                         </div>
 
-                        <!-- Current Room Picture -->
-                        <?php if (!empty($editRoom['room_pic'])): ?>
-                            <div class="mb-3">
-                                <label class="form-label">Current Room Picture</label>
-                                <div>
-                                    <img src="../uploads/<?php echo htmlspecialchars($editRoom['room_pic']); ?>" alt="Current Room Picture" onerror="this.onerror=null; this.src='path/to/default-image.jpg';" style="max-width: 100%; height: 200px;">
-                                </div>
-                            </div>
-                        <?php endif; ?>
+                  
 
                         <!-- Upload New Picture -->
                         <div class="mb-3">

@@ -45,8 +45,13 @@ if (isset($_SESSION['id'])) {
 
 
 // Fetch announcements
-$sql = "SELECT * FROM announce WHERE is_displayed = 1";
-$announcements = [];
+// ... existing code ...
+
+// Display only active and displayed announcements from the database in descending order by date
+$sql = "SELECT * FROM announce WHERE is_displayed = 1 AND archive_status = 'active' ORDER BY date_published DESC";
+$result = mysqli_query($conn, $sql);
+
+// ... existing code ...$announcements = [];
 $result = $conn->query($sql);
 if ($result) {
     while ($row = $result->fetch_assoc()) {
@@ -294,7 +299,8 @@ $sql = "SELECT
     r.status, 
     r.room_pic,
     (SELECT COUNT(*) FROM roomassignments WHERE room_id = r.room_id) AS current_occupants 
-FROM rooms r";
+FROM rooms r
+WHERE r.archive_status = 'active'";
 
 $result = $conn->query($sql);
 
@@ -854,9 +860,7 @@ if ($result === false) {
         transition: all 0.3s ease;
     }
 
-    .form-select:hover {
-        border-color: #2980b9;
-    }
+    
 
     .form-select:focus {
         outline: none;
@@ -1088,6 +1092,44 @@ if ($result === false) {
         background: white;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
+ 
+.room-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 300px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.room-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.room-details {
+    padding: 15px;
+}
+
+.btn-apply, .btn-maintenance, .btn-occupied {
+    width: 100%;
+    margin-top: 10px;
+}
+.btn-pending-request {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+        cursor: not-allowed;
+    }
+
+    .btn-pending-request:hover {
+        background: linear-gradient(135deg, #e67e22, #d35400);
+    }
 </style>
 </head>
 <body>
@@ -1164,70 +1206,99 @@ if ($result === false) {
             </div>
         </div>
         <div class="room-container">
-            <?php
-            if ($result === false) {
-                echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
-            } elseif ($result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    $currentOccupants = $row['current_occupants'] ?? 0; 
-                    $totalCapacity = $row['capacity'];
+    <?php
+    if ($result === false) {
+        echo "<p>SQL Error: " . htmlspecialchars($conn->error) . "</p>";
+    } elseif ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $currentOccupants = $row['current_occupants'] ?? 0; 
+            $totalCapacity = $row['capacity'];
 
-                    // Determine room status
-                    if ($currentOccupants >= $totalCapacity) {
-                        $status = 'Occupied';
-                    } elseif (strtolower($row['status']) === 'maintenance') {
-                        $status = 'Maintenance';
-                    } else {
-                        $status = 'Available';
-                    }
-                    ?>
-                    <div class="room-item">
-                        <div class="room-image">
-                            <?php if (!empty($row['room_pic']) && file_exists("../uploads/" . $row['room_pic'])): ?>
-                                <img src="<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>" 
-                                     alt="Room Image" 
-                                     onclick="openModal('<?php echo htmlspecialchars("../uploads/" . $row['room_pic']); ?>')">
-                            <?php else: ?>
-                                <img src="path/to/default/image.jpg" alt="No Image Available">
-                            <?php endif; ?>
-                            <div class="status-badge <?php echo 'status-'.strtolower($status); ?>">
-                                <?php echo htmlspecialchars($status); ?>
-                            </div>
-                        </div>
-                        <div class="room-details">
-                            <h3>Room <?php echo htmlspecialchars($row['room_number']); ?></h3>
-                            <p class="room-price">₱<?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
-                            <p class="occupancy">
-                                <i class="fas fa-users"></i>
-                                <?php echo htmlspecialchars($currentOccupants) . '/' . htmlspecialchars($totalCapacity); ?> people
-                            </p>
-                            <p class="description"><?php echo htmlspecialchars($row['room_desc']); ?></p>
-                            
-                            <?php if ($status === 'Maintenance'): ?>
-                                <button class="btn-maintenance" disabled>Under Maintenance</button>
-                            <?php elseif ($currentOccupants < $totalCapacity): ?>
-                                <button class="btn-apply" data-bs-toggle="modal" data-bs-target="#applyModal"
-                                    data-room-id="<?php echo htmlspecialchars($row['room_id']); ?>"
-                                    data-room-number="<?php echo htmlspecialchars($row['room_number']); ?>"
-                                    data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent']); ?>"
-                                    data-room-capacity="<?php echo htmlspecialchars($row['capacity']); ?>"
-                                    data-room-desc="<?php echo htmlspecialchars($row['room_desc']); ?>"
-                                    data-current-occupants="<?php echo htmlspecialchars($currentOccupants); ?>"
-                                    data-room-status="<?php echo htmlspecialchars($row['status']); ?>">
-                                    Request Reassignment
-                                </button>
-                            <?php else: ?>
-                                <button class="btn-occupied" disabled>Fully Occupied</button>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <?php
-                }
+            // Determine room status
+            if ($currentOccupants >= $totalCapacity) {
+                $status = 'Occupied';
+            } elseif (strtolower($row['status']) === 'maintenance') {
+                $status = 'Maintenance';
             } else {
-                echo "<p class='text-center'>No rooms available.</p>";
+                $status = 'Available';
             }
+
+            // Check for existing pending reassignment requests for the user
+            $stmt = $conn->prepare("SELECT reassignment_id FROM room_reassignments 
+                                   WHERE user_id = ? AND status = 'pending'");
+            $stmt->bind_param("i", $_SESSION['id']);
+            $stmt->execute();
+            $pendingRequest = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+
+            // Get image paths
+            $imagePaths = explode(',', $row['room_pic']);
             ?>
-        </div>
+            <div class="room-item">
+                <div class="position-relative">
+                    <div id="carousel-<?php echo $row['room_id']; ?>" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-inner">
+                            <?php foreach ($imagePaths as $index => $imagePath): ?>
+                                <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                    <?php if (!empty($imagePath) && file_exists("../uploads/" . $imagePath)): ?>
+                                        <img src="<?php echo htmlspecialchars("../uploads/" . $imagePath); ?>" 
+                                             class="d-block w-100 room-image" 
+                                             alt="Room Image">
+                                    <?php else: ?>
+                                        <img src="path/to/default/image.jpg" class="d-block w-100 room-image" alt="No Image Available">
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-<?php echo $row['room_id']; ?>" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#carousel-<?php echo $row['room_id']; ?>" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    </div>
+                    <div class="status-badge <?php echo 'status-'.strtolower($status); ?>">
+                        <?php echo htmlspecialchars($status); ?>
+                    </div>
+                </div>
+                <div class="room-details">
+                    <h3>Room <?php echo htmlspecialchars($row['room_number']); ?></h3>
+                    <p class="room-price">₱<?php echo number_format($row['room_monthlyrent'], 2); ?> / Monthly</p>
+                    <p class="occupancy">
+                        <i class="fas fa-users"></i>
+                        <?php echo htmlspecialchars($currentOccupants) . '/' . htmlspecialchars($totalCapacity); ?> people
+                    </p>
+                    <p class="description"><?php echo htmlspecialchars($row['room_desc']); ?></p>
+                    
+                    <?php if ($status === 'Maintenance'): ?>
+                        <button class="btn-maintenance" disabled>Under Maintenance</button>
+                    <?php elseif ($status === 'Available' && $pendingRequest): ?>
+                        <button class="btn-pending-request" disabled>You are already requested, waiting for approval</button>
+                    <?php elseif ($status === 'Available' && $currentOccupants < $totalCapacity): ?>
+                        <button class="btn-apply" data-bs-toggle="modal" data-bs-target="#applyModal"
+                            data-room-id="<?php echo htmlspecialchars($row['room_id']); ?>"
+                            data-room-number="<?php echo htmlspecialchars($row['room_number']); ?>"
+                            data-room-price="<?php echo htmlspecialchars($row['room_monthlyrent']); ?>"
+                            data-room-capacity="<?php echo htmlspecialchars($row['capacity']); ?>"
+                            data-room-desc="<?php echo htmlspecialchars($row['room_desc']); ?>"
+                            data-current-occupants="<?php echo htmlspecialchars($currentOccupants); ?>"
+                            data-room-status="<?php echo htmlspecialchars($row['status']); ?>">
+                            Request Reassignment
+                        </button>
+                    <?php else: ?>
+                        <button class="btn-occupied" disabled>Fully Occupied</button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php
+        }
+    } else {
+        echo "<p class='text-center'>No rooms available.</p>";
+    }
+    ?>
+</div>
     </div>
 </div>
 

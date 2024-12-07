@@ -123,28 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Archive/Delete Visitor Logic
+    // Archive Visitor Logic
     if (isset($_POST['delete_visitor_id'])) {
         $visitorId = (int)$_POST['delete_visitor_id'];
-
-        $conn->begin_transaction();
-
-        $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
-                       SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
-                       FROM visitors WHERE id = ? AND visiting_user_id = ?";
-        $stmt = $conn->prepare($archiveSql);
-        $stmt->bind_param("ii", $visitorId, $userId);
-
-        if (!$stmt->execute()) {
-            $conn->rollback();
-            $_SESSION['swal_error'] = [
-                'title' => 'Error',
-                'text' => 'Error archiving visitor: ' . $stmt->error,
-                'icon' => 'error'
-            ];
-            header("Location: visitor_log.php");
-            exit();
-        }
 
         // Fetch visitor's name for logging
         $fetchNameSql = "SELECT name FROM visitors WHERE id = ?";
@@ -155,31 +136,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nameStmt->fetch();
         $nameStmt->close();
 
-        $stmt->close();
-
-        $deleteSql = "DELETE FROM visitors WHERE id = ? AND visiting_user_id = ?";
-        $stmt = $conn->prepare($deleteSql);
+        // Update archive_status to 'archived'
+        $archiveSql = "UPDATE visitors SET archive_status = 'archived' WHERE id = ? AND visiting_user_id = ?";
+        $stmt = $conn->prepare($archiveSql);
         $stmt->bind_param("ii", $visitorId, $userId);
 
-        if (!$stmt->execute()) {
-            $conn->rollback();
+        if ($stmt->execute()) {
+            logActivity($conn, $userId, "Archive Visitor", "Visitor '$visitorName' archived.");
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Visitor deleted successfully!',
+                'icon' => 'success'
+            ];
+        } else {
             $_SESSION['swal_error'] = [
                 'title' => 'Error',
-                'text' => 'Error deleting visitor: ' . $stmt->error,
+                'text' => 'Error archiving visitor: ' . $stmt->error,
                 'icon' => 'error'
             ];
-            header("Location: visitor_log.php");
-            exit();
         }
         $stmt->close();
-
-        $conn->commit();
-        logActivity($conn, $userId, "Archive Visitor", "Visitor '$visitorName' archived.");
-        $_SESSION['swal_success'] = [
-            'title' => 'Success!',
-            'text' => 'Visitor archived successfully!',
-            'icon' => 'success'
-        ];
         header("Location: visitor_log.php");
         exit();
     }
@@ -243,7 +219,7 @@ $sort = isset($_GET['sort']) ? $_GET['sort'] : 'name'; // Default sort by name
 $sql = "SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person 
         FROM visitors v 
         LEFT JOIN users u ON v.visiting_user_id = u.id 
-        WHERE v.visiting_user_id = ?";
+        WHERE v.visiting_user_id = ? AND v.archive_status = 'active'";
 
 // Modify query based on selected filter
 if ($filter == 'today') {

@@ -30,50 +30,26 @@ if (!isset($_SESSION['id'])) {
 
 // Check if the request is a POST request and handle accordingly
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle visitor deletion (archive and delete)
+    // Handle visitor deletion (set archive status)
     if (isset($_POST['visitor_id']) && !empty($_POST['visitor_id'])) {
         
         $visitor_id = intval($_POST['visitor_id']); // Sanitize input
 
-        // Step 1: Archive the visitor by copying to archive table
-        $archiveSql = "INSERT INTO visitors_archive (id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, archived_at)
-                       SELECT id, name, contact_info, purpose, visiting_user_id, check_in_time, check_out_time, NOW()
-                       FROM visitors WHERE id = ?";
-        
-        $archiveStmt = $conn->prepare($archiveSql);
-        if ($archiveStmt) {
-            $archiveStmt->bind_param("i", $visitor_id); // Bind visitor ID as integer
-            
-            if ($archiveStmt->execute()) {
-                // Step 2: Delete the visitor from the original table
-                $deleteSql = "DELETE FROM visitors WHERE id = ?";
-                $deleteStmt = $conn->prepare($deleteSql);
+        // Update the visitor's archive status to 'archived'
+        $updateSql = "UPDATE visitors SET archive_status = 'archived' WHERE id = ?";
+        $updateStmt = $conn->prepare($updateSql);
 
-                if ($deleteStmt) {
-                    $deleteStmt->bind_param("i", $visitor_id);
-                    if ($deleteStmt->execute()) {
-                        $_SESSION['swal_success'] = [
-                            'title' => 'Success!',
-                            'text' => 'Visitor archived and deleted successfully!',
-                            'icon' => 'success'
-                        ];
-                        header("Location: admin-visitor_log.php"); // Redirect after archiving
-                        exit;
-                    } else {
-                        $_SESSION['swal_error'] = [
-                            'title' => 'Error',
-                            'text' => 'Error deleting visitor from the original table.',
-                            'icon' => 'error'
-                        ];
-                    }
-                    $deleteStmt->close();
-                } else {
-                    $_SESSION['swal_error'] = [
-                        'title' => 'Error',
-                        'text' => 'Failed to prepare the delete statement.',
-                        'icon' => 'error'
-                    ];
-                }
+        if ($updateStmt) {
+            $updateStmt->bind_param("i", $visitor_id);
+            if ($updateStmt->execute()) {
+                logActivity($conn, $_SESSION['id'], "Delete Visitor", "Visitor ID '$visitor_id'");
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'Visitor deleted successfully!',
+                    'icon' => 'success'
+                ];
+                header("Location: admin-visitor_log.php"); // Redirect after updating
+                exit;
             } else {
                 $_SESSION['swal_error'] = [
                     'title' => 'Error',
@@ -81,15 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'icon' => 'error'
                 ];
             }
-            $archiveStmt->close();
+            $updateStmt->close();
         } else {
             $_SESSION['swal_error'] = [
                 'title' => 'Error',
-                'text' => 'Failed to prepare the archive statement.',
+                'text' => 'Failed to prepare the update statement.',
                 'icon' => 'error'
             ];
         }
-
     }
     // Handle visitor addition
     elseif (isset($_POST['visitor_name'])) {
@@ -304,7 +279,8 @@ $query = "
     SELECT v.*, CONCAT(u.fname, ' ', u.lname) AS visiting_person
     FROM visitors v
     LEFT JOIN users u ON v.visiting_user_id = u.id
-    ORDER BY v.check_out_time IS NOT NULL, v.check_in_time,v.id DESC
+    WHERE v.archive_status = 'active'
+    ORDER BY v.check_out_time IS NOT NULL, v.check_in_time, v.id DESC
 ";
 
 

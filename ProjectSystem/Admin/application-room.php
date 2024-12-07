@@ -13,6 +13,8 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Assuming you have a way to get the current user's ID
+$userId = $_SESSION['id']; // Example: Get user ID from session
 
 require 'PHPMailer-master/src/Exception.php';
 require 'PHPMailer-master/src/PHPMailer.php';
@@ -109,6 +111,13 @@ function sendRejectionEmail($userEmail, $firstName, $lastName) {
     }
 }
 
+function activity_logs($conn, $userId, $activityType, $activityDetails = null) {
+    $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
+    $stmt->execute();
+    $stmt->close();
+}
+
 // Assuming $conn is the MySQLi connection
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -122,7 +131,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->bind_param("si", $newStatus, $reassignmentId);
 
         if ($stmt->execute()) {
-            echo "<script>alert('Reassignment status updated successfully.');</script>";
+            // Log activity for status update
+            activity_logs($conn, $userId, 'Status Update', "Status changed to $newStatus for reassignment ID $reassignmentId");
+
+            // Update success message for both approved and rejected statuses
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => ($newStatus === 'rejected') ? 'Reassignment request has been rejected successfully!' : 'Reassignment request has been approved successfully!',
+                'icon' => 'success'
+            ];
 
             // Handle both approved and rejected statuses
             if ($newStatus === 'approved' || $newStatus === 'rejected') {
@@ -163,6 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (!$emailSent) {
                                 echo "<script>alert('Room updated but email notification failed.');</script>";
                             }
+                            // Log activity for email sent
+                            activity_logs($conn, $userId, 'Reassignment request approved', "Approval email sent to {$userResult['email']}");
                         } else {
                             echo "<script>alert('Error updating room assignment: " . $updateAssignmentStmt->error . "');</script>";
                         }
@@ -177,11 +196,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (!$emailSent) {
                             echo "<script>alert('Status updated but rejection email failed.');</script>";
                         }
+                        // Log activity for email sent
+                        activity_logs($conn, $userId, 'Reassignment request rejected', "Rejection email sent to {$userResult['email']}");
                     }
                 }
             }
         } else {
-            echo "Error updating status: " . $stmt->error;
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error updating status: ' . $stmt->error,
+                'icon' => 'error'
+            ];
         }
 
         $stmt->close();
@@ -222,7 +247,7 @@ $conn->close();
     <title>Reassign Room</title>
     <link rel="icon" href="../img-icon/alt.webp" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
@@ -374,39 +399,65 @@ $conn->close();
     }
 </style>
 
+<!-- SweetAlert CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
+<div class="sidebar" id="sidebar">
         <div class="menu" id="hamburgerMenu">
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
+        <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
-
+            <a href="admin-room.php" class="nav-link active"> <i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
-
-       
-
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
+    </div>
     </div>
 
     <!-- Top bar -->
@@ -787,5 +838,31 @@ function prevPage() {
         });
     </script>
     
+    <script>
+
+// Check for session messages and display SweetAlert
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if (isset($_SESSION['swal_success'])): ?>
+        Swal.fire({
+            title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+            text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+            icon: '<?php echo $_SESSION['swal_success']['icon']; ?>',
+            confirmButtonText: 'OK'
+        });
+        <?php unset($_SESSION['swal_success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['swal_error'])): ?>
+        Swal.fire({
+            title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+            text: '<?php echo str_replace("rejected", "success", $_SESSION['swal_error']['text']); ?>',
+            icon: '<?php echo $_SESSION['swal_error']['icon']; ?>',
+            confirmButtonText: 'OK'
+        });
+        <?php unset($_SESSION['swal_error']); ?>
+    <?php endif; ?>
+});
+
+    </script>
 </body>
 </html>

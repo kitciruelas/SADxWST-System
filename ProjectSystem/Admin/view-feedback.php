@@ -18,24 +18,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['feedback_id'])) {
         $feedback_id = intval($_POST['feedback_id']);
         
-        // Debug line - you can remove this after confirming it works
-        error_log("Attempting to delete feedback ID: " . $feedback_id);
-        
-        $sql = "DELETE FROM roomfeedback WHERE id = ?";
+        $sql = "UPDATE roomfeedback SET archive_status = 'archived' WHERE id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $feedback_id);
         
         if ($stmt->execute()) {
-            // Add debug line
-            error_log("Successfully deleted feedback ID: " . $feedback_id);
-            header("Location: view-feedback.php");
-            exit();
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Feedback deleted successfully!',
+                'icon' => 'success'
+            ];
         } else {
-            // Add error logging
-            error_log("Error deleting feedback: " . $conn->error);
-            echo "Error deleting record: " . $conn->error;
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error archiving feedback: ' . $conn->error,
+                'icon' => 'error'
+            ];
         }
         $stmt->close();
+        header("Location: view-feedback.php");
+        exit();
     }
 }
 
@@ -49,6 +51,7 @@ FROM roomfeedback f
 LEFT JOIN users u ON f.user_id = u.id
 LEFT JOIN roomassignments ra ON f.assignment_id = ra.assignment_id
 LEFT JOIN rooms r ON ra.room_id = r.room_id
+WHERE f.archive_status != 'archived'
 ORDER BY f.submitted_at DESC";
 
 
@@ -74,7 +77,7 @@ $result = $stmt->get_result();
     <title>Feedback</title>
     <link rel="icon" href="../img-icon/feed.webp" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -87,33 +90,61 @@ $result = $stmt->get_result();
 <body>
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <div class="menu" id="hamburgerMenu">
-            <i class="fas fa-bars"></i>
-        </div>
-        <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
+    <div class="menu" id="hamburgerMenu">
+        <i class="fas fa-bars"></i> <!-- Hamburger menu icon -->
+    </div>
+
+    <div class="sidebar-nav">
+    <a href="dashboard.php" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+            <a href="admin-room.php" class="nav-link" ><i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
 
-
         </div>
+
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
-    </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
+</div>
 
     <!-- Top bar -->
     <div class="topbar">
@@ -185,8 +216,7 @@ if ($result->num_rows > 0) {
         // Delete button with improved styling
         echo "<form method='POST' action='" . htmlspecialchars($_SERVER['PHP_SELF']) . "' class='delete-form'>";
         echo "<input type='hidden' name='feedback_id' value='" . htmlspecialchars($row['feedback_id']) . "'>";
-        echo "<button type='submit' class='btn delete-btn' 
-              onclick='return confirm(\"Are you sure you want to delete this feedback?\");'>";
+        echo "<button type='button' class='btn delete-btn' onclick='handleDelete(" . htmlspecialchars($row['feedback_id']) . ")'>";
         echo "<i class='bi bi-x-circle'></i>";
         echo "</button>";
         echo "</form>";
@@ -613,5 +643,40 @@ document.getElementById("searchInput").addEventListener("keyup", function() {
         });
     </script>
     
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function handleDelete(feedbackId) {
+                console.log("Delete button clicked for feedback ID:", feedbackId); // Debugging line
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = ''; // Current page
+
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'feedback_id';
+                        input.value = feedbackId;
+
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            }
+
+            // Expose the function to the global scope
+            window.handleDelete = handleDelete;
+        });
+    </script>
 </body>
 </html>

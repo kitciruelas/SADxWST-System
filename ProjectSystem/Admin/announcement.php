@@ -1,4 +1,6 @@
 <?php
+session_start(); // Ensure session is started
+
 // Define the database connection parameters
 $servername = "localhost";
 $username = "root";
@@ -24,11 +26,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add'])) {
         mysqli_stmt_bind_param($stmt, "ss", $title, $content);
         
         if (mysqli_stmt_execute($stmt)) {
-            echo "<script>alert('New announcement added successfully');</script>";
+            logActivity($conn, $_SESSION['id'], 'Add Announcement', 'Added a new announcement with title: ' . $title);
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'New announcement added successfully!',
+                'icon' => 'success'
+            ];
             header("Location: " . $_SERVER['PHP_SELF']);
             exit;
         } else {
-            echo "Error: " . mysqli_error($conn);
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error adding announcement: ' . mysqli_error($conn),
+                'icon' => 'error'
+            ];
         }
     }
 }
@@ -44,40 +55,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update'])) {
     mysqli_stmt_bind_param($stmt, "ssi", $updated_title, $updated_content, $announcement_id);
     
     if (mysqli_stmt_execute($stmt)) {
-        echo "<script>alert('Announcement updated successfully');</script>";
+        logActivity($conn, $_SESSION['id'], 'Update Announcement', 'Updated announcement ID: ' . $announcement_id);
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Announcement updated successfully!',
+            'icon' => 'success'
+        ];
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     } else {
-        echo "Error updating announcement: " . mysqli_error($conn);
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Error updating announcement: ' . mysqli_error($conn),
+            'icon' => 'error'
+        ];
     }
 }
 
-// Delete announcement
+// Delete (archive) announcement
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
     $announcementId = mysqli_real_escape_string($conn, $_POST['announcement-id']);
 
-    // Use prepared statement for archive
-    $archiveSql = "INSERT INTO announce_archive (announcementId, title, content, date_published, is_displayed)
-                   SELECT announcementId, title, content, date_published, is_displayed
-                   FROM announce WHERE announcementId = ?";
+    // Update the archive status instead of deleting
+    $archiveSql = "UPDATE announce SET archive_status = 'archived' WHERE announcementId = ?";
     $stmt = mysqli_prepare($conn, $archiveSql);
     mysqli_stmt_bind_param($stmt, "i", $announcementId);
-
+    
     if (mysqli_stmt_execute($stmt)) {
-        // Delete using prepared statement
-        $deleteSql = "DELETE FROM announce WHERE announcementId = ?";
-        $stmt = mysqli_prepare($conn, $deleteSql);
-        mysqli_stmt_bind_param($stmt, "i", $announcementId);
-        
-        if (mysqli_stmt_execute($stmt)) {
-            echo "<script>alert('Announcement archived and deleted successfully');</script>";
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit;
-        } else {
-            echo "Error deleting announcement: " . mysqli_error($conn);
-        }
+        logActivity($conn, $_SESSION['id'], 'Delete Announcement', 'Archived announcement ID: ' . $announcementId);
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Announcement deleted successfully!',
+            'icon' => 'success'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
     } else {
-        echo "Error archiving announcement: " . mysqli_error($conn);
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Error archiving announcement: ' . mysqli_error($conn),
+            'icon' => 'error'
+        ];
     }
 }
 
@@ -104,17 +122,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['toggle-display'])) {
         mysqli_stmt_bind_param($stmt, "ii", $newDisplayStatus, $announcementId);
         
         if (mysqli_stmt_execute($stmt)) {
-            echo "<script>alert('Display status updated successfully.');</script>";
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Display status updated successfully.',
+                'icon' => 'success'
+            ];
         } else {
-            die("Error updating display status: " . mysqli_error($conn));
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error updating display status: ' . mysqli_error($conn),
+                'icon' => 'error'
+            ];
         }
     } else {
         die("No announcement found with ID: $announcementId");
     }
 }
 
-// Display announcements from the database in ascending order by date
-$sql = "SELECT * FROM announce ORDER BY date_published DESC";
+// Display only active announcements from the database in descending order by date
+$sql = "SELECT * FROM announce WHERE archive_status = 'active' ORDER BY date_published DESC";
 $result = mysqli_query($conn, $sql);
 
 $announcements = [];
@@ -134,7 +160,7 @@ mysqli_close($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
@@ -274,7 +300,7 @@ mysqli_close($conn);
     </div>
 
     <div class="sidebar-nav">
-        <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
+    <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
         <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a>
         <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
         <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -285,16 +311,42 @@ mysqli_close($conn);
         </div>
 
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
 </div>
 <div class="topbar">
         
@@ -374,9 +426,9 @@ function confirmLogout() {
                                         <td class="content"><?= htmlspecialchars($announcement['content']) ?></td>
                                         <td class="date_published"><?= htmlspecialchars($announcement['date_published']) ?></td>
                                         <td>
-                                            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;">
+                                            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" style="display:inline;" class="toggle-display-form">
                                                 <input type="hidden" name="announcement-id" value="<?= $announcement['announcementId'] ?>">
-                                                <button type="submit" name="toggle-display" class="btn btn-sm <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
+                                                <button type="button" class="btn btn-sm toggle-display-button <?= $announcement['is_displayed'] ? 'btn-warning' : 'btn-success' ?>">
                                                     <?= $announcement['is_displayed'] ? 'Hide' : 'Display' ?>
                                                 </button>
                                             </form>
@@ -716,26 +768,7 @@ function confirmLogout() {
             });
         });
 
-        // Handle Delete button click
-        $('.delete-button').click(function() {
-            const id = $(this).data('id');
-            if (confirm('Are you sure you want to delete this announcement?')) {
-                const form = $('<form>', {
-                    'method': 'post',
-                    'action': '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>'
-                }).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'delete',
-                    'value': '1'
-                })).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'announcement-id',
-                    'value': id
-                }));
-                $(document.body).append(form);
-                form.submit();
-            }
-        });
+       
     });
 
     // Sidebar functionality
@@ -769,6 +802,93 @@ function confirmLogout() {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+   
+
+        // Handle Delete button click
+        $('.delete-button').click(function() {
+            const id = $(this).data('id');
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This action cannot be undone!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = $('<form>', {
+                        'method': 'post',
+                        'action': '<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>'
+                    }).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'delete',
+                        'value': '1'
+                    })).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'announcement-id',
+                        'value': id
+                    }));
+                    $(document.body).append(form);
+                    form.submit();
+                }
+            });
+        });
+
+        // Existing SweetAlert for session messages
+        <?php if (isset($_SESSION['swal_success'])): ?>
+            Swal.fire({
+                title: '<?= $_SESSION['swal_success']['title'] ?>',
+                text: '<?= $_SESSION['swal_success']['text'] ?>',
+                icon: '<?= $_SESSION['swal_success']['icon'] ?>'
+            });
+            <?php unset($_SESSION['swal_success']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['swal_error'])): ?>
+            Swal.fire({
+                title: '<?= $_SESSION['swal_error']['title'] ?>',
+                text: '<?= $_SESSION['swal_error']['text'] ?>',
+                icon: '<?= $_SESSION['swal_error']['icon'] ?>'
+            });
+            <?php unset($_SESSION['swal_error']); ?>
+        <?php endif; ?>
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle Toggle Display button click
+        document.querySelectorAll('.toggle-display-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const form = this.closest('.toggle-display-form');
+                const actionText = this.textContent.trim();
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: `You want to ${actionText.toLowerCase()} this announcement?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: `Yes, ${actionText.toLowerCase()} it!`
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Add a hidden input to indicate toggle action
+                        const toggleInput = document.createElement('input');
+                        toggleInput.type = 'hidden';
+                        toggleInput.name = 'toggle-display';
+                        toggleInput.value = '1';
+                        form.appendChild(toggleInput);
+
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
 
 </body>
 </html>

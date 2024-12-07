@@ -11,6 +11,23 @@ use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php'; // Adjust path as needed
 // Add these function definitions after the session_start() and includes
+
+// Assuming you have a way to get the current user's ID
+$userId = $_SESSION['id']; // Example: Get user ID from session
+
+// Log user activity
+logUserActivity($userId, "Accessed manage move-out requests");
+
+// Function to log user activity
+function logUserActivity($userId, $activity) {
+    global $conn; // Ensure you have access to the database connection
+    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details, activity_timestamp) 
+               VALUES (?, ?, ?, NOW())";
+    $stmt = $conn->prepare($logSql);
+    $stmt->bind_param('iss', $userId, $activity, $activity);
+    $stmt->execute();
+}
+
 function sendMoveOutApprovalEmail($userEmail, $firstName, $lastName, $roomNumber) {
     $mail = new PHPMailer(true);
     try {
@@ -197,10 +214,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $conn->commit();
-        echo "<script>alert('Request " . ($action === 'approve' ? 'approved' : 'rejected') . " successfully.');</script>";
+        // Replace the alert with SweetAlert for success
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Request ' . ($action === 'approve' ? 'approved' : 'rejected') . ' successfully!',
+            'icon' => 'success'
+        ];
     } catch (Exception $e) {
         $conn->rollback();
-        echo "<script>alert('Error processing request: " . $e->getMessage() . "');</script>";
+        // Replace the alert with SweetAlert for error
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Error processing request: ' . $e->getMessage(),
+            'icon' => 'error'
+        ];
     }
 }
 
@@ -265,7 +292,7 @@ $result = $stmt->get_result();
     <title>Manage Move-out Requests</title>
     <link rel="icon" href="../img-icon/dooropen.png" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -700,26 +727,58 @@ $result = $stmt->get_result();
     </style>
 </head>
 <body>
-    <!-- Add Sidebar -->
-    <div class="sidebar" id="sidebar">
+<div class="sidebar" id="sidebar">
         <div class="menu" id="hamburgerMenu">
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
+        <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link active"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+            <a href="admin-room.php" class="nav-link active"> <i class="fas fa-building"></i> <span>Room Manager</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
+
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-            <a href="../config/logout.php" onclick="return confirmLogout();">
-                <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-            </a>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Add Topbar -->
@@ -871,7 +930,30 @@ $result = $stmt->get_result();
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php if (isset($_SESSION['swal_success'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_success']['icon']; ?>',
+                    confirmButtonText: 'OK'
+                });
+                <?php unset($_SESSION['swal_success']); // Clear the session variable ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['swal_error'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_error']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_error']['icon']; ?>',
+                    confirmButtonText: 'OK'
+                });
+                <?php unset($_SESSION['swal_error']); // Clear the session variable ?>
+            <?php endif; ?>
+        });
+
         function showApprovalModal(requestId) {
             document.getElementById('approval_request_id').value = requestId;
             document.getElementById('approvalModal').style.display = 'block';

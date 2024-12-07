@@ -281,9 +281,31 @@ if (isset($_GET['delete_payment_id'])) {
     .dt-button:hover {
         background-color: #1a1555 !important;
     }
+
+    .custom-modal .modal-content {
+        max-width: 100%; /* Full width */
+        height: 80vh; /* Adjust height as needed */
+        overflow-y: auto; /* Enable scrolling if content overflows */
+        padding: 20px; /* Add padding for content */
+    }
+
+    .custom-modal .modal-header, 
+    .custom-modal .modal-body {
+        background-color: #f8f9fa; /* Light background color */
+    }
+
+    .custom-modal .modal-title {
+        font-size: 1.5rem; /* Adjust title font size */
+        color: #2B228A; /* Custom color for title */
+    }
+
+    .custom-modal .btn-close {
+        color: #000; /* Custom color for close button */
+    }
 </style>
 
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
 <body>
@@ -305,16 +327,42 @@ if (isset($_GET['delete_payment_id'])) {
 
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -362,7 +410,11 @@ function confirmLogout() {
         </select>
     </div>
 
-   
+   <!-- Add this button where you want to trigger the modal -->
+<!-- Add this button where you want to trigger the navigation to archives.php -->
+<a href="archives.php" class="btn btn-warning">
+    View All Archives
+</a>
 </div>
 
 <!-- Activity Logs Table -->
@@ -714,6 +766,71 @@ hamburgerMenu.addEventListener('click', function() {
 });
 
 </script>
+
+<!-- Modal Structure -->
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen custom-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="archiveModalLabel">Archived Entries</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="accordion" id="archiveAccordion">
+                    <?php
+                    // Define tables and their display names
+                    $tables = [
+                        'announce' => 'Announcements',
+                        'rentpayment' => 'Rent Payments',
+                        'roomfeedback' => 'Room Feedback',
+                        'rooms' => 'Rooms',
+                        'visitors' => 'Visitors'
+                    ];
+
+                    foreach ($tables as $table => $displayName) {
+                        // Query to fetch archived entries
+                        $sql = "SELECT * FROM $table WHERE archive_status = 'archived'";
+                        $result = mysqli_query($conn, $sql);
+
+                        if (mysqli_num_rows($result) > 0) {
+                            echo "<div class='accordion-item'>";
+                            echo "<h2 class='accordion-header' id='heading$table'>";
+                            echo "<button class='accordion-button collapsed' type='button' data-bs-toggle='collapse' data-bs-target='#collapse$table' aria-expanded='false' aria-controls='collapse$table'>";
+                            echo "$displayName";
+                            echo "</button>";
+                            echo "</h2>";
+                            echo "<div id='collapse$table' class='accordion-collapse collapse' aria-labelledby='heading$table' data-bs-parent='#archiveAccordion'>";
+                            echo "<div class='accordion-body'>";
+                            echo "<table class='table table-bordered'>";
+                            echo "<thead><tr>";
+
+                            // Fetch and display column names
+                            $fields = mysqli_fetch_fields($result);
+                            foreach ($fields as $field) {
+                                echo "<th>" . htmlspecialchars($field->name) . "</th>";
+                            }
+                            echo "</tr></thead><tbody>";
+
+                            // Fetch and display rows
+                            while ($row = mysqli_fetch_assoc($result)) {
+                                echo "<tr>";
+                                foreach ($row as $value) {
+                                    echo "<td>" . htmlspecialchars($value) . "</td>";
+                                }
+                                echo "</tr>";
+                            }
+                            echo "</tbody></table>";
+                            echo "</div></div></div>";
+                        }
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 </body>
 </html>

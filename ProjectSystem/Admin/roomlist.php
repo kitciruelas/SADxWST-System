@@ -40,27 +40,43 @@ if (!empty($search)) {
     }
 }
 
+// Assuming you have a way to get the current user's ID
+$userId = $_SESSION['id']; // Example: Get user ID from session
+
 // Handle form submission for adding a new room
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
     $target_dir = "../uploads/";
     $room_pic = null;
 
     // Handle image upload if any
-    if (isset($_FILES["room_pic"]) && $_FILES["room_pic"]["error"] === 0) {
-        $imageFileType = strtolower(pathinfo($_FILES["room_pic"]["name"], PATHINFO_EXTENSION));
+    $room_pics = []; // Array to store file paths
+    if (isset($_FILES["room_pic"]) && count($_FILES["room_pic"]["name"]) === 3) {
         $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
 
-        if (in_array($imageFileType, $allowedTypes)) {
-            $target_file = $target_dir . basename($_FILES["room_pic"]["name"]);
-            if (move_uploaded_file($_FILES["room_pic"]["tmp_name"], $target_file)) {
-                $room_pic = $target_file;
+        foreach ($_FILES["room_pic"]["name"] as $key => $name) {
+            if ($_FILES["room_pic"]["error"][$key] === 0) {
+                $imageFileType = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+                if (in_array($imageFileType, $allowedTypes)) {
+                    $target_file = $target_dir . basename($name);
+                    if (move_uploaded_file($_FILES["room_pic"]["tmp_name"][$key], $target_file)) {
+                        $room_pics[] = $target_file; // Add file path to array
+                    } else {
+                        die("Error uploading image: $name.");
+                    }
+                } else {
+                    die("Invalid file type for $name. Only JPG, JPEG, PNG & GIF files are allowed.");
+                }
             } else {
-                die("Error uploading image.");
+                die("Error with file: $name.");
             }
-        } else {
-            die("Invalid file type. Only JPG, JPEG, PNG & GIF files are allowed.");
         }
+    } else {
+        die("Please upload exactly three files.");
     }
+
+    // Convert the array to a string if you need to store it in a single database field
+    $room_pics_string = implode(',', $room_pics);
 
     // Validate required fields
     if (empty($_POST['room_number']) || empty($_POST['capacity']) || empty($_POST['room_monthlyrent']) || empty($_POST['room_desc']) || empty($_POST['status'])) {
@@ -69,7 +85,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
     // Validate capacity
     if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
-        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Capacity must be at least 1 person.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -84,26 +105,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['room_id'])) {
 
     if ($count > 0) {
         // If room number exists, show an error
-        echo "<script>alert('Error: Room already exists!'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Room already exists!',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
     } else {
         // Insert room data using prepared statement
         $sql = "INSERT INTO Rooms (room_number, room_desc, room_pic, room_monthlyrent, capacity, status) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssds", $_POST['room_number'], $_POST['room_desc'], $room_pic, $_POST['room_monthlyrent'], $_POST['capacity'], $_POST['status']);
+        $stmt->bind_param("ssssds", $_POST['room_number'], $_POST['room_desc'], $room_pics_string, $_POST['room_monthlyrent'], $_POST['capacity'], $_POST['status']);
 
         if ($stmt->execute()) {
-            // Get the total number of rooms after the new insertion
-            $sql_count = "SELECT COUNT(*) FROM Rooms";
-            $stmt_count = $conn->prepare($sql_count);
-            $stmt_count->execute();
-            $stmt_count->bind_result($total_rooms);
-            $stmt_count->fetch();
-            $stmt_count->close();
-
-            // Success message showing the total number of rooms
-            echo "<script>alert('Room added successfully! Total rooms: $total_rooms'); window.location.href = 'roomlist.php';</script>";
+            $_SESSION['swal_success'] = [
+                'title' => 'Success!',
+                'text' => 'Room added successfully!',
+                'icon' => 'success'
+            ];
         } else {
-            echo "Error: " . $stmt->error;
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error adding room: ' . $stmt->error,
+                'icon' => 'error'
+            ];
         }
 
         $stmt->close();
@@ -116,7 +142,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
 
     // Validate capacity
     if (!is_numeric($_POST['capacity']) || $_POST['capacity'] < 1) {
-        echo "<script>alert('Error: Capacity must be at least 1 person.'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Capacity must be at least 1 person.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -130,7 +161,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $check_stmt->close();
 
     if ($current_occupants > $_POST['capacity']) {
-        echo "<script>alert('Error: Cannot reduce capacity below current number of occupants (" . $current_occupants . ").'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Cannot reduce capacity below current number of occupants (' . $current_occupants . ').',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -144,7 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
     $stmt_check->close();
 
     if ($count > 0) {
-        echo "<script>alert('Error: Room already exists for another room!'); window.location.href = 'roomlist.php';</script>";
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Room already exists for another room!',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
     } else {
         // Prepare the base SQL update statement
         $sql = "UPDATE rooms SET room_number = ?, capacity = ?, room_monthlyrent = ?, room_desc = ?, status = ?";
@@ -157,29 +199,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
         ];
 
         // Handle room picture upload
-        if (isset($_FILES['room_picture']) && $_FILES['room_picture']['error'] === UPLOAD_ERR_OK) {
+        $room_pics = [];
+        if (isset($_FILES['room_pic']) && count($_FILES['room_pic']['name']) === 3) {
+            $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
             $uploadDir = "../uploads/";
-            $fileName = time() . '_' . basename($_FILES['room_picture']['name']);
-            $uploadPath = $uploadDir . $fileName;
 
-            // Check if upload directory exists and is writable
-            if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
-                error_log("Upload directory does not exist or is not writable: " . $uploadDir, 3, 'error.log');
-                echo "<script>alert('Upload directory is not accessible.'); window.location.href = 'roomlist.php';</script>";
-                exit;
-            }
+            foreach ($_FILES['room_pic']['name'] as $key => $name) {
+                if ($_FILES['room_pic']['error'][$key] === 0) {
+                    $imageFileType = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
-            // Move the uploaded file
-            if (move_uploaded_file($_FILES['room_picture']['tmp_name'], $uploadPath)) {
-                // Append to SQL statement and parameters if upload is successful
-                $sql .= ", room_pic = ?";
-                $params[] = $fileName; // Add the new file name to the parameters
-            } else {
-                error_log("Error moving uploaded file: " . $_FILES['room_picture']['tmp_name'], 3, 'error.log');
-                echo "<script>alert('Error uploading room picture.'); window.location.href = 'roomlist.php';</script>";
-                exit;
+                    if (in_array($imageFileType, $allowedTypes)) {
+                        $target_file = $uploadDir . basename($name);
+                        if (move_uploaded_file($_FILES['room_pic']['tmp_name'][$key], $target_file)) {
+                            $room_pics[] = $target_file;
+                        } else {
+                            die("Error uploading image: $name.");
+                        }
+                    } else {
+                        die("Invalid file type for $name. Only JPG, JPEG, PNG & GIF files are allowed.");
+                    }
+                } else {
+                    die("Error with file: $name.");
+                }
             }
+        } else {
+            die("Please upload exactly three files.");
         }
+
+        // Convert the array to a string if you need to store it in a single database field
+        $room_pics_string = implode(',', $room_pics);
+
+        // Append to SQL statement and parameters if upload is successful
+        $sql .= ", room_pic = ?";
+        $params[] = $room_pics_string;
 
         // Add the room_id to the parameters and complete the SQL statement
         $sql .= " WHERE room_id = ?";
@@ -194,60 +246,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
 
             // Execute the update
             if ($stmt->execute()) {
-                if ($stmt->affected_rows > 0) {
-                    echo "<script>alert('Room updated successfully!'); window.location.href = 'roomlist.php';</script>";
-                } else {
-                    echo "<script>alert('No changes made to the room.'); window.location.href = 'roomlist.php';</script>";
-                }
+                $_SESSION['swal_success'] = [
+                    'title' => 'Success!',
+                    'text' => 'Room updated successfully!',
+                    'icon' => 'success'
+                ];
             } else {
                 error_log("SQL error: " . $stmt->error, 3, 'error.log');
-                echo "<script>alert('Error updating room in database: " . $stmt->error . "'); window.location.href = 'roomlist.php';</script>";
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error',
+                    'text' => 'Error updating room: ' . $stmt->error,
+                    'icon' => 'error'
+                ];
             }
             $stmt->close();
         } else {
             error_log("Prepare statement error: " . $conn->error, 3, 'error.log');
-            echo "<script>alert('Error preparing SQL statement.'); window.location.href = 'roomlist.php';</script>";
+            $_SESSION['swal_error'] = [
+                'title' => 'Error',
+                'text' => 'Error preparing SQL statement.',
+                'icon' => 'error'
+            ];
         }
     }
 }
 
 
 
-// Handle room archiving instead of deletion
+// Handle room deletion
 if (isset($_GET['delete_room_id'])) {
     $room_id = intval($_GET['delete_room_id']); // Sanitize input
 
-    // Step 1: Archive the room by copying it to the archive table
-    $archiveSql = "INSERT INTO rooms_archive (room_id, room_number, room_desc, room_pic, room_monthlyrent, capacity, status, created_at, archived_at)
-                   SELECT room_id, room_number, room_desc, room_pic, room_monthlyrent, capacity, status, created_at, NOW()
-                   FROM rooms WHERE room_id = ?";
-    
+    // Check if the room has any assignments
+    $assignmentCheckSql = "SELECT COUNT(*) as assignment_count FROM roomassignments WHERE room_id = ?";
+    $assignmentCheckStmt = $conn->prepare($assignmentCheckSql);
+    $assignmentCheckStmt->bind_param('i', $room_id);
+    $assignmentCheckStmt->execute();
+    $assignmentCheckStmt->bind_result($assignment_count);
+    $assignmentCheckStmt->fetch();
+    $assignmentCheckStmt->close();
+
+    if ($assignment_count > 0) {
+        // If there are assignments, show an error message
+        $_SESSION['swal_error'] = [
+            'title' => 'Error!',
+            'text' => 'Cannot delete room with active assignments.',
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    // Fetch the room number before archiving
+    $room_number_sql = "SELECT room_number FROM rooms WHERE room_id = ?";
+    $room_number_stmt = $conn->prepare($room_number_sql);
+    $room_number_stmt->bind_param('i', $room_id);
+    $room_number_stmt->execute();
+    $room_number_stmt->bind_result($room_number);
+    $room_number_stmt->fetch();
+    $room_number_stmt->close();
+
+    // Update the room's archive status to 'archived'
+    $archiveSql = "UPDATE rooms SET archive_status = 'archived' WHERE room_id = ?";
     $archiveStmt = $conn->prepare($archiveSql);
     $archiveStmt->bind_param('i', $room_id);
 
     if ($archiveStmt->execute()) {
-        // Step 2: Delete the room from the original table after archiving
-        $deleteSql = "DELETE FROM rooms WHERE room_id = ?";
-        $deleteStmt = $conn->prepare($deleteSql);
-        $deleteStmt->bind_param('i', $room_id);
-
-        if ($deleteStmt->execute()) {
-            // Use JavaScript for alert and redirection after success
-            echo "<script>
-                    alert('Room archived and deleted successfully');
-                    window.location.href = 'roomlist.php?delete_success=1';
-                  </script>";
-            exit(); // Ensure no further code is executed after redirection
-        } else {
-            echo "Error deleting room from the original table: " . $conn->error;
-        }
-
-        $deleteStmt->close();
+        // Use JavaScript for alert and redirection after success
+        $_SESSION['swal_success'] = [
+            'title' => 'Success!',
+            'text' => 'Room deleted successfully!',
+            'icon' => 'success'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit(); // Ensure no further code is executed after redirection
     } else {
-        echo "Error archiving room: " . $archiveStmt->error;
+        $_SESSION['swal_error'] = [
+            'title' => 'Error',
+            'text' => 'Error archiving room: ' . $conn->error,
+            'icon' => 'error'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
     }
-
-    $archiveStmt->close();
 }
 
 
@@ -267,25 +348,6 @@ if (isset($_GET['edit_room_id'])) {
     $stmt->close();
 }
 
-// Query to get rooms, capacities, and current occupants
-$query = "
-    SELECT 
-        r.room_id,
-        r.room_number,
-        r.room_desc,
-        r.capacity AS totalCapacity,
-        r.room_monthlyrent,
-        r.status,
-        r.room_pic,
-        COUNT(ra.assignment_id) AS currentOccupants
-    FROM 
-        rooms r
-    LEFT JOIN 
-        roomassignments ra ON r.room_id = ra.room_id
-    GROUP BY 
-        r.room_id
-";
-$result = $conn->query($query);
 
 
 
@@ -301,7 +363,7 @@ $result = $conn->query($query);
     <title>Room List</title>
     <link rel="icon" href="../img-icon/a-room.webp" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap CSS -->
@@ -334,7 +396,10 @@ $result = $conn->query($query);
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 
-    
+<!-- Include SweetAlert CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     .container {
         background-color: transparent;
@@ -446,6 +511,24 @@ $result = $conn->query($query);
     .dt-button:hover {
         background-color: #1a1555 !important;
     }
+
+    .room-image {
+        width: 100px;
+        height: auto;
+        margin: 5px;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+
+    .action-buttons .btn {
+        margin: 0;
+        padding: 5px 10px;
+        font-size: 0.9rem;
+        display: inline-block;
+        width: 80px; /* Ensure both buttons have the same width */
+        text-align: center; /* Center the text within the button */
+    }
 </style>
 
 </head>
@@ -456,7 +539,8 @@ $result = $conn->query($query);
             <i class="fas fa-bars"></i>
         </div>
         <div class="sidebar-nav">
-            <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
+       
+<a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
             <a href="admin-room.php" class="nav-link active" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
@@ -467,16 +551,42 @@ $result = $conn->query($query);
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-        <a href="../config/logout.php" onclick="return confirmLogout();">
-    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-</a>
-
-<script>
-function confirmLogout() {
-    return confirm("Are you sure you want to log out?");
-}
-</script>
+        <a href="../config/logout.php" id="logoutLink">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </a>
         </div>
+        <script>
+    document.getElementById('logoutLink').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        const logoutUrl = this.href; // Store the logout URL
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, log me out!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we log you out.',
+                    allowOutsideClick: false,
+                    onBeforeOpen: () => {
+                        Swal.showLoading(); // Show loading indicator
+                    },
+                    timer: 2000, // Auto-close after 2 seconds
+                    timerProgressBar: true, // Show progress bar
+                    willClose: () => {
+                        window.location.href = logoutUrl; // Redirect to logout URL
+                    }
+                });
+            }
+        });
+    });
+    </script>
     </div>
 
     <!-- Top bar -->
@@ -567,11 +677,15 @@ $query = "
         rooms r
     LEFT JOIN 
         roomassignments ra ON r.room_id = ra.room_id
+    WHERE 
+        r.archive_status = 'active'
     GROUP BY 
         r.room_id
+    ORDER BY 
+        r.room_id DESC
 ";
-
 $result = $conn->query($query);
+
 
 if ($result->num_rows > 0) {
     $counter = 1;
@@ -599,22 +713,24 @@ if ($result->num_rows > 0) {
         echo "<td>";
 
         if (!empty($row["room_pic"])) {
-            $imagePath = "../uploads/" . htmlspecialchars($row["room_pic"]);
-            if (file_exists($imagePath)) {
-                echo "<img src='" . $imagePath . "' alt='Room Image' width='100'>";
-            } else {
-                echo "Image not found";
+            $imagePaths = explode(',', $row["room_pic"]); // Assuming multiple images are stored as a comma-separated string
+            foreach ($imagePaths as $imagePath) {
+                $fullPath = "../uploads/" . htmlspecialchars($imagePath);
+                if (file_exists($fullPath)) {
+                    echo "<img src='" . $fullPath . "' alt='Room Image' class='room-image'>";
+                } else {
+                    echo "Image not found";
+                }
             }
         } else {
             echo "No Image";
         }
 
         echo "</td>";
-        echo "<td>";
+        echo "<td class='action-buttons'>";
         echo "<a href='?edit_room_id=" . htmlspecialchars($row["room_id"]) . "' class='btn btn-primary btn-sm edit-btn'>Edit</a>";
-        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete()'>
-                <input type='hidden' name='delete_room_id' value='" . htmlspecialchars($row["room_id"]) . "' />
-                <button type='submit' class='btn btn-danger btn-m'>Delete</button>
+        echo "<form method='GET' action='roomlist.php' style='display:inline;' onsubmit='return confirmDelete(" . htmlspecialchars($row["room_id"]) . ")'>
+                <button type='submit' class='btn btn-danger btn-sm mt-3'>Delete</button>
               </form>";
         echo "</td>";
         echo "</tr>";
@@ -671,6 +787,78 @@ if ($result->num_rows > 0) {
     .table .btn {
         margin-right: 5px; /* Space between buttons */
     }
+</style>
+
+<!-- Add Room Modal -->
+<div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="roomModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="roomModalLabel">Add Room</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="room-form" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <!-- Form Fields -->
+                    <div class="mb-3">
+                        <label for="room_number" class="form-label">Room</label>
+                        <input type="text" class="form-control" id="room_number" name="room_number" placeholder="Room Number" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="capacity" class="form-label">Capacity</label>
+                        <input type="number" class="form-control" id="capacity" name="capacity" placeholder="Capacity" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="room_monthlyrent" class="form-label">Monthly Rent</label>
+                        <input type="number" step="0.01" class="form-control" id="room_monthlyrent" name="room_monthlyrent" placeholder="Monthly Rent" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="room_desc" class="form-label">Description</label>
+                        <textarea class="form-control" id="room_desc" name="room_desc" placeholder="Room Description" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="room_pic" class="form-label">Room Pictures (3 files)</label>
+                        <input type="file" class="form-control" id="room_pic" name="room_pic[]" accept="image/*" multiple required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="">Select Status</option>
+                            <option value="available">Available</option>
+                            <option value="occupied">Occupied</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Add Room</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Your custom JavaScript code -->
+<script>
+    // ... (rest of the code remains unchanged)
+</script>
+
+</body>
+</html>
 
 </style>
         </div>
@@ -711,20 +899,12 @@ if ($result->num_rows > 0) {
                             <textarea class="form-control" id="edit_room_desc" name="room_desc" required><?php echo htmlspecialchars($editRoom['room_desc'] ?? ''); ?></textarea>
                         </div>
 
-                        <!-- Current Room Picture -->
-                        <?php if (!empty($editRoom['room_pic'])): ?>
-                            <div class="mb-3">
-                                <label class="form-label">Current Room Picture</label>
-                                <div>
-                                    <img src="../uploads/<?php echo htmlspecialchars($editRoom['room_pic']); ?>" alt="Current Room Picture" onerror="this.onerror=null; this.src='path/to/default-image.jpg';" style="max-width: 100%; height: 200px;">
-                                </div>
-                            </div>
-                        <?php endif; ?>
+                       
 
                         <!-- Upload New Picture -->
                         <div class="mb-3">
-                            <label for="room_pic" class="form-label">Upload New Picture (optional)</label>
-                            <input type="file" class="form-control" id="room_pic" name="room_picture" accept="image/*">
+                            <label for="room_pic" class="form-label">Upload New Pictures (3 files)</label>
+                            <input type="file" class="form-control" id="room_pic" name="room_pic[]" accept="image/*" multiple>
                         </div>
 
                         <!-- Status -->
@@ -782,8 +962,12 @@ if ($result->num_rows > 0) {
                     </div>
 
                     <div class="mb-3">
-                        <label for="room_pic" class="form-label">Room Picture</label>
-                        <input type="file" class="form-control" id="room_pic" name="room_pic" accept="image/*">
+                        <label for="room_pic" class="form-label">Room Pictures (3 files)</label>
+                        <input type="file" class="form-control" id="room_pic" name="room_pic[]" accept="image/*" multiple required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="room_pic" class="form-label">Room Pictures (3 files)</label>
+                        <input type="file" class="form-control" id="room_pic" name="room_pic[]" accept="image/*" multiple required>
                     </div>
 
                     <div class="mb-3">
@@ -807,7 +991,6 @@ if ($result->num_rows > 0) {
 </div>
 <!-- JavaScript Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 
 <!-- Include jQuery and Bootstrap JS (required for dropdown) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -974,9 +1157,35 @@ function applySort() {
             .catch(error => console.error('Error:', error));
     }
 
-    function confirmDelete() {
-    return confirm("Are you sure you want to delete this room?");
-}
+    function confirmDelete(roomId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This action cannot be undone!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create and submit the form programmatically
+                const form = document.createElement('form');
+                form.method = 'GET'; // Use GET to match the delete action
+                form.action = 'roomlist.php'; // Ensure this points to the correct action file
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_room_id'; // Ensure this matches the expected parameter
+                input.value = roomId;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+        return false; // Prevent the default form submission
+    }
+
      // JavaScript for client-side pagination
      const rowsPerPage = 10; // Limit to 10 rows per page
     let currentPage = 1;
@@ -1076,5 +1285,88 @@ function applySort() {
         }
     });
     </script>
+    <script>
+        // Function to display SweetAlert messages based on session variables
+        function displaySwalMessages() {
+            <?php if (isset($_SESSION['swal_success'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_success']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_success']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_success']['icon']; ?>'
+                });
+                <?php unset($_SESSION['swal_success']); // Clear the message after displaying ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['swal_error'])): ?>
+                Swal.fire({
+                    title: '<?php echo $_SESSION['swal_error']['title']; ?>',
+                    text: '<?php echo $_SESSION['swal_error']['text']; ?>',
+                    icon: '<?php echo $_SESSION['swal_error']['icon']; ?>'
+                });
+                <?php unset($_SESSION['swal_error']); // Clear the message after displaying ?>
+            <?php endif; ?>
+        }
+
+        // Call the function to display messages when the page loads
+        window.onload = displaySwalMessages;
+
+        // Function to handle checkout confirmation
+        function handleCheckout(visitorId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you want to check out this visitor?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, check out!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'visitor_log.php';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'visitor_id';
+                    input.value = visitorId;
+                    
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+
+        // Function to handle delete confirmation
+        function handleDelete(visitorId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This action cannot be undone!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'visitor_log.php';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'delete_visitor_id';
+                    input.value = visitorId;
+                    
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+    </script>
 </body>
 </html>
+
+

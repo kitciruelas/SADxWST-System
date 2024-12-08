@@ -298,7 +298,7 @@ $conn->close();
     <title>Visitor Logs</title>
     <link rel="icon" href="../img-icon/visit1.webp" type="image/png">
 
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
@@ -464,9 +464,9 @@ $conn->close();
   
 <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link" ><i class="fas fa-building"></i> <span>Room Manager</span> </a>
+            <a href="admin-room.php" class="nav-link" ><i class="fas fa-building"></i> <span>Room Management</span> </a>
             <a href="admin-visitor_log.php" class="nav-link active"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
 
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
@@ -953,43 +953,83 @@ function parseTime(timeStr) {
     return new Date(1970, 0, 1, hour, minutes); // Use a fixed date for comparison
 }
 
-document.addEventListener('DOMContentLoaded', function() { 
-        const filterSelect = document.getElementById('filterSelect');
-        const searchInput = document.getElementById('searchInput');
-        const table = document.getElementById('visitorTable');
-        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+document.addEventListener('DOMContentLoaded', function() {
+    const filterSelect = document.getElementById('filterSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const searchInput = document.getElementById('searchInput');
+    const table = document.getElementById('visitorTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
 
-        function filterTable() {
-            const filterBy = filterSelect.value;
-            const searchTerm = searchInput.value.toLowerCase();
+    function filterTable() {
+        const filterBy = filterSelect.value;
+        const searchTerm = searchInput.value.toLowerCase();
 
-            Array.from(rows).forEach(row => {
-                let cellText = '';
+        Array.from(rows).forEach(row => {
+            let cellText = '';
 
-                switch(filterBy) {
-                    case 'name':
-                        cellText = row.querySelector('.name')?.textContent.toLowerCase() || '';
-                        break;
-                    case 'contact_info':
-                        cellText = row.querySelector('.contact_info')?.textContent.toLowerCase() || '';
-                        break;
-                    case 'purpose':
-                        cellText = row.querySelector('.purpose')?.textContent.toLowerCase() || '';
-                        break;
-                    case 'visiting_person':
-                        cellText = row.querySelector('.visiting_person')?.textContent.toLowerCase() || '';
-                        break;
-                    default:
-                        cellText = row.textContent.toLowerCase();
-                }
+            switch(filterBy) {
+                case 'name':
+                    cellText = row.cells[1].textContent.toLowerCase();
+                    break;
+                case 'contact_info':
+                    cellText = row.cells[2].textContent.toLowerCase();
+                    break;
+                case 'purpose':
+                    cellText = row.cells[3].textContent.toLowerCase();
+                    break;
+                case 'visiting_person':
+                    cellText = row.cells[4].textContent.toLowerCase();
+                    break;
+                default:
+                    cellText = row.textContent.toLowerCase();
+            }
 
-                row.style.display = cellText.includes(searchTerm) ? '' : 'none';
-            });
-        }
+            row.style.display = cellText.includes(searchTerm) ? '' : 'none';
+        });
+    }
 
-        filterSelect.addEventListener('change', filterTable);
-        searchInput.addEventListener('keyup', filterTable);
-    });
+    function sortTable() {
+        const sortBy = sortSelect.value;
+        const isDescending = sortBy.includes('desc');
+
+        const sortedRows = Array.from(rows).sort((rowA, rowB) => {
+            let valueA, valueB;
+
+            switch (sortBy) {
+                case 'resident_asc':
+                case 'resident_desc':
+                    valueA = rowA.cells[4].textContent.trim().toLowerCase();
+                    valueB = rowB.cells[4].textContent.trim().toLowerCase();
+                    break;
+                case 'check_in_asc':
+                case 'check_in_desc':
+                    valueA = new Date(rowA.cells[5].textContent.trim());
+                    valueB = new Date(rowB.cells[5].textContent.trim());
+                    break;
+                case 'check_out_asc':
+                case 'check_out_desc':
+                    valueA = new Date(rowA.cells[6].textContent.trim());
+                    valueB = new Date(rowB.cells[6].textContent.trim());
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (isDescending) {
+                return valueA < valueB ? 1 : (valueA > valueB ? -1 : 0);
+            } else {
+                return valueA < valueB ? -1 : (valueA > valueB ? 1 : 0);
+            }
+        });
+
+        sortedRows.forEach(row => table.getElementsByTagName('tbody')[0].appendChild(row));
+    }
+
+    filterSelect.addEventListener('change', filterTable);
+    searchInput.addEventListener('keyup', filterTable);
+    sortSelect.addEventListener('change', sortTable);
+});
+
 // Pagination functionality
 const rowsPerPage = 10;
 let currentPage = 1;

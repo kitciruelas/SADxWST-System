@@ -15,18 +15,18 @@ require 'vendor/autoload.php'; // Adjust path as needed
 // Assuming you have a way to get the current user's ID
 $userId = $_SESSION['id']; // Example: Get user ID from session
 
-// Log user activity
-logUserActivity($userId, "Accessed manage move-out requests");
+// Remove or comment out the logUserActivity function call
+// logUserActivity($userId, "Accessed manage move-out requests");
 
-// Function to log user activity
-function logUserActivity($userId, $activity) {
-    global $conn; // Ensure you have access to the database connection
-    $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details, activity_timestamp) 
-               VALUES (?, ?, ?, NOW())";
-    $stmt = $conn->prepare($logSql);
-    $stmt->bind_param('iss', $userId, $activity, $activity);
-    $stmt->execute();
-}
+// Remove or comment out the logUserActivity function definition
+// function logUserActivity($userId, $activity) {
+//     global $conn; // Ensure you have access to the database connection
+//     $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details, activity_timestamp) 
+//                VALUES (?, ?, ?, NOW())";
+//     $stmt = $conn->prepare($logSql);
+//     $stmt->bind_param('iss', $userId, $activity, $activity);
+//     $stmt->execute();
+// }
 
 function sendMoveOutApprovalEmail($userEmail, $firstName, $lastName, $roomNumber) {
     $mail = new PHPMailer(true);
@@ -159,16 +159,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param('i', $request['room_id']);
             $stmt->execute();
 
-            // Log activity
-            $activityType = "Move Out Request Approved";
-            $activityDetails = "Admin approved move-out request for Room ID: " . $request['room_id'];
-            
-            $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                       VALUES (?, ?, ?)";
-            $stmt = $conn->prepare($logSql);
-            $stmt->bind_param('iss', $request['user_id'], $activityType, $activityDetails);
-            $stmt->execute();
-
             // Get user email and details for notification
             $getUserDetails = "SELECT u.email, u.fname, u.lname, r.room_number 
                               FROM users u 
@@ -292,7 +282,7 @@ $result = $stmt->get_result();
     <title>Manage Move-out Requests</title>
     <link rel="icon" href="../img-icon/dooropen.png" type="image/png">
 
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -734,7 +724,7 @@ $result = $stmt->get_result();
         <div class="sidebar-nav">
         <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link active"> <i class="fas fa-building"></i> <span>Room Manager</span></a>
+            <a href="admin-room.php" class="nav-link active"> <i class="fas fa-building"></i> <span>Room Management</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
@@ -743,7 +733,7 @@ $result = $stmt->get_result();
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-        <a href="../config/logout.php" id="logoutLink">
+        <a href="../config/user-logout.php" id="logoutLink">
             <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
         </a>
         </div>

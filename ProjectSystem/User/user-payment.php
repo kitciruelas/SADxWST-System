@@ -64,7 +64,7 @@ function generateReceiptHTML($payment) {
     <title>Payment History</title>
     <link rel="icon" href="../img-icon/money.png" type="image/png">
 
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
@@ -104,7 +104,7 @@ function generateReceiptHTML($payment) {
         <a href="user-dashboard.php" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a>
         <a href="user_room.php" class="nav-link"><i class="fas fa-key"></i> <span>Room Assign</span></a>
         <a href="visitor_log.php" class="nav-link"><i class="fas fa-user-check"></i> <span>Log Visitor</span></a>
-        <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Chat</span></a>
+        <a href="chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
         <a href="user-payment.php" class="nav-link active"><i class="fas fa-money-bill-alt"></i> <span>Payment History</span></a>
 
 
@@ -798,12 +798,49 @@ function toggleReferenceNumber() {
 <script>
 function viewReceipt(payment) {
     const receiptHTML = `
+        <style>
+            @media print {
+                .receipt-content {
+                    font-family: Arial, sans-serif;
+                    color: #333;
+                    padding: 20px;
+                    border: 1px solid #ccc;
+                    margin: 20px;
+                    box-shadow: none;
+                }
+                .receipt-details {
+                    border: 1px solid #ccc;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                }
+                .receipt-details p {
+                    margin: 0;
+                    padding: 5px 0;
+                    border-bottom: 1px solid #eee;
+                }
+                .receipt-details p:last-child {
+                    border-bottom: none;
+                }
+                h4 {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .amount-box {
+                    background-color: #e7f1ff;
+                    padding: 10px;
+                    text-align: right;
+                    font-size: 1.5em;
+                    font-weight: bold;
+                }
+            }
+        </style>
         <div class='receipt-content'>
-            <h4>Payment Receipt</h4>
+            <img src='../land-main/logo.png' alt='Logo' style='width: 100px; display: block; margin: 0 auto 20px;'>
+            <h4>PAYMENT RECEIPT</h4>
             <div class='receipt-details'>
-                <p><strong>Resident:</strong> ${payment.resident_name}</p>
+                <p><strong>Received From:</strong> ${payment.resident_name}</p>
                 <p><strong>Room Number:</strong> ${payment.room_number}</p>
-                <p><strong>Amount:</strong> ₱${parseFloat(payment.amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p><strong>Amount:</strong> <span class="amount-box">₱${parseFloat(payment.amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
                 <p><strong>Date:</strong> ${payment.payment_date}</p>
                 <p><strong>Status:</strong> ${payment.status}</p>
                 <p><strong>Payment Method:</strong> ${payment.payment_method}</p>
@@ -811,15 +848,12 @@ function viewReceipt(payment) {
             </div>
         </div>
     `;
-    
     document.getElementById('receiptContent').innerHTML = receiptHTML;
     
     // Initialize and show modal using Bootstrap 5
     const modalElement = document.getElementById('receiptModal');
-    if (!modalElement.classList.contains('show')) {
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    }
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
 }
 
 // Make sure Bootstrap is properly initialized

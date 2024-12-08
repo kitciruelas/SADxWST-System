@@ -82,7 +82,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
     mysqli_stmt_bind_param($stmt, "i", $announcementId);
     
     if (mysqli_stmt_execute($stmt)) {
-        logActivity($conn, $_SESSION['id'], 'Delete Announcement', 'Archived announcement ID: ' . $announcementId);
         $_SESSION['swal_success'] = [
             'title' => 'Success!',
             'text' => 'Announcement deleted successfully!',
@@ -160,7 +159,7 @@ mysqli_close($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
@@ -302,7 +301,7 @@ mysqli_close($conn);
     <div class="sidebar-nav">
     <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
         <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a>
-        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+        <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Management</span></a>
         <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
         <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
         <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>

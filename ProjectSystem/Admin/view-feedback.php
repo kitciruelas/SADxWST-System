@@ -77,7 +77,7 @@ $result = $stmt->get_result();
     <title>Feedback</title>
     <link rel="icon" href="../img-icon/feed.webp" type="image/png">
 
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -97,9 +97,9 @@ $result = $stmt->get_result();
     <div class="sidebar-nav">
     <a href="dashboard.php" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link" ><i class="fas fa-building"></i> <span>Room Manager</span></a>
+            <a href="admin-room.php" class="nav-link" ><i class="fas fa-building"></i> <span>Room Management</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence #Monitoring</span></a>
 
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>

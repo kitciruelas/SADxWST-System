@@ -72,7 +72,7 @@ $tables = [
     <title>Archives</title>
     <link rel="icon" href="../img-icon/money.png" type="image/png">
 
-    <link rel="stylesheet" href="../Admin/Css_Admin/admin_manageuser.css"> <!-- I-load ang custom CSS sa huli -->
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
@@ -111,7 +111,7 @@ $tables = [
         <div class="sidebar-nav">
         <a href="dashboard.php" class="nav-link"><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link" id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+            <a href="admin-room.php" class="nav-link" > <i class="fas fa-building"></i> <span>Room Management</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
 
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
@@ -275,7 +275,7 @@ $tables = [
                         <form method='POST' style='display:inline;'>
                             <input type='hidden' name='entry_id' value='{$row[$primaryKeyColumn]}'>
                             <input type='hidden' name='table' value='$table'>
-                            <button type='submit' name='rearchive' class='btn btn-warning btn-sm'>Rearchive</button>
+                            <button type='submit' name='rearchive' class='btn btn-warning btn-sm'>Restore</button>
                             <button type='submit' name='delete' class='btn btn-danger btn-sm'>Delete</button>
                         </form>
                       </td>";

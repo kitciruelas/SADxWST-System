@@ -150,7 +150,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Custom CSS -->
-<link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+<link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
@@ -165,9 +165,9 @@ while ($row = mysqli_fetch_assoc($result)) {
         <div class="sidebar-nav">
             <a href="#" class="nav-link active" ><i class="fas fa-home"></i> <span>Home</span></a>
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
-            <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Manager</span></a>
+            <a href="admin-room.php" class="nav-link"><i class="fas fa-building"></i> <span>Room Management</span></a>
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
-            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Monitoring</span></a>
+            <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
             <a href="admin-chat.php" class="nav-link"><i class="fas fa-comments"></i> <span>Group Chat</span></a>
             <a href="rent_payment.php" class="nav-link"><i class="fas fa-money-bill-alt"></i> <span>Rent Payment</span></a>
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
@@ -959,7 +959,7 @@ function toggleChartType(chartId) {
     <div class="col-12">
         <div class="card shadow-sm">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h2 class="mb-0"><i class="fas fa-comment-dots"></i> Recent Feedback</h2>
+                <h2 class="mb-0"><i class="fas fa-comment-dots"></i> Room Feedback</h2>
                 <a href="view-feedback.php" class="btn btn-light btn-sm">
                     <i class="fas fa-external-link-alt"></i> View All
                 </a>
@@ -967,14 +967,15 @@ function toggleChartType(chartId) {
             <div id="feedbackCarousel" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner p-4">
                     <?php
-                    $sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
-                                    f.feedback, f.submitted_at
-                            FROM rooms r
-                            LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
-                            LEFT JOIN users u ON ra.user_id = u.id
-                            INNER JOIN roomfeedback f ON u.id = f.user_id
-                            ORDER BY f.submitted_at DESC
-                            LIMIT 6";
+                  $sql = "SELECT f.id AS feedback_id, r.room_number, CONCAT(u.fname, ' ', u.lname) AS resident_name, 
+                  f.feedback, f.submitted_at
+           FROM rooms r
+           LEFT JOIN roomassignments ra ON r.room_id = ra.room_id
+           LEFT JOIN users u ON ra.user_id = u.id
+           INNER JOIN roomfeedback f ON u.id = f.user_id
+           WHERE f.archive_status = 'active'  -- Only select active feedback
+           ORDER BY f.submitted_at DESC
+           LIMIT 6";
 
                     $result = $conn->query($sql);
 

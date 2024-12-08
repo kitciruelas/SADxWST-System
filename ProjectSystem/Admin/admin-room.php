@@ -14,9 +14,11 @@ if ($conn->connect_error) {
 }
 
 // Query for room data
-$roomCountQuery = "SELECT COUNT(*) AS totalRooms FROM rooms";
+// ... existing code ...
+$roomCountQuery = "SELECT COUNT(*) AS totalRooms FROM rooms WHERE archive_status = 'active'";
 $roomCountResult = $conn->query($roomCountQuery);
 $roomCount = $roomCountResult->fetch_assoc()['totalRooms'];
+// ... existing code ...
 
 // Query for assigned room data
 $assignedRoomQuery = "SELECT COUNT(*) AS assignedRooms FROM roomassignments";
@@ -37,7 +39,7 @@ $pendingMoveOuts = $moveOutResult->fetch_assoc()['pendingMoveOuts'];
 
     
 
-
+ 
 $conn->close();
 ?>
 
@@ -46,10 +48,10 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room Manage</title>
+    <title>Room Management</title>
     <link rel="icon" href="../img-icon/a-room.webp" type="image/png">
 
-    <link rel="stylesheet" href="Css_Admin/admin_manageuser.css">
+    <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
@@ -69,7 +71,7 @@ $conn->close();
             <a href="manageuser.php" class="nav-link"><i class="fas fa-users"></i> <span>Manage User</span></a>
 
             <!-- Room Manager Dropdown Menu -->
-            <a href="admin-room.php" class="nav-link active " id="roomManagerDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-building"></i> <span>Room Manager</span>
+            <a href="admin-room.php" class="nav-link active "><i class="fas fa-building"></i> <span>Room Management</span></a>
 
             <a href="admin-visitor_log.php" class="nav-link"><i class="fas fa-address-book"></i> <span>Log Visitor</span></a>
             <a href="admin-monitoring.php" class="nav-link"><i class="fas fa-eye"></i> <span>Presence Monitoring</span></a>
@@ -119,7 +121,7 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Room Manage</h2>
+        <h2>Room Management</h2>
     </div>
 
     <!-- Main content -->

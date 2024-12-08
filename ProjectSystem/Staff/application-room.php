@@ -244,8 +244,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reassign Room</title>
-    <link rel="icon" href="../img-icon/alt.webp" type="image/png">
+    <title>Room Reassignment Requests</title>
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
@@ -461,7 +461,7 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Reassign Room</h2>
+        <h2>Room Reassignment Requests</h2>
     </div>
 
     <!-- Main content -->

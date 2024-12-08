@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Manila'); // Set timezone to Philippine Time
 include '../config/config.php'; // Correct path to your config file
 
 // Check if the user is logged in
@@ -30,10 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $visitorName = trim($_POST['visitor_name']);
         $contactInfo = trim($_POST['contact_info']);
         $purpose = trim($_POST['purpose']);
-        $checkInTime = $_POST['check_in_time'];
+        $checkInTime = date('H:i:s'); // Set check-in time to current time
 
         // Validate required fields
-        if (empty($visitorName) || empty($contactInfo) || empty($purpose) || empty($checkInTime)) {
+        if (empty($visitorName) || empty($contactInfo) || empty($purpose)) {
             $_SESSION['swal_error'] = [
                 'title' => 'Error',
                 'text' => 'All fields are required!',
@@ -55,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Format check-in datetime
-        $checkInDatetime = date('Y-m-d') . ' ' . $checkInTime . ':00';
+        $checkInDatetime = date('Y-m-d') . ' ' . $checkInTime;
 
         // Use prepared statement for insert
         $stmt = $conn->prepare(
@@ -246,7 +247,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor Log</title>
-    <link rel="icon" href="../img-icon/visit1.webp" type="image/png">
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> <!-- I-load ang custom CSS sa huli -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -338,9 +339,6 @@ $conn->close();
                             <input type="text" id="searchInput" name="search" class="form-control custom-input-small" 
                                 placeholder="Search for visitors..." 
                                 value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                            <span class="input-group-text">
-                                <i class="fas fa-search"></i>
-                            </span>
                         </div>
                     </form>
                 </div>
@@ -394,8 +392,6 @@ $conn->close();
                 </thead>
                 <tbody>
                     <?php
-                    date_default_timezone_set('Asia/Manila'); // Set timezone to Philippine Time
-
                     if ($result->num_rows > 0): 
                         $counter = 1;
                         while ($row = $result->fetch_assoc()):
@@ -649,8 +645,7 @@ $conn->close();
                                 <input type="text" class="form-control custom-input" id="purpose" name="purpose" required>
                             </div>
                             <div class="mb-4">
-                                <label for="checkInTime" class="form-label">Check-In Time</label>
-                                <input type="time" class="form-control custom-input" id="checkInTime" name="check_in_time" required>
+                                <input type="hidden" class="form-control custom-input" id="checkInTime" name="check_in_time" value="<?php echo date('H:i'); ?>">
                             </div>
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-lg">Save and Check-In</button>
@@ -995,13 +990,15 @@ $conn->close();
             const cells = row.getElementsByTagName('td');
             let match = false;
 
-            for (let i = 0; i < cells.length; i++) {
+            // Loop through each cell except the last one (actions)
+            for (let i = 0; i < cells.length - 1; i++) {
                 if (cells[i].textContent.toLowerCase().includes(searchQuery)) {
                     match = true;
                     break;
                 }
             }
 
+            // Show or hide the row based on whether it matches the search input
             row.style.display = match ? '' : 'none';
         });
     });

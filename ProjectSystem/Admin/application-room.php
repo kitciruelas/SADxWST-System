@@ -111,13 +111,6 @@ function sendRejectionEmail($userEmail, $firstName, $lastName) {
     }
 }
 
-function activity_logs($conn, $userId, $activityType, $activityDetails = null) {
-    $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details) VALUES (?, ?, ?)");
-    $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
-    $stmt->execute();
-    $stmt->close();
-}
-
 // Assuming $conn is the MySQLi connection
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -131,9 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->bind_param("si", $newStatus, $reassignmentId);
 
         if ($stmt->execute()) {
-            // Log activity for status update
-            activity_logs($conn, $userId, 'Status Update', "Status changed to $newStatus for reassignment ID $reassignmentId");
-
             // Update success message for both approved and rejected statuses
             $_SESSION['swal_success'] = [
                 'title' => 'Success!',
@@ -180,8 +170,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (!$emailSent) {
                                 echo "<script>alert('Room updated but email notification failed.');</script>";
                             }
-                            // Log activity for email sent
-                            activity_logs($conn, $userId, 'Reassignment request approved', "Approval email sent to {$userResult['email']}");
                         } else {
                             echo "<script>alert('Error updating room assignment: " . $updateAssignmentStmt->error . "');</script>";
                         }
@@ -196,8 +184,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (!$emailSent) {
                             echo "<script>alert('Status updated but rejection email failed.');</script>";
                         }
-                        // Log activity for email sent
-                        activity_logs($conn, $userId, 'Reassignment request rejected', "Rejection email sent to {$userResult['email']}");
                     }
                 }
             }
@@ -214,8 +200,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         echo "Invalid status.";
     }
 }
-
-
 
 $sql = "
     SELECT 
@@ -244,8 +228,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room reassignment requests</title>
-    <link rel="icon" href="../img-icon/alt.webp" type="image/png">
+    <title>Room Reassignment Requests</title>
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
@@ -462,7 +446,7 @@ $conn->close();
 
     <!-- Top bar -->
     <div class="topbar">
-        <h2>Room reassignment requests</h2>
+        <h2>Room Reassignment Requests</h2>
     </div>
 
     <!-- Main content -->

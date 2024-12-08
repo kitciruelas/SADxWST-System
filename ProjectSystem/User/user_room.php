@@ -312,7 +312,7 @@ function logActivity($conn, $userId, $activityType, $activityDetails) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Room</title>
-    <link rel="icon" href="../img-icon/key1.png" type="image/png">
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="Css_user/users-dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">

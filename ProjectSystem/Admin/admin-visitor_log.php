@@ -3,24 +3,24 @@ session_start();
 include '../config/config.php'; // Correct path to your config file
 
 // Function to log activities (ensure this function exists)
-function logActivity($conn, $userId, $activityType, $activityDetails) {
-    $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details, activity_timestamp) VALUES (?, ?, ?, NOW())");
-    if ($stmt === false) {
-        die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
-    }
+// function logActivity($conn, $userId, $activityType, $activityDetails) {
+//     $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, activity_type, activity_details, activity_timestamp) VALUES (?, ?, ?, NOW())");
+//     if ($stmt === false) {
+//         die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+//     }
 
-    $bind = $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
-    if ($bind === false) {
-        die("Bind failed: (" . $stmt->errno . ") " . $stmt->error);
-    }
+//     $bind = $stmt->bind_param("iss", $userId, $activityType, $activityDetails);
+//     if ($bind === false) {
+//         die("Bind failed: (" . $stmt->errno . ") " . $stmt->error);
+//     }
 
-    $exec = $stmt->execute();
-    if ($exec === false) {
-        error_log("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
-    }
+//     $exec = $stmt->execute();
+//     if ($exec === false) {
+//         error_log("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+//     }
 
-    $stmt->close();
-}
+//     $stmt->close();
+// }
 
 // Check if the user is logged in
 if (!isset($_SESSION['id'])) {
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("sssis", $visitorName, $contactInfo, $purpose, $visitingUserId, $checkInDatetime);
 
         if ($stmt->execute()) {
-            logActivity($conn, $userId, "Add Visitor", "Visitor '$visitorName' added successfully.");
+            // logActivity($conn, $userId, "Add Visitor", "Visitor '$visitorName' added successfully.");
             $_SESSION['swal_success'] = [
                 'title' => 'Success!',
                 'text' => 'Visitor added successfully!',
@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nameStmt->fetch();
                 $nameStmt->close();
 
-                logActivity($conn, $userId, "Check-Out Visitor", "Visitor '$visitorName' checked out.");
+                // logActivity($conn, $userId, "Check-Out Visitor", "Visitor '$visitorName' checked out.");
             }
 
             $_SESSION['swal_success'] = [
@@ -211,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("sssi", $name, $contactInfo, $purpose, $edit_id);
 
         if ($stmt->execute()) {
-            logActivity($conn, $userId, "Edit Visitor", "Visitor ID '$edit_id' updated successfully.");
+            // logActivity($conn, $userId, "Edit Visitor", "Visitor ID '$edit_id' updated successfully.");
             $_SESSION['swal_success'] = [
                 'title' => 'Success!',
                 'text' => 'Visitor updated successfully.',
@@ -296,7 +296,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor Logs</title>
-    <link rel="icon" href="../img-icon/visit1.webp" type="image/png">
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">

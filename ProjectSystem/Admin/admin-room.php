@@ -49,7 +49,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room Management</title>
-    <link rel="icon" href="../img-icon/a-room.webp" type="image/png">
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -184,7 +184,7 @@ $conn->close();
                                 </div>
                             </div>
                             <div class="card-details mt-3">
-                                <p class="text-muted mb-2">Room reassignment requests</p>
+                                <p class="text-muted mb-2">Room Reassignment Requests</p>
                                 <a href="application-room.php" class="btn btn-warning btn-sm">Manage <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>

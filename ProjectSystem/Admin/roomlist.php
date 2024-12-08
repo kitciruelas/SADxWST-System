@@ -200,38 +200,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['room_id'])) {
 
         // Handle room picture upload
         $room_pics = [];
-        if (isset($_FILES['room_pic']) && count($_FILES['room_pic']['name']) === 3) {
-            $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
-            $uploadDir = "../uploads/";
+        if (isset($_FILES['room_pic']) && !empty(array_filter($_FILES['room_pic']['name']))) {
+            if (count($_FILES['room_pic']['name']) === 3) {
+                $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
+                $uploadDir = "../uploads/";
 
-            foreach ($_FILES['room_pic']['name'] as $key => $name) {
-                if ($_FILES['room_pic']['error'][$key] === 0) {
-                    $imageFileType = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                foreach ($_FILES['room_pic']['name'] as $key => $name) {
+                    if ($_FILES['room_pic']['error'][$key] === 0) {
+                        $imageFileType = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
-                    if (in_array($imageFileType, $allowedTypes)) {
-                        $target_file = $uploadDir . basename($name);
-                        if (move_uploaded_file($_FILES['room_pic']['tmp_name'][$key], $target_file)) {
-                            $room_pics[] = $target_file;
+                        if (in_array($imageFileType, $allowedTypes)) {
+                            $target_file = $uploadDir . basename($name);
+                            if (move_uploaded_file($_FILES['room_pic']['tmp_name'][$key], $target_file)) {
+                                $room_pics[] = $target_file;
+                            } else {
+                                die("Error uploading image: $name.");
+                            }
                         } else {
-                            die("Error uploading image: $name.");
+                            die("Invalid file type for $name. Only JPG, JPEG, PNG & GIF files are allowed.");
                         }
                     } else {
-                        die("Invalid file type for $name. Only JPG, JPEG, PNG & GIF files are allowed.");
+                        die("Error with file: $name.");
                     }
-                } else {
-                    die("Error with file: $name.");
                 }
+            } else {
+                die("Please upload exactly three files.");
             }
-        } else {
-            die("Please upload exactly three files.");
+
+            // Convert the array to a string if you need to store it in a single database field
+            $room_pics_string = implode(',', $room_pics);
+            $sql .= ", room_pic = ?";
+            $params[] = $room_pics_string;
         }
-
-        // Convert the array to a string if you need to store it in a single database field
-        $room_pics_string = implode(',', $room_pics);
-
-        // Append to SQL statement and parameters if upload is successful
-        $sql .= ", room_pic = ?";
-        $params[] = $room_pics_string;
 
         // Add the room_id to the parameters and complete the SQL statement
         $sql .= " WHERE room_id = ?";
@@ -361,7 +361,7 @@ if (isset($_GET['edit_room_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room List</title>
-    <link rel="icon" href="../img-icon/a-room.webp" type="image/png">
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -864,65 +864,85 @@ if ($result->num_rows > 0) {
         </div>
     </div>
     <?php if ($editRoom): ?>
-    <div class="modal fade show" id="editRoomModal" tabindex="-1" aria-labelledby="editRoomModalLabel" aria-modal="true" style="display:block; background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editRoomModalLabel">Edit Room</h5>
-                    <a href="roomlist.php" class="btn-close" aria-label="Close"></a>
-                </div>
-                <div class="modal-body">
-                    <form id="editRoomForm" action="roomlist.php" method="post" enctype="multipart/form-data">
-                        <input type="hidden" id="edit_room_id" name="room_id" value="<?php echo htmlspecialchars($editRoom['room_id'] ?? ''); ?>">
+<div class="modal fade show" id="editRoomModal" tabindex="-1" aria-labelledby="editRoomModalLabel" aria-modal="true" style="display:block; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editRoomModalLabel">Edit Room</h5>
+                <a href="roomlist.php" class="btn-close" aria-label="Close"></a>
+            </div>
+            <div class="modal-body">
+                <form id="editRoomForm" action="roomlist.php" method="post" enctype="multipart/form-data">
+                    <input type="hidden" id="edit_room_id" name="room_id" value="<?php echo htmlspecialchars($editRoom['room_id'] ?? ''); ?>">
 
-                        <!-- Room Number -->
-                        <div class="mb-3">
-                            <label for="edit_room_number" class="form-label">Room</label>
-                            <input type="text" class="form-control" id="edit_room_number" name="room_number" value="<?php echo htmlspecialchars($editRoom['room_number'] ?? ''); ?>" required>
+                    <!-- Room Number -->
+                    <div class="mb-3">
+                        <label for="edit_room_number" class="form-label">Room</label>
+                        <input type="text" class="form-control" id="edit_room_number" name="room_number" value="<?php echo htmlspecialchars($editRoom['room_number'] ?? ''); ?>" required>
+                    </div>
+
+                    <!-- Capacity -->
+                    <div class="mb-3">
+                        <label for="edit_capacity" class="form-label">Capacity</label>
+                        <input type="number" class="form-control" id="edit_capacity" name="capacity" value="<?php echo htmlspecialchars($editRoom['capacity'] ?? ''); ?>" required>
+                    </div>
+
+                    <!-- Monthly Rent -->
+                    <div class="mb-3">
+                        <label for="edit_monthly_rent" class="form-label">Monthly Rent</label>
+                        <input type="number" step="0.01" class="form-control" id="edit_monthly_rent" name="room_monthlyrent" value="<?php echo htmlspecialchars($editRoom['room_monthlyrent'] ?? ''); ?>" required>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="edit_room_desc" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit_room_desc" name="room_desc" required><?php echo htmlspecialchars($editRoom['room_desc'] ?? ''); ?></textarea>
+                    </div>
+
+                    <!-- Current Pictures -->
+                    <div class="mb-3">
+                        <label class="form-label">Current Pictures</label>
+                        <div>
+                            <?php
+                            if (!empty($editRoom['room_pic'])) {
+                                $imagePaths = explode(',', $editRoom['room_pic']);
+                                foreach ($imagePaths as $imagePath) {
+                                    $fullPath = "../uploads/" . htmlspecialchars($imagePath);
+                                    if (file_exists($fullPath)) {
+                                        echo "<img src='" . $fullPath . "' alt='Room Image' class='room-image'>";
+                                    } else {
+                                        echo "Image not found";
+                                    }
+                                }
+                            } else {
+                                echo "No Image";
+                            }
+                            ?>
                         </div>
+                    </div>
 
-                        <!-- Capacity -->
-                        <div class="mb-3">
-                            <label for="edit_capacity" class="form-label">Capacity</label>
-                            <input type="number" class="form-control" id="edit_capacity" name="capacity" value="<?php echo htmlspecialchars($editRoom['capacity'] ?? ''); ?>" required>
-                        </div>
+                    <!-- Upload New Picture -->
+                    <div class="mb-3">
+                        <label for="room_pic" class="form-label">Upload New Pictures (3 files)</label>
+                        <input type="file" class="form-control" id="room_pic" name="room_pic[]" accept="image/*" multiple>
+                    </div>
 
-                        <!-- Monthly Rent -->
-                        <div class="mb-3">
-                            <label for="edit_monthly_rent" class="form-label">Monthly Rent</label>
-                            <input type="number" step="0.01" class="form-control" id="edit_monthly_rent" name="room_monthlyrent" value="<?php echo htmlspecialchars($editRoom['room_monthlyrent'] ?? ''); ?>" required>
-                        </div>
+                    <!-- Status -->
+                    <div class="mb-3">
+                        <label for="edit_status" class="form-label">Status</label>
+                        <select class="form-select" id="edit_status" name="status" required>
+                            <option value="available" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'available' ? 'selected' : ''; ?>>Available</option>
+                            <option value="occupied" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'occupied' ? 'selected' : ''; ?>>Occupied</option>
+                            <option value="maintenance" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'maintenance' ? 'selected' : ''; ?>>Maintenance</option>
+                        </select>
+                    </div>
 
-                        <!-- Description -->
-                        <div class="mb-3">
-                            <label for="edit_room_desc" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_room_desc" name="room_desc" required><?php echo htmlspecialchars($editRoom['room_desc'] ?? ''); ?></textarea>
-                        </div>
-
-                       
-
-                        <!-- Upload New Picture -->
-                        <div class="mb-3">
-                            <label for="room_pic" class="form-label">Upload New Pictures (3 files)</label>
-                            <input type="file" class="form-control" id="room_pic" name="room_pic[]" accept="image/*" multiple>
-                        </div>
-
-                        <!-- Status -->
-                        <div class="mb-3">
-                            <label for="edit_status" class="form-label">Status</label>
-                            <select class="form-select" id="edit_status" name="status" required>
-                                <option value="available" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'available' ? 'selected' : ''; ?>>Available</option>
-                                <option value="occupied" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'occupied' ? 'selected' : ''; ?>>Occupied</option>
-                                <option value="maintenance" <?php echo isset($editRoom['status']) && $editRoom['status'] == 'maintenance' ? 'selected' : ''; ?>>Maintenance</option>
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Save changes</button>
-                    </form>
-                </div>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </form>
             </div>
         </div>
     </div>
+</div>
 <?php endif; ?>
 
 

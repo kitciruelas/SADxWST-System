@@ -294,8 +294,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room Assign</title>
-    <link rel="icon" href="../img-icon/key1.png" type="image/png">
+    <title>Room assignment</title>
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <link rel="stylesheet" href="../Admin/Css_Admin/style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -496,7 +496,7 @@ $conn->close();
     <!-- Top bar -->
     <div class="topbar">
         
-        <h2>Room Assign</h2>
+        <h2>Room Assignment</h2>
         
     </div>
     

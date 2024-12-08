@@ -99,7 +99,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $_SESSION['swal_success'] = [
                     'title' => 'Success!',
-                    'text' => 'You have logged in successfully.',
+                    'text' => 'Login successful! Redirecting to the user dashboard...',
                     'icon' => 'success'
                 ];
                 session_write_close(); // Close the session to ensure the alert is available
@@ -156,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $_SESSION['swal_success'] = [
                     'title' => 'Success!',
-                    'text' => 'You have logged in successfully.',
+                    'text' => 'Login successful! Redirecting to the staff dashboard...',
                     'icon' => 'success'
                 ];
                 session_write_close(); // Close the session to ensure the alert is available

@@ -147,7 +147,7 @@ function getMessages($conn, $receiverId = 0) {
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <title>Dormio - Group Chat</title>
-    <link rel="icon" href="../img-icon/chat1.webp" type="image/png">
+    <link rel="icon" href="../img-icon/logo.png" type="image/png">
 
     <style>
         body {

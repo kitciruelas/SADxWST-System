@@ -559,7 +559,28 @@ function getMessages($conn, $receiverId = 0) {
         width: 100%;
         max-width: 300px;
     }
+    .search-card {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+        width: 100%; /* Take full width */
+        background-color: #f8f9fa; /* Light background color */
+        border-radius: 10px; /* Rounded corners */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    }
 
+    .search-bar .form-control {
+        border-radius: 20px; /* Rounded input */
+        border: 1px solid #ced4da; /* Border color */
+        padding: 10px 15px; /* Padding for input */
+        font-size: 1rem; /* Font size */
+        transition: border-color 0.3s ease; /* Smooth transition */
+    }
+
+    .search-bar .form-control:focus {
+        border-color: #37AFE1; /* Border color on focus */
+        box-shadow: 0 0 5px rgba(55, 175, 225, 0.5); /* Shadow on focus */
+        outline: none; /* Remove default outline */
+    }
     /* Responsive adjustments */
     @media (max-width: 1600px) {
         .main-content {
@@ -730,7 +751,7 @@ function getMessages($conn, $receiverId = 0) {
                             <img src="<?= htmlspecialchars($message['profile_pic']) ?>" alt="Profile Picture" class="profile-pic">
                         <?php endif; ?>
 
-                        <div class="message <?= htmlspecialchars($message_type) ?>" data-id="<?= htmlspecialchars($message['id']) ?>">
+                        <div class="message <?= htmlspecialchars($message_type) ?>" data-id="<?= htmlspecialchars($message['id']) ?>" data-sender="<?= htmlspecialchars($message['sender_name']) ?>">
                             <?php if ($message_type === 'sent'): ?>
                                 <div class="message-menu">
                                     <i class="fas fa-ellipsis-v" onclick="toggleMenu(this)"></i>
@@ -889,7 +910,9 @@ function applyFilters() {
 
     messages.forEach(function(message) {
         var content = message.querySelector('.message-content').textContent.toLowerCase();
-        if (content.includes(searchQuery)) {
+        var senderName = message.getAttribute('data-sender').toLowerCase();
+        
+        if (content.includes(searchQuery) || senderName.includes(searchQuery)) {
             message.style.display = '';  // Show message
         } else {
             message.style.display = 'none';  // Hide message

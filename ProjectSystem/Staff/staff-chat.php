@@ -624,6 +624,28 @@ function getMessages($conn, $receiverId = 0) {
             display: none;
         }
     }
+    .search-card {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+        width: 100%; /* Take full width */
+        background-color: #f8f9fa; /* Light background color */
+        border-radius: 10px; /* Rounded corners */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    }
+
+    .search-bar .form-control {
+        border-radius: 20px; /* Rounded input */
+        border: 1px solid #ced4da; /* Border color */
+        padding: 10px 15px; /* Padding for input */
+        font-size: 1rem; /* Font size */
+        transition: border-color 0.3s ease; /* Smooth transition */
+    }
+
+    .search-bar .form-control:focus {
+        border-color: #37AFE1; /* Border color on focus */
+        box-shadow: 0 0 5px rgba(55, 175, 225, 0.5); /* Shadow on focus */
+        outline: none; /* Remove default outline */
+    }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -886,7 +908,9 @@ function applyFilters() {
 
     messages.forEach(function(message) {
         var content = message.querySelector('.message-content').textContent.toLowerCase();
-        if (content.includes(searchQuery)) {
+        var senderName = message.querySelector('strong').textContent.toLowerCase(); // Assuming the sender's name is in a <strong> tag
+
+        if (content.includes(searchQuery) || senderName.includes(searchQuery)) {
             message.style.display = '';  // Show message
         } else {
             message.style.display = 'none';  // Hide message

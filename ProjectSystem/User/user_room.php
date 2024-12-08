@@ -380,24 +380,40 @@ function logActivity($conn, $userId, $activityType, $activityDetails) {
                             <?php if ($roomAssignment): ?>
                                 <!-- Room Image Section -->
                                 <div class="room-image-container mb-4">
-                                    <?php if (!empty($roomAssignment['room_pic'])): 
-                                        $imagePath = "../uploads/" . htmlspecialchars($roomAssignment['room_pic']); 
+                                    <?php 
+                                    // Get image paths
+                                    $imagePaths = explode(',', $roomAssignment['room_pic']);
                                     ?>
-                                        <div class="position-relative">
-                                            <img src="<?php echo $imagePath; ?>" 
-                                                 alt="Room Picture" 
-                                                 class="img-fluid rounded shadow-sm" 
-                                                 style="width: 100%; height: 450px; object-fit: cover;"> <!-- Increased height -->
-                                            <div class="room-number-badge">
-                                                Room <?php echo htmlspecialchars($roomAssignment['room_number']); ?>
-                                            </div>
+                                    <div id="carousel-<?php echo $roomAssignment['assignment_id']; ?>" class="carousel slide" data-bs-ride="carousel">
+                                        <div class="carousel-inner">
+                                            <?php foreach ($imagePaths as $index => $imagePath): ?>
+                                                <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                                    <?php if (!empty($imagePath) && file_exists("../uploads/" . $imagePath)): ?>
+                                                        <img src="<?php echo htmlspecialchars("../uploads/" . $imagePath); ?>" 
+                                                             class="img-fluid rounded shadow-sm d-block w-100 room-image" 
+                                                             alt="Room Image"
+                                                             style="height: 450px; object-fit: cover;"
+                                                             data-bs-toggle="modal" 
+                                                             data-bs-target="#imageModal" 
+                                                             onclick="showImageModal('<?php echo htmlspecialchars("../uploads/" . $imagePath); ?>')">
+                                                    <?php else: ?>
+                                                        <div class="no-image-placeholder">
+                                                            <i class="fas fa-image"></i>
+                                                            <p>No room picture available</p>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
                                         </div>
-                                    <?php else: ?>
-                                        <div class="no-image-placeholder">
-                                            <i class="fas fa-image"></i>
-                                            <p>No room picture available</p>
-                                        </div>
-                                    <?php endif; ?>
+                                        <a class="carousel-control-prev" href="#carousel-<?php echo $roomAssignment['assignment_id']; ?>" role="button" data-bs-slide="prev">
+                                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                            <span class="visually-hidden">Previous</span>
+                                        </a>
+                                        <a class="carousel-control-next" href="#carousel-<?php echo $roomAssignment['assignment_id']; ?>" role="button" data-bs-slide="next">
+                                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                            <span class="visually-hidden">Next</span>
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <!-- Room Details Section -->

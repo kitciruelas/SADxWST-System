@@ -241,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // SQL query to fetch users from the users table
-$sql = "SELECT id, fname, lname FROM users";
+$sql = "SELECT id, fname, lname FROM users WHERE status = 'active' ORDER BY id;";
 $result = mysqli_query($conn, $sql);
 
 // Store the options in an array

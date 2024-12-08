@@ -1434,7 +1434,7 @@ if (isset($_GET['error'])) {
                     <input type="text" id="editLname" name="Lname" required>
                 </div>
                 <div class="form-group">
-                    <label for="editMI">Middle Initial:</label>
+                    <label for="editMI">Middle Name:</label>
                     <input type="text" id="editMI" name="MI">
                 </div>
                 <div class="form-group">

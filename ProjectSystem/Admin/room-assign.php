@@ -201,15 +201,16 @@ function sendRentPaymentReminder($userId, $roomId, $conn) {
 }
 // Fetch room assignments for all users
 $currentAssignmentsQuery = "
-    SELECT 
-        users.id AS user_id, 
-        CONCAT(users.fname, ' ', users.lname) AS resident, 
-        rooms.room_number AS assigned_room_number,  -- Renamed to assigned_room_number
-        rooms.room_monthlyrent AS assigned_monthly_rent  -- Renamed to assigned_monthly_rent
-    FROM users 
-    LEFT JOIN roomassignments ON users.id = roomassignments.user_id 
-    LEFT JOIN rooms ON roomassignments.room_id = rooms.room_id 
-    ORDER BY users.id DESC"; // Ordering by users.id in descending order
+   SELECT 
+    users.id AS user_id, 
+    CONCAT(users.fname, ' ', users.lname) AS resident, 
+    rooms.room_number AS assigned_room_number,  -- Renamed to assigned_room_number
+    rooms.room_monthlyrent AS assigned_monthly_rent  -- Renamed to assigned_monthly_rent
+FROM users 
+LEFT JOIN roomassignments ON users.id = roomassignments.user_id 
+LEFT JOIN rooms ON roomassignments.room_id = rooms.room_id 
+WHERE users.status = 'active'  -- Only select users with active status
+ORDER BY users.id DESC";   // Ordering by users.id in descending order
 
 $currentAssignmentsResult = $conn->query($currentAssignmentsQuery);
 $reassignmentsQuery = "

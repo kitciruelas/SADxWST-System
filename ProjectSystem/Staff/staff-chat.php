@@ -777,10 +777,14 @@ function getMessages($conn, $receiverId = 0) {
                 <div class="list-group">
                     <?php
                     // Query to fetch user details
-                    $query = "SELECT id, fname, lname, role FROM users
-                    UNION
-                    SELECT id, fname, lname, role FROM staff
-                    ORDER BY id DESC";
+                    $query = "
+    SELECT id, fname, lname, role FROM users
+    WHERE status = 'active'
+    UNION
+    SELECT id, fname, lname, role FROM staff
+    WHERE status = 'active'
+    ORDER BY id DESC
+";
                       $result = mysqli_query($conn, $query);
 
                     // Check if there are results

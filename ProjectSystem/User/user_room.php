@@ -222,12 +222,12 @@ $canRequestMoveOut = false;
 $pendingRequest = null;
 
 if ($roomAssignment) {
-    // Check if there's any pending request
+    // Fetch pending move-out request
     $checkRequest = "SELECT * FROM move_out_requests 
-                    WHERE user_id = ? 
-                    AND status = 'pending' 
-                    ORDER BY request_date DESC 
-                    LIMIT 1";
+                     WHERE user_id = ? 
+                     AND status IN ('pending', 'approved') 
+                     ORDER BY request_date DESC 
+                     LIMIT 1";
     $stmt = $conn->prepare($checkRequest);
     $stmt->bind_param('i', $userId);
     $stmt->execute();
@@ -440,13 +440,22 @@ function logActivity($conn, $userId, $activityType, $activityDetails) {
                                 <!-- Add Move Out Section Here -->
                                 <div class="move-out-section mt-4">
                                     <?php if ($pendingRequest): ?>
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Pending Move Out Request</strong>
-                                            <p class="mb-0">Your move out request submitted on <?php echo date('F d, Y', strtotime($pendingRequest['request_date'])); ?> is pending approval.</p>
-                                            <p class="mb-0">Target Date: <?php echo date('F d, Y', strtotime($pendingRequest['target_date'])); ?></p>
-                                        </div>
-                                    <?php elseif ($canRequestMoveOut): ?>
+                                        <?php if (isset($pendingRequest['status']) && $pendingRequest['status'] === 'approved'): ?>
+                                            <div class="alert alert-success">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                <strong>Move Out Request Approved</strong>
+                                                <p class="mb-0">Your move out request submitted on <?php echo date('F d, Y', strtotime($pendingRequest['request_date'])); ?> has been approved.</p>
+                                                <p class="mb-0">Target Date: <?php echo date('F d, Y', strtotime($pendingRequest['target_date'])); ?></p>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                <strong>Pending Move Out Request</strong>
+                                                <p class="mb-0">Your move out request submitted on <?php echo date('F d, Y', strtotime($pendingRequest['request_date'])); ?> is pending approval.</p>
+                                                <p class="mb-0">Target Date: <?php echo date('F d, Y', strtotime($pendingRequest['target_date'])); ?></p>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php elseif ($canRequestMoveOut): ?>
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#moveOutModal">
                                             <i class="fas fa-door-open me-2"></i>Request Move Out
                                         </button>
@@ -1161,3 +1170,4 @@ function confirmLogout() {
     </script>
 </body>
 </html>
+ 

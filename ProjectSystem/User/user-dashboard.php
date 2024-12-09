@@ -123,6 +123,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Check for existing pending or approved move-out request
+        $stmt = $conn->prepare("SELECT request_id FROM move_out_requests WHERE user_id = ? AND status IN ('pending', 'approved')");
+        if ($stmt) {
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows > 0) {
+                $_SESSION['swal_error'] = [
+                    'title' => 'Error!',
+                    'text' => 'You have a pending or approved move-out request. You cannot apply for a reassignment.',
+                    'icon' => 'error'
+                ];
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit;
+            }
+            $stmt->close();
+        } else {
+            $_SESSION['swal_error'] = [
+                'title' => 'Error!',
+                'text' => 'Could not check move-out request status.',
+                'icon' => 'error'
+            ];
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit;
+        }
+
         // Fetch the old room ID and number based on the current user
         $stmt = $conn->prepare("SELECT ra.room_id, r.room_number 
                                FROM roomassignments ra 
@@ -1234,7 +1261,7 @@ if ($result === false) {
             // Get image paths
             $imagePaths = explode(',', $row['room_pic']);
             ?>
-            <div class="room-item">
+            <div class="room-item"> 
                 <div class="position-relative">
                     <div id="carousel-<?php echo $row['room_id']; ?>" class="carousel slide" data-bs-ride="carousel">
                         <div class="carousel-inner">

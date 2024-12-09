@@ -136,38 +136,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param('ssi', $status, $admin_remarks, $request_id);
         $stmt->execute();
 
+        // Log activity for approval or rejection
+        $getUserDetails = "SELECT u.fname, u.lname, r.room_number 
+                          FROM users u 
+                          JOIN move_out_requests m ON u.id = m.user_id
+                          JOIN rooms r ON m.room_id = r.room_id
+                          WHERE m.request_id = ?";
+        $stmt = $conn->prepare($getUserDetails);
+        $stmt->bind_param('i', $request_id);
+        $stmt->execute();
+        $userDetails = $stmt->get_result()->fetch_assoc();
+
+        $activity = ($action === 'approve') 
+            ? "Approved move-out request ID: $request_id for Room: {$userDetails['room_number']} by {$userDetails['fname']} {$userDetails['lname']}" 
+            : "Rejected move-out request ID: $request_id for Room: {$userDetails['room_number']} by {$userDetails['fname']} {$userDetails['lname']}";
+        logUserActivity($userId, $activity);
+
         if ($action === 'approve') {
             // Get request details
-            $getRequest = "SELECT user_id, room_id FROM move_out_requests WHERE request_id = ?";
+            $getRequest = "SELECT user_id, room_id, target_date FROM move_out_requests WHERE request_id = ?";
             $stmt = $conn->prepare($getRequest);
             $stmt->bind_param('i', $request_id);
             $stmt->execute();
             $request = $stmt->get_result()->fetch_assoc();
 
-            // Remove room assignment immediately
-            $deleteRoomAssign = "DELETE FROM roomassignments 
-                                WHERE room_id = ? AND user_id = ?";
-            $stmt = $conn->prepare($deleteRoomAssign);
-            $stmt->bind_param('ii', $request['room_id'], $request['user_id']);
-            $stmt->execute();
+            // Check if the target date has passed
+            if (new DateTime($request['target_date']) <= new DateTime()) {
+                // Remove room assignment immediately
+                $deleteRoomAssign = "DELETE FROM roomassignments 
+                                    WHERE room_id = ? AND user_id = ?";
+                $stmt = $conn->prepare($deleteRoomAssign);
+                $stmt->bind_param('ii', $request['room_id'], $request['user_id']);
+                $stmt->execute();
 
-            // Update room status to available
-            $updateRoom = "UPDATE rooms 
-                          SET status = 'available'
-                          WHERE room_id = ?";
-            $stmt = $conn->prepare($updateRoom);
-            $stmt->bind_param('i', $request['room_id']);
-            $stmt->execute();
-
-            // Log activity
-            $activityType = "Move Out Request Approved";
-            $activityDetails = "Admin approved move-out request for Room ID: " . $request['room_id'];
-            
-            $logSql = "INSERT INTO activity_logs (user_id, activity_type, activity_details) 
-                       VALUES (?, ?, ?)";
-            $stmt = $conn->prepare($logSql);
-            $stmt->bind_param('iss', $request['user_id'], $activityType, $activityDetails);
-            $stmt->execute();
+                // Update room status to available
+                $updateRoom = "UPDATE rooms 
+                              SET status = 'available'
+                              WHERE room_id = ?";
+                $stmt = $conn->prepare($updateRoom);
+                $stmt->bind_param('i', $request['room_id']);
+                $stmt->execute();
+            }
 
             // Get user email and details for notification
             $getUserDetails = "SELECT u.email, u.fname, u.lname, r.room_number 

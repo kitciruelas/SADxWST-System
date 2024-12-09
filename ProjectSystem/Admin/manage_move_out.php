@@ -138,26 +138,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'approve') {
             // Get request details
-            $getRequest = "SELECT user_id, room_id FROM move_out_requests WHERE request_id = ?";
+            $getRequest = "SELECT user_id, room_id, target_date FROM move_out_requests WHERE request_id = ?";
             $stmt = $conn->prepare($getRequest);
             $stmt->bind_param('i', $request_id);
             $stmt->execute();
             $request = $stmt->get_result()->fetch_assoc();
 
-            // Remove room assignment immediately
-            $deleteRoomAssign = "DELETE FROM roomassignments 
-                                WHERE room_id = ? AND user_id = ?";
-            $stmt = $conn->prepare($deleteRoomAssign);
-            $stmt->bind_param('ii', $request['room_id'], $request['user_id']);
-            $stmt->execute();
+            // Check if the target date has passed
+            if (new DateTime($request['target_date']) <= new DateTime()) {
+                // Remove room assignment immediately
+                $deleteRoomAssign = "DELETE FROM roomassignments 
+                                    WHERE room_id = ? AND user_id = ?";
+                $stmt = $conn->prepare($deleteRoomAssign);
+                $stmt->bind_param('ii', $request['room_id'], $request['user_id']);
+                $stmt->execute();
 
-            // Update room status to available
-            $updateRoom = "UPDATE rooms 
-                          SET status = 'available'
-                          WHERE room_id = ?";
-            $stmt = $conn->prepare($updateRoom);
-            $stmt->bind_param('i', $request['room_id']);
-            $stmt->execute();
+                // Update room status to available
+                $updateRoom = "UPDATE rooms 
+                              SET status = 'available'
+                              WHERE room_id = ?";
+                $stmt = $conn->prepare($updateRoom);
+                $stmt->bind_param('i', $request['room_id']);
+                $stmt->execute();
+            }
 
             // Get user email and details for notification
             $getUserDetails = "SELECT u.email, u.fname, u.lname, r.room_number 

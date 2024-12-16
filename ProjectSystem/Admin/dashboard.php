@@ -13,17 +13,21 @@ if (!isset($_SESSION['login_time'])) {
 
 // Simulate a username for demonstration purposes
 
-    $userCountQuery = "SELECT COUNT(*) AS totalUsers FROM users"; // Change room to user
-    $userCountResult = $conn->query($userCountQuery);
-    $userCount = $userCountResult->fetch_assoc()['totalUsers'];
+    // ... existing code ...
+$userCountQuery = "SELECT COUNT(*) AS totalUsers FROM users WHERE status = 'active'"; // Changed to count only active users
+$userCountResult = $conn->query($userCountQuery);
+$userCount = $userCountResult->fetch_assoc()['totalUsers'];
 
-    $userCountQuery = "SELECT COUNT(*) AS totalStaff FROM staff"; // Count staff instead of users
-    $userCountResult = $conn->query($userCountQuery);
-    $staffCount = $userCountResult->fetch_assoc()['totalStaff']; // Fetching total staff count
+$userCountQuery = "SELECT COUNT(*) AS totalStaff FROM staff WHERE status = 'active'"; // Changed to count only active staff
+$userCountResult = $conn->query($userCountQuery);
+$staffCount = $userCountResult->fetch_assoc()['totalStaff']; // Fetching total active staff count
+// ... existing code ...
 
-    $visitorCountQuery = "SELECT COUNT(*) AS totalVisitors FROM visitors"; // Count visitors instead of staff
-    $visitorCountResult = $conn->query($visitorCountQuery);
-    $visitorCount = $visitorCountResult->fetch_assoc()['totalVisitors']; // Fetching total visitor count
+ // ... existing code ...
+$visitorCountQuery = "SELECT COUNT(*) AS totalVisitors FROM visitors WHERE archive_status = 'active'"; // Changed to count only active visitors
+$visitorCountResult = $conn->query($visitorCountQuery);
+$visitorCount = $visitorCountResult->fetch_assoc()['totalVisitors']; // Fetching total active visitor count
+// ... existing code ...
 
 
 
@@ -73,13 +77,16 @@ if ($result->num_rows > 0) {
 //$percentage_change = abs($change); // Use absolute value for display
 
 // SQL to count rooms by status
+// ... existing code ...
 $query = "
     SELECT 
         status, 
         COUNT(*) AS room_count 
     FROM rooms 
+    WHERE archive_status = 'active' 
     GROUP BY status
 ";
+// ... existing code ...
 
 // Run your database query and fetch the data
 $result = mysqli_query($conn, $query);

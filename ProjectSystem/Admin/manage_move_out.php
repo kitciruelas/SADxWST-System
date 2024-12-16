@@ -736,7 +736,7 @@ $result = $stmt->get_result();
             <a href="activity-logs.php" class="nav-link"><i class="fas fa-clipboard-list"></i> <span>Activity Logs</span></a>
         </div>
         <div class="logout">
-        <a href="../config/user-logout.php" id="logoutLink">
+        <a href="../config/logout.php" id="logoutLink">
             <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
         </a>
         </div>

@@ -122,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $sql = "SELECT room_id, room_number, room_desc, capacity, room_monthlyrent, status, room_pic FROM rooms LIMIT $limit OFFSET $offset";
 $result = $conn->query($sql);
 
+// ... existing code ...
 $sql = "SELECT 
             rooms.room_id, 
             room_number, 
@@ -132,7 +133,10 @@ $sql = "SELECT
             status,
             (SELECT COUNT(*) FROM roomassignments WHERE room_id = rooms.room_id) AS current_occupants 
         FROM 
-            rooms";
+            rooms
+        WHERE 
+            archive_status = 'active'"; // Added condition to filter active rooms
+// ... existing code ...
 $result = $conn->query($sql);
 $conn->close();
 ?>
